@@ -1,0 +1,1 @@
+Every meeting has its folder with date in format YYYY_MM_DD
