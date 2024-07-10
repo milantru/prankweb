@@ -14,7 +14,7 @@
 - Základná kostra (obsah)
 - Hrubé spísanie [špecifikácie](https://docs.google.com/document/d/14Hx850b0bldpcYYky8Qy-FPD1uYN_zixqSKjVb0__-s/edit#heading=h.59ty88dpiy1r)
 
-### Organizačné záležitostiň
+### Organizačné záležitosti
 
 - Dohodnutie stretnutí
   - Stretnutia primárne online
