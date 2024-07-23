@@ -37,14 +37,14 @@
 ### -----PRIDAŤ ODKAZY/LINKY/ZDROJE-----
 - KB - pLM intro, ESM model
 - SK - RabbitMQ, Celery, Docker
-- MT - nginX, rcsb-saguaro, typescript-React
+- MT - nginX ([1.](https://youtu.be/JKxlsvZXG7c), [2.](https://youtu.be/9nyiY-psbMs)), [rcsb-saguaro](https://github.com/rcsb/rcsb-saguaro), [typescript-React](https://youtu.be/FJDVKeh7RJI)
 - RF - [Foldseek](https://www.youtube.com/watch?v=k5Rbi22TtOA), [Ahoj-DB](https://apoholo.cz/about)
   
 ### TODO
 
 - Aminokyseliny [EN](https://en.wikipedia.org/wiki/Amino_acid), [SK](https://sk.wikipedia.org/wiki/Aminokyselina)
 - Bielkoviny [EN](https://en.wikipedia.org/wiki/Protein), [SK](https://sk.wikipedia.org/wiki/Bielkovina)
-- Dohodnutie ďalšieho stretnutia zameraného na biologické aspekty SW projektu 
+- <del>Dohodnutie ďalšieho stretnutia zameraného na biologické aspekty SW projektu</del> 
 - Navrhnúť use cases, scenáre (čo bude robiť užívateľ, server atď.)
 - PyMol
 - Spisovať špecifikáciu
