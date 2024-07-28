@@ -36,7 +36,7 @@
 
 ### -----PRIDAŤ ODKAZY/LINKY/ZDROJE-----
 - KB - pLM - [intro](https://www.youtube.com/watch?v=ekDaxrbloC0), [ProtTrans](https://arxiv.org/pdf/2007.06225), [ESM model](https://www.biorxiv.org/content/10.1101/2022.07.20.500902v3.full.pdf)
-- SK - RabbitMQ, Celery, Docker
+- SK - [RabbitMQ](https://www.rabbitmq.com/tutorials), [Celery](https://docs.celeryq.dev/en/latest/), [Docker](https://docs.docker.com/guides/workshop/)
 - MT - nginX ([1.](https://youtu.be/JKxlsvZXG7c), [2.](https://youtu.be/9nyiY-psbMs)), [rcsb-saguaro](https://github.com/rcsb/rcsb-saguaro), [typescript-React](https://youtu.be/FJDVKeh7RJI)
 - RF - [Foldseek](https://www.youtube.com/watch?v=k5Rbi22TtOA), [Ahoj-DB](https://apoholo.cz/about)
   
