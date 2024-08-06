@@ -9,9 +9,17 @@
 
 ## Prehľad
 
-Cieľom práce je rozšírenie existujúceho projektu Prankweb, ktorého hlavnou funkcionalitou je predikovanie a vizualizácia potenciálnych väzobných miest ligandov na základe štruktúr proteínov. Rozšírenie spočíva v pridaní nového spôsobu nachádzania väzobných miest pomocou existujúceho **pLM (protein Language Model)**, ktorý generuje embeddings – feature vektory aminokyselín. Každý embedding bude vstupom pre klasifikačnú neurónovú sieť (tú je nutné vytvoriť), ktorá rozhodne, či daná aminokyselina patrí alebo nepatrí do väzobného miesta. 
+Cieľom práce je rozšírenie existujúceho projektu [Prankweb](https://prankweb.cz/), ktorého hlavnou funkcionalitou je predikovanie a vizualizácia potenciálnych väzobných miest ligandov na základe štruktúr proteínov. V podstate pôjde o rozšírenie v 2 oblastiach - rozšírenie predikcie a analýzy.
 
-Okrem toho bude môcť užívateľ využívať na skúmanie proteínov a ich (potenciálnych) väzobných miest dáta z:
+### Rozšírenie predikcie
+
+Doteraz systém fungoval tak, že na vstupe dostal proteínovú štruktúru a z nej vypredikoval potenciálne väzobné miesta. No naše rozšírenie umožní užívateľom zadať namiesto štruktúry sekvenciu. Tá sa následne predá existujúcemu **pLM (protein Language Model)**, ktorý vygeneruje embeddings – feature vektory aminokyselín. Každý embedding bude vstupom pre klasifikačnú neurónovú sieť (tú je nutné vytvoriť), ktorá rozhodne, či daná aminokyselina patrí alebo nepatrí do väzobného miesta. 
+
+Okrem toho je cieľom pridať prevod zo sekvencie na 3D štruktúru. Tento prevod by mal systému umožniť využívať starý spôsob predikovania väzobných miest zo štruktúry aj napriek tomu, že užívateľ zadá na vstupe sekvenciu proteínu. Samotné sfunkčnenie celej takejto pipeliny však nie je náplňou tejto práce.
+
+### Rozšírenie analýzy
+
+Toto rozšírenie umožní užívateľovi využívať na skúmanie proteínov a ich (potenciálnych) väzobných miest dáta z:
 <ol>
     <li>
         <b>AHoJ-DB</b>, ktorá obsahuje predpočítané proteínové štruktúry. Pomocou AHoJ-DB vieme nájsť štruktúry pre danú sekvenciu proteínu. Ku každej štruktúre databáza poskytuje dva typy väzobných miest pre ligandy, ktoré je možné vzťahovať k predikovaným väzobným miestam:
@@ -25,23 +33,23 @@ Okrem toho bude môcť užívateľ využívať na skúmanie proteínov a ich (po
     </li>
 </ol>
 
-Ďalej rozšírenie zahŕňa aj prevod sekvencie na 3D štruktúru.
+## Štruktúra projektu
 
 Projekt je rozdelený na štyri časti: Frontend, Backend, Dátová časť, AI.
 
-## Frontend
+### Frontend
 
 Cieľom je vizualizovať štruktúry proteínov a ich väzobné miesta (predikované zo sekvencií). Súčasťou frontendu je aj vrstevnatá vizualizácia viacerých štruktúr s predikovanými väzobnými miestami (užívateľ si bude môcť vybrať, aby sa mu zobrazila vizualizácia viacerých proteínových štruktúr súčasne).
 
-## Backend
+### Backend
 
 Rozšírenie API pre funkcionality potrebné na fungovanie frontendu, pridanie dockerových kontajnerov a ich prepojenie s existujúcou architektúrou.
 
-## Dátová časť
+### Dátová časť
 
 Práca s AHoJ-DB a MMseqs2, vytvorenie šablón dotazov.
 
-## AI
+### AI
 
 Využitie existujúceho pLM a vytvorenie klasifikačnej neurónovej siete pre predikciu väzobných miest.
 
