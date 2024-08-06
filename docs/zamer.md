@@ -29,7 +29,7 @@ Toto rozšírenie umožní užívateľovi využívať na skúmanie proteínov a 
         </ul>
     </li>
     <li>
-        <b>MMseqs2</b>, ktorá obsahuje homologické sekvencie iných živočíšnych druhov. Vďaka MMseqs2 dokážeme nájsť pre danú sekvenciu podobné sekvencie (tie nemusia byť úplné, môžu obsahovať „diery“) spolu s ich väzobnými miestami, a tie bude potom možné vzťahovať k predikovaným väzobným miestam.
+        <b>Foldseek</b>, ktorá obsahuje homologické sekvencie iných živočíšnych druhov. Vďaka Foldseek dokážeme nájsť pre danú sekvenciu podobné sekvencie (tie nemusia byť úplné, môžu obsahovať „diery“) spolu s ich väzobnými miestami, a tie bude potom možné vzťahovať k predikovaným väzobným miestam.
     </li>
 </ol>
 
@@ -47,7 +47,7 @@ Rozšírenie API pre funkcionality potrebné na fungovanie frontendu, pridanie d
 
 ### Dátová časť
 
-Práca s AHoJ-DB a MMseqs2, vytvorenie šablón dotazov.
+Práca s AHoJ-DB a Foldseek, vytvorenie šablón dotazov.
 
 ### AI
 
