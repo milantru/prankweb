@@ -9,20 +9,19 @@
 
 ## Prehľad
 
-Cieľom práce je rozšírenie existujúceho projektu Prankweb, ktorý umožňuje, okrem iného, 
-na základe štruktúr proteínov predikovať a vizualizovať potenciálne väzobné miesta ligandov. Rozšírenie spočíva v pridaní nového spôsobu nachádzania väzobných miest pomocou existujúceho **pLM (protein Language Model)**, ktorý nám vráti embeddings – feature vektory aminokyselín. Každý embedding bude vstupom pre klasifikačnú neurónovú sieť (tú je nutné vytvoriť), ktorá rozhodne, či daná aminokyselina patrí alebo nepatrí do väzobného miesta. 
+Cieľom práce je rozšírenie existujúceho projektu Prankweb, ktorého hlavnou funkcionalitou je predikovanie a vizualizácia potenciálnych väzobných miest ligandov na základe štruktúr proteínov. Rozšírenie spočíva v pridaní nového spôsobu nachádzania väzobných miest pomocou existujúceho **pLM (protein Language Model)**, ktorý generuje embeddings – feature vektory aminokyselín. Každý embedding bude vstupom pre klasifikačnú neurónovú sieť (tú je nutné vytvoriť), ktorá rozhodne, či daná aminokyselina patrí alebo nepatrí do väzobného miesta. 
 
 Okrem toho bude môcť užívateľ využívať na skúmanie proteínov a ich (potenciálnych) väzobných miest dáta z:
 <ol>
     <li>
-        <b>AHoJ-DB</b>, ktorá obsahuje predpočítané proteínové štruktúry. Pomocou AHoJ-DB vieme nájsť štruktúry pre danú sekvenciu proteínu. Ku každej štruktúre databáza poskytuje dva typy väzobných miest pre ligandy:
+        <b>AHoJ-DB</b>, ktorá obsahuje predpočítané proteínové štruktúry. Pomocou AHoJ-DB vieme nájsť štruktúry pre danú sekvenciu proteínu. Ku každej štruktúre databáza poskytuje dva typy väzobných miest pre ligandy, ktoré je možné vzťahovať k predikovaným väzobným miestam:
         <ul style="list-style-type: lower-alpha;">
             <li>APO (ligand free) - miesto s nenaviazaným ligandom</li>
             <li>HOLO (ligand bound) - miesto s naviazaným ligandom</li>
         </ul>
     </li>
     <li>
-        <b>MMseqs2</b>, ktorá obsahuje homologické sekvencie iných živočíšnych druhov. Vďaka MMseqs2 dokážeme nájsť pre danú sekvenciu podobné sekvencie (tie nemusia byť úplné, môžu obsahovať „diery“) spolu s ich väzobnými miestami.
+        <b>MMseqs2</b>, ktorá obsahuje homologické sekvencie iných živočíšnych druhov. Vďaka MMseqs2 dokážeme nájsť pre danú sekvenciu podobné sekvencie (tie nemusia byť úplné, môžu obsahovať „diery“) spolu s ich väzobnými miestami, a tie bude potom možné vzťahovať k predikovaným väzobným miestam.
     </li>
 </ol>
 
