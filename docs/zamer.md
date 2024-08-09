@@ -33,6 +33,8 @@ Toto rozšírenie umožní užívateľovi využívať na skúmanie proteínov a 
     </li>
 </ol>
 
+Dáta zo spomínaných externých zdrojov môže užívateľ využiť napr. pri vizualizácii.
+
 ## Štruktúra projektu
 
 Projekt je rozdelený na štyri časti: Frontend, Backend, Dátová časť, AI.
@@ -47,7 +49,7 @@ Rozšírenie API pre funkcionality potrebné na fungovanie frontendu, pridanie d
 
 ### Dátová časť
 
-Práca s AHoJ-DB a Foldseek, vytvorenie šablón dotazov.
+Práca s externými dátovými zdrojmi AHoJ-DB a Foldseek, vytvorenie šablón dotazov.
 
 ### AI
 
