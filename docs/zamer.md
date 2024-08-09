@@ -22,14 +22,14 @@ Okrem toho je cieľom pridať prevod zo sekvencie na 3D štruktúru. Tento prevo
 Toto rozšírenie umožní užívateľovi využívať na skúmanie proteínov a ich (potenciálnych) väzobných miest dáta z:
 <ol>
     <li>
-        <b>AHoJ-DB</b>, ktorá obsahuje predpočítané proteínové štruktúry. Pomocou AHoJ-DB vieme nájsť štruktúry pre danú sekvenciu proteínu. Ku každej štruktúre databáza poskytuje dva typy väzobných miest pre ligandy, ktoré je možné vzťahovať k predikovaným väzobným miestam:
+        <b>AHoJ-DB</b> - obsahuje predpočítané proteínové štruktúry. Pomocou AHoJ-DB vieme nájsť štruktúry pre danú sekvenciu proteínu. Ku každej štruktúre databáza poskytuje dva typy väzobných miest pre ligandy, ktoré je možné vzťahovať k predikovaným väzobným miestam:
         <ul style="list-style-type: lower-alpha;">
             <li>APO (ligand free) - miesto s nenaviazaným ligandom</li>
             <li>HOLO (ligand bound) - miesto s naviazaným ligandom</li>
         </ul>
     </li>
     <li>
-        <b>Foldseek</b>, ktorá obsahuje homologické sekvencie iných živočíšnych druhov. Vďaka Foldseek dokážeme nájsť pre danú sekvenciu podobné sekvencie (tie nemusia byť úplné, môžu obsahovať „diery“) spolu s ich väzobnými miestami, a tie bude potom možné vzťahovať k predikovaným väzobným miestam.
+        <b>Foldseek</b> - poskytuje homologické sekvencie iných živočíšnych druhov. Vďaka Foldseek dokážeme nájsť pre danú sekvenciu podobné sekvencie (tie nemusia byť úplné, môžu obsahovať „diery“) spolu s ich väzobnými miestami, a tie bude potom možné vzťahovať k predikovaným väzobným miestam.
     </li>
 </ol>
 
