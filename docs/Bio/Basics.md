@@ -68,11 +68,27 @@ V rámci molekuly proteínu je možné rozlíšiť tzv. domény. Doména je čas
 ![SRC](./src.png)   
 
 
+## Rodiny proteínov
 
-# ----- TODO - HOMOLOGY -----
+Proteíny sa vyvíjajú tak, aby mohli plniť nové funkcie. Tento proces viedol k vytvoreniu rodín protinov, v ktorých majú proteíny podobné sekvencie a štruktúry. 
 
+Príklad rodiny: **Serínové proteázy**
 
-...
+![Family same](./family_same.png)
+
+Veľké časti ich sekvencií sa zhodujú, no taktiež sa podobajú aj v 3D konformácií.
+
+No v mnohých prípadoch sa sekvencie aminokyselín odlišujú natoľko, že si nemôžeme byť istí príbuznosťou proteínov bez určenia ich trojdimenzionálej štruktúry.
+
+Príklad rodiny: **Homeodoména**
+
+![Family same](./family_diff.png)
+
+*3 oranžové bodky reprezentujú 3 aminokyseliny, ktoré boli počas evolúcie 1 miliárd rokov vložené do proteínu.*
+
+Len **17** z 60 aminokyselín zhodných reziduí *(na obrázku čierna bodka medzi nimi)*, no ako môžeme vidieť na obrázku časť (B), ktorá zobrazuje pozície C<sub>α</sub> daných bielkovín.  
+
+Foldseek prichádza s riešením tohto problému vďaka tkz. 3Di reprezentácií proteínu, kde je sekvencia aminokyselín nahradená novou "abecedou", ktorá nesie okrem typu aminokyseliny informáciu o susedných reziduách a ich vlastnostiach.
 
 
 ### Pre zaujímavosť
