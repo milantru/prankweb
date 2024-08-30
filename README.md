@@ -1,4 +1,9 @@
 # Prankweb
+Prankweb je webová aplikácia, ktorej hlavnou funkcionalitou je predikovanie a vizualizácia potenciálnych väzobných miest ligandov na základe štruktúr proteínov. Cieľom projektu je rozšíriť funkcionalitu aplikácie.
+
+Pôvodné projekty:
+* [PrankWeb](https://github.com/cusbg/prankweb)
+* [P2Rank Framework](https://github.com/cusbg/p2rank-framework)
 
 ## Dokumenty
 * [Zámer](docs/zamer.md)
