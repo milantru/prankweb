@@ -1,0 +1,1 @@
+curl -X POST -F q='./2src.fasta' -F 'mode=3diaa' -F 'database[]=afdb50' -F 'database[]=afdb-swissprot' -F 'database[]=afdb-proteome' -F 'database[]=bfmd' -F 'database[]=cath50' -F 'database[]=mgnify_esm30' -F 'database[]=gmgcl_id' -F 'database[]=pdb100' https://search.foldseek.com/api/ticket
