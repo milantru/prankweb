@@ -21,6 +21,7 @@
 - SK
   - Návrh architektúry
   - API prankwebu - explore
+  - Monitoring - flower, grafana, prometheus
 - MT
   - Vizualizácia proteínov - superpozícia INTRO
   - User interface - Mockup
