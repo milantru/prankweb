@@ -15,7 +15,7 @@ Cieľom práce je rozšírenie existujúceho projektu [Prankweb](https://prankwe
 
 Doteraz systém fungoval tak, že na vstupe dostal proteínovú štruktúru a z nej vypredikoval potenciálne väzobné miesta. No naše rozšírenie umožní užívateľom zadať sekvenciu namiesto štruktúry. Tá sa následne predá existujúcemu **pLM (protein Language Model)**, ktorý vygeneruje embeddings – feature vektory aminokyselín. Každý embedding bude vstupom pre klasifikačnú neurónovú sieť, ktorá rozhodne, či daná aminokyselina patrí alebo nepatrí do väzobného miesta. 
 
-Okrem toho je cieľom pridať prevod sekvencie na 3D štruktúru. Tento prevod by mal systému umožniť využívať starý spôsob predikovania väzobných miest zo štruktúry aj napriek tomu, že užívateľ zadá na vstupe sekvenciu proteínu.
+Okrem toho je cieľom pridať prevod sekvencie na 3D štruktúru. Tento prevod systému umožní jednak vizualizovať štruktúru query proteínu, ale takisto aj v prípade potreby využívať starý spôsob predikovania väzobných miest zo štruktúry (pomocou P2Ranku) aj napriek tomu, že užívateľ zadá na vstupe sekvenciu.
 
 ### Rozšírenie analýzy
 
