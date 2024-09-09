@@ -6,9 +6,9 @@ from requests import get, post
 from time import sleep
 
 # Open the FASTA file for reading
-with open('2src.pdb', 'r') as fasta_file:
+with open('2src-short.fasta', 'r') as protein_file:
     # Use the 'files' parameter to upload the file
-    files = {'q': fasta_file}
+    files = {'q': protein_file}
 
     # Submit a new job to the Foldseek server
     response = post('https://search.foldseek.com/api/ticket', files=files, data={
@@ -52,8 +52,8 @@ while repeat:
 if status['status'] == "COMPLETE":
     result = get('https://search.foldseek.com/api/result/' + ticket['id'] + '/0').json()
     # Print pairwise alignment of the first hit of the first database
-    print("Query Alignment:", result['results'][0]['alignments'][0][0]['qAln'])  # ['results'][0]['alignments'][0]['qAln']
-    print("Database Alignment:", result['results'][0]['alignments'][0][0]['dbAln']) # ['results'][0]['alignments'][0]['dbAln']
+    print("Query Alignment:\n", result['results'][0]['alignments'][0][0]['qAln'])  # ['results'][0]['alignments'][0]['qAln']
+    print("Database Alignment:\n", result['results'][0]['alignments'][0][0]['dbAln']) # ['results'][0]['alignments'][0]['dbAln']
 
     # Download BLAST-compatible result archive
     download = get('https://search.foldseek.com/api/result/download/' + ticket['id'], stream=True)
