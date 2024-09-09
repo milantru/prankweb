@@ -1,0 +1,30 @@
+
+Name of Structure_1: /var/tmp/pbs.19308668.meta-pbs.metacentrum.cz/mobileqaxh45ew.pdb:A (to be superimposed onto Structure_2)
+Name of Structure_2: /var/tmp/pbs.19308668.meta-pbs.metacentrum.cz/targetiz3hgrpl.pdb:A
+Length of Structure_1: 717 residues
+Length of Structure_2: 717 residues
+
+Aligned length= 717, RMSD=   0.22, Seq_ID=n_identical/n_aligned= 0.999
+TM-score= 0.99941 (normalized by length of Structure_1: L=717, d0=9.22)
+TM-score= 0.99941 (normalized by length of Structure_2: L=717, d0=9.22)
+(You should use TM-score normalized by length of the reference structure)
+
+(":" denotes residue pairs of d < 5.0 Angstrom, "." denotes other aligned residues)
+MVPMDKTLKEFGADVQWDDYAQLFTLIKDGAYVKVKPGAQTAIVNGQPLALQVPVVMKDNKAWVSDTFINDVFQSGLDQTFQVEKRPHPLNALTADEIKQAVEIVKASADFKPNTRFTEISLLPPDKEAVWAFALENKPVDQPRKADVIMLDGKHIIEAVVDLQNNKLLSWQPIKDAHGMVLLDDFASVQNIINNSEEFAAAVKKRGITDAKKVITTPLTVGYFDGKDGLKQDARLLKVISYLDVGDGNYWAHPIENLVAVVDLEQKKIVKIEEGPVVPVPMTARPFDGRDRVAPAVKPMQIIEPEGKNYTITGDMIHWRNWDFHLSMNSRVGPMISTVTYNDNGTKRKVMYEGSLGGMIVPYGDPDIGWYFKAYLESGDYGMGTLTSPIARGKDAPSNAVLLNETIADYTGVPMEIPRAIAVFERYAGPEYKHQEMGQPNVSTERRELVVRWISTVGNDYIFDWIFHENGTIGIDAGATGIEAVKGVKAKTMHDETAKDDTRYGTLIDHNIVGTTHQHIYNFRLDLDVDGENNSLVAMDPVVKPNTAGGPRTSTMQVNQYNIGNEQDAAQKFDPGTIRLLSNPNKENRMGNPVSYQIIPYAGGTHPVAKGAQFAPDEWIYHRLSFMDKQLWVTRYHPGERFPEGKYPNRSTHDTGLGQYSKDNESLDNTDAVVWMTTGTTHVARAEEWPIMPTEWVHTLLKPWNFFDETPTLGALK
+:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+MVPMDKTLKEFGADVQWDDYAQLFTLIKDGAYVKVKPGAQTAIVNGQPLALQVPVVMKDNKAWVSDTFINDVFQSGLDQTFQVEKRPHPLNALTADEIKQAVEIVKASADFKPNTRFTEISLLPPDKEAVWAFALENKPVDQPRKADVIMLDGKHIIEAVVDLQNNKLLSWQPIKDAHGMVLLDDFASVQNIINNSEEFAAAVKKRGITDAKKVITTPLTVGYFDGKDGLKQDARLLKVISYLDVGDGNYWAHPIENLVAVVDLEQKKIVKIEEGPVVPVPMTARPFDGRDRVAPAVKPMQIIEPEGKNYTITGDMIHWRNWDFHLSMNSRVGPMISTVTYNDNGTKRKVMYEGSLGGMIVPYGDPDIGWYFKAYLDSGDYGMGTLTSPIARGKDAPSNAVLLNETIADYTGVPMEIPRAIAVFERYAGPEYKHQEMGQPNVSTERRELVVRWISTVGNDYIFDWIFHENGTIGIDAGATGIEAVKGVKAKTMHDETAKDDTRYGTLIDHNIVGTTHQHIYNFRLDLDVDGENNSLVAMDPVVKPNTAGGPRTSTMQVNQYNIGNEQDAAQKFDPGTIRLLSNPNKENRMGNPVSYQIIPYAGGTHPVAKGAQFAPDEWIYHRLSFMDKQLWVTRYHPGERFPEGKYPNRSTHDTGLGQYSKDNESLDNTDAVVWMTTGTTHVARAEEWPIMPTEWVHTLLKPWNFFDETPTLGALK
+
+#Total CPU time is  0.25 seconds
+------ The rotation matrix to rotate Structure_1 to Structure_2 ------
+m               t[m]        u[m][0]        u[m][1]        u[m][2]
+0      -0.1269830049   0.9999983546   0.0017850188  -0.0003232496
+1      -0.1504951327  -0.0017850933   0.9999983802  -0.0002300983
+2       0.3045456648   0.0003228384   0.0002306750   0.9999999213
+
+Code for rotating Structure 1 from (x,y,z) to (X,Y,Z):
+for(i=0; i<L; i++)
+{
+   X[i] = t[0] + u[0][0]*x[i] + u[0][1]*y[i] + u[0][2]*z[i];
+   Y[i] = t[1] + u[1][0]*x[i] + u[1][1]*y[i] + u[1][2]*z[i];
+   Z[i] = t[2] + u[2][0]*x[i] + u[2][1]*y[i] + u[2][2]*z[i];
+}
