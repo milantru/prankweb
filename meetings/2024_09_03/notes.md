@@ -1,4 +1,4 @@
-# Zápisnica z meetingu 27.08.2024
+# Zápisnica z meetingu 03.09.2024
 
 ## Účastníci
 
@@ -11,6 +11,7 @@
 
 - Špecifikácia
 - Fungovanie rozšírenia, upresnenie a ujasnenie
+- Vytvorenie predstavy o vizualizácii proteínových sekvencií a štruktúr
 
 ## TODO
 

@@ -9,8 +9,9 @@
 
 ## Prebrané témy
 
-- Zopakovanie/Prejdenie fungovania rozšírenia
 - Úprava štruktúry špecifikácie
+- Zopakovanie/Prejdenie fungovania rozšírenia
+    ![Pipeline](pipeline.webp)
 
 ## TODO
 
