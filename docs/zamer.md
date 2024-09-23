@@ -19,21 +19,17 @@ Okrem toho je cieľom pridať prevod sekvencie na 3D štruktúru. Tento prevod s
 
 ### Rozšírenie analýzy
 
-Toto rozšírenie umožní užívateľovi využívať na skúmanie proteínov a ich (potenciálnych) väzobných miest dáta z:
-<ol>
-    <li>
-        <b>AHoJ-DB</b> - obsahuje predpočítané proteínové štruktúry. Pomocou AHoJ-DB vieme nájsť štruktúry pre danú sekvenciu proteínu. Ku každej štruktúre databáza poskytuje dva typy väzobných miest pre ligandy, ktoré je možné vzťahovať k predikovaným väzobným miestam:
-        <ul style="list-style-type: lower-alpha;">
-            <li>APO (ligand free) - miesto s nenaviazaným ligandom</li>
-            <li>HOLO (ligand bound) - miesto s naviazaným ligandom</li>
-        </ul>
-    </li>
-    <li>
-        <b>Foldseek</b> - poskytuje homologické sekvencie iných živočíšnych druhov. Vďaka Foldseek dokážeme nájsť pre danú sekvenciu podobné sekvencie (tie nemusia byť úplné, môžu obsahovať „diery“) spolu s ich väzobnými miestami, a tie bude potom možné vzťahovať k predikovaným väzobným miestam.
-    </li>
-</ol>
+P2Rank a pLM slúžia k predikcií väzobných miest pre vstupný proteín. Dajú sa však chápať aj ako zdroje dát. Cieľom rozšírenia analýzy je vytvoriť dátový modul, ktorý bude schopný pracovať s danými (alebo novými) zdrojmi dát. Modul bude schopný vytvoriť agregované dáta. Tie by poskytol rozšírenému užívateľskému rozhraniu, ktoré umožní ich vizualizáciu pomocou zarovnaných sekvencií a superpozicovaných 3D štruktúr.
 
-Dáta zo spomínaných externých zdrojov môže užívateľ využiť napr. pri vizualizácii.
+#### Dátový modul
+Cieľom je implementovať jednoducho modifikovateľný modul. Modul by mal byť schopný interagovať s rôznymi zdrojmi dát. Mal by umožňovať jednoduché pridanie nového alebo odobranie využívaného zdroju. Dáta, ktoré nám zdroje poskytnú, bude schopný spracovať a agregovať do jedného výstupného formátu, ktorý bude obsahovať informácie o väzobných miestach k vstupnému proteínu alebo k podobným proteínovým štruktúram. 
+
+#### Užívateľské rozhranie
+Úlohou užívateľského rozhrania v kontexte rozšírenia analýzy je prezentácia dát poskytnutých užívateľom a dátovým modulom.
+
+**Graf sekvencie** bude mať za úlohu vykresliť sekvenciu zadanú užívateľom, spolu s predikovanými väzobnými miestmi. Dáta poskytnuté dátovým modulom môžu obsahovať aj proteíny podobné query proteínu. Ich sekvencie budú zobrazené v grafe a budú zarovnané voči vstupnému proteínu. Užívateľ bude mať možnosť vybrať jednotlivé sekvencie, ktoré sa následne zobrazia v Grafe štruktúr.
+
+**Graf štruktúr** bude slúžiť na vizualizáciu vybraných štruktúr (a väzobných miest) proteínu z grafu sekvencie. Pri výbere viacerých proteínov budú štruktúry vo vizualizácii superpozicované.
 
 ## Štruktúra projektu
 
@@ -41,17 +37,22 @@ Projekt je rozdelený na štyri časti: Frontend, Backend, Dátová časť, AI.
 
 ### Frontend
 
+# TODO - zjednotiť so špecifikáciou
 Cieľom je vizualizovať štruktúry proteínov a ich väzobné miesta (predikované zo sekvencií). Súčasťou frontendu je aj vrstevnatá vizualizácia viacerých štruktúr s predikovanými väzobnými miestami (užívateľ si bude môcť vybrať, aby sa mu zobrazila vizualizácia viacerých proteínových štruktúr súčasne).
 
 ### Backend
 
+# TODO - zjednotiť so špecifikáciou
 Rozšírenie API pre funkcionality potrebné na fungovanie frontendu, pridanie dockerových kontajnerov a ich prepojenie s existujúcou architektúrou.
 
 ### Dátová časť
 
+# TODO - zjednotiť so špecifikáciou
 Práca s externými dátovými zdrojmi AHoJ-DB a Foldseek, vytvorenie šablón dotazov.
 
 ### AI
+
+# TODO - zjednotiť so špecifikáciou
 
 Využitie existujúceho pLM a natrénovanie klasifikačnej neurónovej siete pre predikciu väzobných miest.
 
