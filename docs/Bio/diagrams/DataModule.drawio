@@ -1,0 +1,64 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36" version="24.7.15">
+  <diagram name="Page-1" id="xX3WBdAkl3YKiysj8n4b">
+    <mxGraphModel dx="1050" dy="522" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="MAlUr0Esq1G95vpasakO-15" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="190" y="130" width="410" height="270" as="geometry" />
+        </mxCell>
+        <mxCell id="BuSkI6OP4woXLYlcv7ty-1" value="SEQ/STR&lt;div&gt;Input&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="60" y="280" width="90" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="MAlUr0Esq1G95vpasakO-2" value="Data preparation" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="460" y="280" width="90" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="MAlUr0Esq1G95vpasakO-13" value="Data source" style="shape=hexagon;perimeter=hexagonPerimeter2;whiteSpace=wrap;html=1;fixedSize=1;" vertex="1" parent="1">
+          <mxGeometry x="290" y="10" width="110" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="MAlUr0Esq1G95vpasakO-14" value="Query preparation" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="240" y="280" width="90" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="MAlUr0Esq1G95vpasakO-16" value="" style="endArrow=classic;html=1;rounded=0;" edge="1" parent="1" source="BuSkI6OP4woXLYlcv7ty-1" target="MAlUr0Esq1G95vpasakO-14">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="390" y="250" as="sourcePoint" />
+            <mxPoint x="440" y="200" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="MAlUr0Esq1G95vpasakO-18" value="Module component" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="320" y="160" width="90" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="MAlUr0Esq1G95vpasakO-26" value="Output" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="640" y="280" width="90" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="MAlUr0Esq1G95vpasakO-28" value="" style="endArrow=classic;html=1;rounded=0;" edge="1" parent="1" source="MAlUr0Esq1G95vpasakO-2" target="MAlUr0Esq1G95vpasakO-26">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="390" y="250" as="sourcePoint" />
+            <mxPoint x="440" y="200" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="MAlUr0Esq1G95vpasakO-29" value="Data module" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="210" y="130" width="90" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="MAlUr0Esq1G95vpasakO-30" value="Data source" style="shape=hexagon;perimeter=hexagonPerimeter2;whiteSpace=wrap;html=1;fixedSize=1;" vertex="1" parent="1">
+          <mxGeometry x="300" y="20" width="110" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="MAlUr0Esq1G95vpasakO-31" value="Data source" style="shape=hexagon;perimeter=hexagonPerimeter2;whiteSpace=wrap;html=1;fixedSize=1;" vertex="1" parent="1">
+          <mxGeometry x="310" y="30" width="110" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="MAlUr0Esq1G95vpasakO-33" value="Module component" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="330" y="170" width="90" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="MAlUr0Esq1G95vpasakO-34" value="Module component" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="340" y="180" width="90" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="MAlUr0Esq1G95vpasakO-35" value="" style="endArrow=classic;startArrow=classic;html=1;rounded=0;exitX=0.5;exitY=0;exitDx=0;exitDy=0;" edge="1" parent="1" source="MAlUr0Esq1G95vpasakO-18" target="MAlUr0Esq1G95vpasakO-31">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="390" y="250" as="sourcePoint" />
+            <mxPoint x="440" y="200" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
