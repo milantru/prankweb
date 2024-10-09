@@ -27,9 +27,9 @@ Cieľom je implementovať jednoducho modifikovateľný modul. Modul by mal byť 
 #### Užívateľské rozhranie
 Úlohou užívateľského rozhrania v kontexte rozšírenia analýzy je prezentácia dát poskytnutých užívateľom a dátovým modulom.
 
-**Graf sekvencie** bude mať za úlohu vykresliť sekvenciu zadanú užívateľom, spolu s predikovanými väzobnými miestmi. Dáta poskytnuté dátovým modulom môžu obsahovať aj proteíny podobné query proteínu. Ich sekvencie budú zobrazené v grafe a budú zarovnané voči vstupnému proteínu. Užívateľ bude mať možnosť vybrať jednotlivé sekvencie, ktoré sa následne zobrazia v Grafe štruktúr.
+**Sekvenčny displej** bude mať za úlohu vykresliť sekvenciu zadanú užívateľom, spolu s predikovanými väzobnými miestmi. Dáta poskytnuté dátovým modulom môžu obsahovať aj proteíny podobné vstupnému proteínu. Ich sekvencie budú zobrazené v grafe a budú zarovnané voči vstupnému proteínu. Užívateľ bude mať možnosť vybrať jednotlivé sekvencie, ktoré sa následne zobrazia v Štruktúrnom displeji.
 
-**Graf štruktúr** bude slúžiť na vizualizáciu vybraných štruktúr (a väzobných miest) proteínu z grafu sekvencie. Pri výbere viacerých proteínov budú štruktúry vo vizualizácii superpozicované.
+**Štruktúrny displej** bude slúžiť na vizualizáciu vybraných štruktúr (a väzobných miest) proteínu zo sekvenčného displeja, užívateľ si ich vizualizáciu môže svojvoľne zapínať a vypínať. Pri výbere viacerých proteínov budú štruktúry vo vizualizácii superpozicované.
 
 ## Štruktúra projektu
 
@@ -37,8 +37,11 @@ Projekt je rozdelený na štyri časti: Frontend, Backend, Dátová časť, AI.
 
 ### Frontend
 
-# TODO - zjednotiť so špecifikáciou
-Cieľom je vizualizovať štruktúry proteínov a ich väzobné miesta (predikované zo sekvencií). Súčasťou frontendu je aj vrstevnatá vizualizácia viacerých štruktúr s predikovanými väzobnými miestami (užívateľ si bude môcť vybrať, aby sa mu zobrazila vizualizácia viacerých proteínových štruktúr súčasne).
+Keďže naše rozšírenie zahŕňa pridanie predikovania na základe sekvencie proteínu, musí frontend zaistiť možnosť zadania sekvencie. 
+
+Ďalej má frontend na starosti vizualizácie proteínov, konkrétne ide o 2 displeje:
+- *Sekvenčný displej:* Jeho úlohou bude najmä vizualizovať sekvenciu vstupného proteínu, potenciálne väzobné miesta, ale aj iné informácie vrátane tých, ktoré poskytnú dátové zdroje z dátového modulu. Okrem toho bude mať displej umožniť užívateľovi výber proteínov (ak dátový modul poskytol ich štruktúry). 
+- *Štruktúrny displej:* Tento displej má za úlohu vizualizovať vstupnú štruktúru a ak si užívateľ v sekvenčnom displeji vybral nejaké štruktúry, tak aj tie.
 
 ### Backend
 
