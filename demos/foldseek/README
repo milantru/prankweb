@@ -1,1 +1,30 @@
+# To Run...
 `pip install -r requirements.txt`
+
+# Foldseek basic commands
+
+## Database
+
+### List of supported databases
+
+`foldseek databases`
+
+### Download database
+
+We use `PDB` database. Name of local db will be `pdb`  
+`pdb_tmp` is just for some temp files
+
+`foldseek databases PDB pdb pdb_tmp`
+
+## Search
+
+## Foldseek easy-search
+
+`foldseek easy-search 2src.pdb ../pdb aln_res tmp --max-seqs 20 --format-output query,target,alnlen,qseq,qstart,qend,qaln,evalue,tseq,tstart,tend,taln`
+
+foldseek easy-search [pdb_file] [database] [res_file] [PARAMS]  
+
+Params:
+- `--max-seqs` - maximum number of returned matches
+- `--format-output` - columns in result file [MORE](https://github.com/soedinglab/MMseqs2/wiki#custom-alignment-format-with-convertalis)
+
