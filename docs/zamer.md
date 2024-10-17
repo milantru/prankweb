@@ -13,9 +13,11 @@ Cieľom práce je rozšírenie existujúceho projektu [Prankweb](https://prankwe
 
 ### Rozšírenie predikcie
 
-Doteraz systém fungoval tak, že na vstupe dostal proteínovú štruktúru a z nej vypredikoval potenciálne väzobné miesta. No naše rozšírenie umožní užívateľom zadať sekvenciu namiesto štruktúry. Tá sa následne predá existujúcemu **pLM (protein Language Model)**, ktorý vygeneruje embeddings – feature vektory aminokyselín. Každý embedding bude vstupom pre klasifikačnú neurónovú sieť, ktorá rozhodne, či daná aminokyselina patrí alebo nepatrí do väzobného miesta. 
+V súčasnosti Prankweb dokáže predikovať väzobné miesta v proteínovej štruktúre pomocou metódy P2Rank, pričom vstupom je vždy zadaná alebo predikovaná štruktúra. Cieľom rozšírenia je pridať možnosť predikcie na základe sekvencie a jej prevod do 3D štruktúry.
+  
+Na predikciu väzobných miest zo sekvencie využijeme existujúci pLM, ktorý vygeneruje tzv. embeddings – vektory aminokyselín opisujúce vlastnosti jednotlivých aminokyselín v závislosti na ich sekvenčnom kontexte. Každý embedding bude vstupom pre klasifikačnú neurónovú sieť, ktorá rozhodne, či daná aminokyselina je súčasťou nejakého väzobného miesta. 
 
-Okrem toho je cieľom pridať prevod sekvencie na 3D štruktúru. Tento prevod systému umožní jednak vizualizovať štruktúru query proteínu, ale takisto aj v prípade potreby využívať starý spôsob predikovania väzobných miest zo štruktúry (pomocou P2Ranku) aj napriek tomu, že užívateľ zadá na vstupe sekvenciu.
+V prípade, že užívateľ zadá na vstupe sekvenciu proteínu bude na vizualizáciu štruktúry query proteínu, a takisto na predikovania väzobných miest zo štruktúry (pomocou P2Ranku), potrebný jej prevod na 3D štruktúru. Na prevod bude využitá už existujúca predikčná metóda, ako je napr. AlphaFold alebo ESMFold.
 
 ### Rozšírenie analýzy
 
@@ -54,10 +56,7 @@ Rozšírenie API pre funkcionality potrebné na fungovanie frontendu, pridanie d
 Práca s externými dátovými zdrojmi AHoJ-DB a Foldseek, vytvorenie šablón dotazov.
 
 ### AI
-
-# TODO - zjednotiť so špecifikáciou
-
-Využitie existujúceho pLM a natrénovanie klasifikačnej neurónovej siete pre predikciu väzobných miest.
+Cieľom je rozšírenie predikcie, a to natrénovať klasifikačnú neurónovú sieť, ktorá z proteínových sekvencií predikuje väzobné aminokyseliny proteínu a využiť existujúcu metódu na predikciu 3D štruktúry zo vstupnej sekvencie. Do klasifikačnej neurónovej siete budú vstupovať embeddingy získané zakódovaním proteínových sekvencií pomocou existujúceho pLM. 
 
 ## Približný priebeh
 
