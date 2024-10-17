@@ -20,7 +20,7 @@ We use `PDB` database. Name of local db will be `pdb`
 
 ## Foldseek easy-search
 
-`foldseek easy-search 2src.pdb ../pdb aln_res tmp --max-seqs 20 --format-output query,target,alnlen,qseq,qstart,qend,qaln,evalue,tseq,tstart,tend,taln`
+`foldseek easy-search 2src.pdb ../pdb aln_res tmp --max-seqs 20 --format-output query,target,alnlen,qseq,qstart,qend,qaln,alntmscore,tseq,tstart,tend,taln`
 
 foldseek easy-search [pdb_file] [database] [res_file] [PARAMS]  
 
