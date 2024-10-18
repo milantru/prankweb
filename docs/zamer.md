@@ -9,29 +9,36 @@
 
 ## Prehľad
 
-Cieľom práce je rozšírenie existujúceho projektu [Prankweb](https://prankweb.cz/), ktorého hlavnou funkcionalitou je predikovanie a vizualizácia potenciálnych väzobných miest ligandov na základe štruktúr proteínov. V podstate pôjde o rozšírenie v 2 oblastiach - rozšírenie predikcie a analýzy.
+Cieľom práce je rozšírenie existujúceho projektu [Prankweb](https://prankweb.cz/), ktorého hlavnou funkcionalitou je predikovanie a vizualizácia potenciálnych väzobných miest ligandov na základe štruktúr proteínov. Pôjde o rozšírenie v dvoch oblastiach - rozšírenie predikcie a analýzy.
 
 ### Rozšírenie predikcie
 
-V súčasnosti Prankweb dokáže predikovať väzobné miesta v proteínovej štruktúre pomocou metódy P2Rank, pričom vstupom je vždy zadaná alebo predikovaná štruktúra. Cieľom rozšírenia je pridať možnosť predikcie na základe sekvencie a jej prevod do 3D štruktúry.
+V súčasnosti Prankweb dokáže predikovať väzobné miesta v proteínovej štruktúre pomocou metódy [P2Rank](https://github.com/cusbg/p2rank-framework), pričom vstupom je vždy 3D štruktúra proteínu. Cieľom rozšírenia je pridať možnosť predikcie na základe sekvencie a jej prevod do 3D štruktúry.
   
-Na predikciu väzobných miest zo sekvencie využijeme existujúci pLM, ktorý vygeneruje tzv. embeddings – vektory aminokyselín opisujúce vlastnosti jednotlivých aminokyselín v závislosti na ich sekvenčnom kontexte. Každý embedding bude vstupom pre klasifikačnú neurónovú sieť, ktorá rozhodne, či daná aminokyselina je súčasťou nejakého väzobného miesta. 
+Na predikciu väzobných miest zo sekvencie sa využije existujúci Protein Language Model (pLM), ktorý vygeneruje tzv. embeddings – vektory opisujúce vlastnosti jednotlivých aminokyselín v závislosti na ich sekvenčnom kontexte. Každý embedding bude vstupom pre klasifikačnú neurónovú sieť, ktorá rozhodne, či daná aminokyselina je súčasťou nejakého väzobného miesta. 
 
-V prípade, že užívateľ zadá na vstupe sekvenciu proteínu bude na vizualizáciu štruktúry query proteínu, a takisto na predikovania väzobných miest zo štruktúry (pomocou P2Ranku), potrebný jej prevod na 3D štruktúru. Na prevod bude využitá už existujúca predikčná metóda, ako je napr. AlphaFold alebo ESMFold.
+Zadaním sekvencie proteínu bude na vizualizáciu štruktúry, a takisto na predikovanie väzobných miest (pomocou P2Ranku), potrebný jej prevod na 3D štruktúru. Na prevod bude využitá už existujúca predikčná metóda (napr. AlphaFold alebo ESMFold).
 
 ### Rozšírenie analýzy
 
-P2Rank a pLM slúžia k predikcií väzobných miest pre vstupný proteín. Dajú sa však chápať aj ako zdroje dát. Cieľom rozšírenia analýzy je vytvoriť dátový modul, ktorý bude schopný pracovať s danými (alebo novými) zdrojmi dát. Modul bude schopný vytvoriť agregované dáta. Tie by poskytol rozšírenému užívateľskému rozhraniu, ktoré umožní ich vizualizáciu pomocou zarovnaných sekvencií a superpozicovaných 3D štruktúr.
+P2Rank a pLM sa dajú chápať ako zdroje dát, ktoré pre vstupný proteín poskytujú informácie o väzobných miestach. V súčasnosti existujú rôzne ďalšie zdroje dát. Buď také, ktoré pre vstupný proteín vrátia už predpočítané väzobné miesta s konkrétnymi ligandmi. Alebo také, ktoré dokážu nájsť proteíny, ktoré sú vstupnému proteínu podobné 3D štruktúrou a obsahujú informácie o väzobných miestach a ligandoch.  
+Rozšírenie analýzy zahŕňa návrh systému pre prácu s rôznymi zdojmi dát a vytvorenie nového užívateľského rozhrania, ktoré umožní vizualizáciu dát získaných z dátových zdrojov.
 
-#### Dátový modul
-Cieľom je implementovať jednoducho modifikovateľný modul. Modul by mal byť schopný interagovať s rôznymi zdrojmi dát. Mal by umožňovať jednoduché pridanie nového alebo odobranie využívaného zdroju. Dáta, ktoré nám zdroje poskytnú, bude schopný spracovať a agregovať do jedného výstupného formátu, ktorý bude obsahovať informácie o väzobných miestach k vstupnému proteínu alebo k podobným proteínovým štruktúram. 
+#### Systém pre prácu s dátovými zdrojmi
+
+Systém sa postará o celý priebeh od spracovania vstupu od užívateľa, získania dát z rôznych dátových zdrojov až po poskytnutie dát užívateľskému rozhraniu. Súčasťou vytvorenia systému bude:
+- Vytvorenie modulu, ktorý pre vstup vytvorí identifikátor reprezentujúci vstupný proteín.
+- Návrh rozhrania, ktoré bude popisovať základné funkcionality pre prácu s dátovými zdrojmi.
+- Vytvorenie modulov pre prácu s dátovými zdrojmi.
+- Návrh jednotného formátu pre dáta získané z dátových zdrojov a poskytnúť tieto dáta užívateľskému rozhraniu
+
 
 #### Užívateľské rozhranie
-Úlohou užívateľského rozhrania v kontexte rozšírenia analýzy je prezentácia dát poskytnutých užívateľom a dátovým modulom.
+Úlohou užívateľského rozhrania v kontexte rozšírenia analýzy je prezentácia dát poskytnutých užívateľom a dátovými zdrojmi.
 
-**Sekvenčny displej** bude mať za úlohu vykresliť sekvenciu zadanú užívateľom, spolu s predikovanými väzobnými miestmi. Dáta poskytnuté dátovým modulom môžu obsahovať aj proteíny podobné vstupnému proteínu. Ich sekvencie budú zobrazené v grafe a budú zarovnané voči vstupnému proteínu. Užívateľ bude mať možnosť vybrať jednotlivé sekvencie, ktoré sa následne zobrazia v Štruktúrnom displeji.
+**Sekvenčný displej** má za úlohu vykresliť sekvenciu zadanú užívateľom (spolu s informáciami o nej) a taktiež aj dáta poskytnuté dátovými zdrojmi. Ak niektorý z dátových zdrojov bude poskytovať aj proteínovú štruktúru, tak rozhranie umožní užívateľovi zvoliť si daný proteín (resp. proteíny). Výber týchto proteínov bude mať vplyv na vizualizáciu v štruktúrnom displeji.
 
-**Štruktúrny displej** bude slúžiť na vizualizáciu vybraných štruktúr (a väzobných miest) proteínu zo sekvenčného displeja, užívateľ si ich vizualizáciu môže svojvoľne zapínať a vypínať. Pri výbere viacerých proteínov budú štruktúry vo vizualizácii superpozicované.
+**Štruktúrny displej** bude slúžiť na vizualizáciu vybraných štruktúr proteínu zo sekvenčného displeja, jeho väzobných miest a ligandov. Užívateľ si bude môcť vizualizovať štruktúry a ligandy podľa potreby. Pri výbere viacerých proteínov budú štruktúry vo vizualizácii superpozicované.
 
 ## Štruktúra projektu
 
@@ -39,23 +46,18 @@ Projekt je rozdelený na štyri časti: Frontend, Backend, Dátová časť, AI.
 
 ### Frontend
 
-Keďže naše rozšírenie zahŕňa pridanie predikovania na základe sekvencie proteínu, musí frontend zaistiť možnosť zadania sekvencie. 
-
-Ďalej má frontend na starosti vizualizácie proteínov, konkrétne ide o 2 displeje:
-- *Sekvenčný displej:* Jeho úlohou bude najmä vizualizovať sekvenciu vstupného proteínu, potenciálne väzobné miesta, ale aj iné informácie vrátane tých, ktoré poskytnú dátové zdroje z dátového modulu. Okrem toho bude mať displej umožniť užívateľovi výber proteínov (ak dátový modul poskytol ich štruktúry). 
-- *Štruktúrny displej:* Tento displej má za úlohu vizualizovať vstupnú štruktúru a ak si užívateľ v sekvenčnom displeji vybral nejaké štruktúry, tak aj tie.
+Úlohou bude zabezpečiť možnosť zadania proteínovej sekvencie a vytvorenie Sekvenčného a Štruktúrneho displeja. Frontend zodpovedá za vizualizáciu proteínov prostredníctvom týchto displejov.
 
 ### Backend
 
-# TODO - zjednotiť so špecifikáciou
-Rozšírenie API pre funkcionality potrebné na fungovanie frontendu, pridanie dockerových kontajnerov a ich prepojenie s existujúcou architektúrou.
+Hlavnou úlohou backendu je poskytnúť funkčné prostredie na chod systému pre prácu s dátovými zdrojmi. Architektúra bude pozostávať z viacerých navzájom komunikujúcich Docker kontajnerov. Súčasťou je aj vytvorenie API, ktoré bude slúžiť na obdržanie dát získaných z jednotlivých dátových zdrojov.
 
 ### Dátová časť
 
-# TODO - zjednotiť so špecifikáciou
-Práca s externými dátovými zdrojmi AHoJ-DB a Foldseek, vytvorenie šablón dotazov.
+Vytvorenie systému, ktorý spracuje vstup od užívateľa a zabezpečí komunikáciu s rôznymi zdrojmi dát. Návrh jednotného formátu výstupov zo zdrojov dát, ktorý bude využívaný užívateľským rozhraním.
 
 ### AI
+
 Cieľom je rozšírenie predikcie, a to natrénovať klasifikačnú neurónovú sieť, ktorá z proteínových sekvencií predikuje väzobné aminokyseliny proteínu a využiť existujúcu metódu na predikciu 3D štruktúry zo vstupnej sekvencie. Do klasifikačnej neurónovej siete budú vstupovať embeddingy získané zakódovaním proteínových sekvencií pomocou existujúceho pLM. 
 
 ## Približný priebeh
@@ -65,6 +67,5 @@ Odhadovaná dĺžka projektu je štandardných 9 mesiacov. Časti projektu sú n
 2.	Definícia funkčných požiadaviek
 3.	Tvorba špecifikácie projektu
 4.	Implementácia rozšírenia
-5.	Návrh a vývoj prípadných dodatočných funkcionalít
-6.	Testovanie
-7.	Tvorba dokumentácie
+5.	Testovanie
+6.	Tvorba dokumentácie
