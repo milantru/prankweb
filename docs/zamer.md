@@ -54,7 +54,7 @@ Hlavnou úlohou backendu je poskytnúť funkčné prostredie na chod systému pr
 
 ### Dátová časť
 
-Vytvorenie systému, ktorý spracuje vstup od užívateľa a zabezpečí komunikáciu s rôznymi zdrojmi dát. Návrh jednotného formátu výstupov zo zdrojov dát, ktorý bude využívaný užívateľským rozhraním.
+Vytvorenie systému, ktorý spracuje vstup od užívateľa a zabezpečí komunikáciu s rôznymi zdrojmi dát. Súčasťou je analýza jednotlivých dátových zdrojov. Na základe tejto analýzy je potrebné navrhnúť rozhranie pre interakciu týmito dátovými zdrojmi a definovať jednotný formát dát, ktoré budú poskytnuté užívateľskému rozhraniu.
 
 ### AI
 
