@@ -17,26 +17,25 @@ V súčasnosti Prankweb dokáže predikovať väzobné miesta v proteínovej št
   
 Na predikciu väzobných miest zo sekvencie sa využije existujúci Protein Language Model (pLM), ktorý vygeneruje tzv. embeddings – vektory opisujúce vlastnosti jednotlivých aminokyselín v závislosti na ich sekvenčnom kontexte. Každý embedding bude vstupom pre klasifikačnú neurónovú sieť, ktorá rozhodne, či daná aminokyselina je súčasťou nejakého väzobného miesta. 
 
-Zadaním sekvencie proteínu bude na vizualizáciu štruktúry, a takisto na predikovanie väzobných miest (pomocou P2Ranku), potrebný jej prevod na 3D štruktúru. Na prevod bude využitá už existujúca predikčná metóda (napr. AlphaFold alebo ESMFold).
+Zadaním sekvencie proteínu bude na vizualizáciu štruktúry, a takisto na predikovanie väzobných miest pomocou P2Ranku, potrebný jej prevod na 3D štruktúru. Na prevod bude využitá už existujúca predikčná metóda, napr. AlphaFold alebo ESMFold.
 
 ### Rozšírenie analýzy
 
 P2Rank a pLM sa dajú chápať ako zdroje dát, ktoré pre vstupný proteín poskytujú informácie o väzobných miestach. V súčasnosti existujú rôzne ďalšie zdroje dát. Buď také, ktoré pre vstupný proteín vrátia už predpočítané väzobné miesta s konkrétnymi ligandmi. Alebo také, ktoré dokážu nájsť proteíny, ktoré sú vstupnému proteínu podobné 3D štruktúrou a obsahujú informácie o väzobných miestach a ligandoch.  
-Rozšírenie analýzy zahŕňa návrh systému pre prácu s rôznymi zdojmi dát a vytvorenie nového užívateľského rozhrania, ktoré umožní vizualizáciu dát získaných z dátových zdrojov.
+Rozšírenie analýzy zahŕňa návrh systému pre prácu s rôznymi zdrojmi dát a vytvorenie nového užívateľského rozhrania, ktoré umožní vizualizáciu dát získaných z dátových zdrojov.
 
 #### Systém pre prácu s dátovými zdrojmi
 
 Systém sa postará o celý priebeh od spracovania vstupu od užívateľa, získania dát z rôznych dátových zdrojov až po poskytnutie dát užívateľskému rozhraniu. Súčasťou vytvorenia systému bude:
-- Vytvorenie modulu, ktorý pre vstup vytvorí identifikátor reprezentujúci vstupný proteín.
-- Návrh rozhrania, ktoré bude popisovať základné funkcionality pre prácu s dátovými zdrojmi.
-- Vytvorenie modulov pre prácu s dátovými zdrojmi.
-- Návrh jednotného formátu pre dáta získané z dátových zdrojov a poskytnúť tieto dáta užívateľskému rozhraniu
-
+- Vytvorenie modulu, ktorý pre vstup vytvorí identifikátor reprezentujúci vstupný proteín
+- Návrh rozhrania, ktoré bude popisovať základné funkcionality pre prácu s dátovými zdrojmi
+- Vytvorenie modulov pre prácu s dátovými zdrojmi
+- Návrh jednotného formátu pre dáta získané z dátových zdrojov a poskytnutie týchto dát užívateľskému rozhraniu
 
 #### Užívateľské rozhranie
 Úlohou užívateľského rozhrania v kontexte rozšírenia analýzy je prezentácia dát poskytnutých užívateľom a dátovými zdrojmi.
 
-**Sekvenčný displej** má za úlohu vykresliť sekvenciu zadanú užívateľom (spolu s informáciami o nej) a taktiež aj dáta poskytnuté dátovými zdrojmi. Ak niektorý z dátových zdrojov bude poskytovať aj proteínovú štruktúru, tak rozhranie umožní užívateľovi zvoliť si daný proteín (resp. proteíny). Výber týchto proteínov bude mať vplyv na vizualizáciu v štruktúrnom displeji.
+**Sekvenčný displej** má za úlohu vykresliť sekvenciu zadanú užívateľom spolu s informáciami o nej, a taktiež aj dáta poskytnuté dátovými zdrojmi. Ak niektorý z dátových zdrojov bude poskytovať aj proteínovú štruktúru, tak rozhranie umožní užívateľovi zvoliť si daný proteín, resp. proteíny. Výber týchto proteínov bude mať vplyv na vizualizáciu v štruktúrnom displeji.
 
 **Štruktúrny displej** bude slúžiť na vizualizáciu vybraných štruktúr proteínu zo sekvenčného displeja, jeho väzobných miest a ligandov. Užívateľ si bude môcť vizualizovať štruktúry a ligandy podľa potreby. Pri výbere viacerých proteínov budú štruktúry vo vizualizácii superpozicované.
 
@@ -54,7 +53,7 @@ Hlavnou úlohou backendu je poskytnúť funkčné prostredie na chod systému pr
 
 ### Dátová časť
 
-Vytvorenie systému, ktorý spracuje vstup od užívateľa a zabezpečí komunikáciu s rôznymi zdrojmi dát. Súčasťou je analýza jednotlivých dátových zdrojov. Na základe tejto analýzy je potrebné navrhnúť rozhranie pre interakciu týmito dátovými zdrojmi a definovať jednotný formát dát, ktoré budú poskytnuté užívateľskému rozhraniu.
+Vytvorenie systému, ktorý spracuje vstup od užívateľa a zabezpečí komunikáciu s rôznymi zdrojmi dát. Súčasťou je analýza jednotlivých dátových zdrojov. Na základe tejto analýzy je potrebné navrhnúť rozhranie pre interakciu s týmito dátovými zdrojmi a definovať jednotný formát dát, ktoré budú poskytnuté užívateľskému rozhraniu.
 
 ### AI
 
