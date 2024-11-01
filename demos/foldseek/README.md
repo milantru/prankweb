@@ -28,3 +28,12 @@ Params:
 - `--max-seqs` - maximum number of returned matches
 - `--format-output` - columns in result file [MORE](https://github.com/soedinglab/MMseqs2/wiki#custom-alignment-format-with-convertalis)
 
+### TM-score
+
+- Template modeling score
+- Podobnosť dvoch proteínových štruktúr
+- Nezávislé na ich dĺžkach
+- Interval skóre (0,1]
+- Skóre 1 znamená dokonalá zhoda medzi štruktúrami
+- Obecne skóre pod 0,2 znamená *random* štruktúry
+- Skóre nad 0,5 -> [same fold](https://pmc.ncbi.nlm.nih.gov/articles/PMC2913670/)
