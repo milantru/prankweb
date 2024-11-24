@@ -3,6 +3,7 @@
 * základom je BERT encoder 
   * natrénované pomocou predikovaniania náhodne vynechaných aminokyselín v proteínových sekvenciách na základe ich kontextu
   * naučené vzorce a závislosti medzi aminokyselinami v sekvenciách
+  * dĺžka vstupu je max 1024 (ako u klasických LLMs)
 * modifikácia: pozície tokenov zakódované pomocou Rotary Position Embedding-u 
   * model môže extrapolovať mimo kontextové okno, na ktorom je trénovaný 
   * vyššia výpočtová náročnosť - násobenie query and key vectorov v self-attention sínusovými embeddingmi
@@ -23,7 +24,7 @@
   * init pairwise: pairwise relatívne pozičné kódovanie (Jumper et al.)
 
 * skladá sa z 2 častí (modulov):
-  ![ESM](ESM.PNG)
+  ![ESM](ESM.png)
   * ### folding module
     - zjednodušený Evoformer blok (využívaný v AlphaFold2)
     - adaptovaný na jednodimenzionálne featury LM: nahradenie axial-attention štandardnou
