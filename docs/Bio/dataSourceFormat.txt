@@ -1,0 +1,29 @@
+{
+  "proteins": [
+    {
+      "protein_id": "string",          // Systémom pridelené ID proteínu
+      "is_input": true/false,
+      "sequence_data": {...},          // Sekvencia proteínu
+      "structure_data": {...},         // .pdb/.cif súbor, pozície atómov v 3D..
+      "binding_sites": [               // Zoznam väzobných miest proteínu
+        {
+          "site_id": "integer",        // ID väzobného miesta
+          "conf": "float",             // Confidence [0,1], 1 u experimentalne zistených
+          "amino_acids": [...]         // Zoznam aminokyselín, indexy
+        }
+      ],
+      "ligands": [                     // Zoznam ligandov proteínu
+        {
+          "ligand_id": "string",       // Residue name ? mmCIF + pdb
+          "binding_site_id": "integer",// ID väzobného miesta ligandu
+          "coords": [...]              // Súradnice ligandu
+        }
+      ],
+      "sequence_mapping": {...}        // Mapovanie sekv. na vstupný proteín
+    }
+  ],
+  "metadata": {
+    "source_name": "string",           // Názov dátového zdroja
+    "timestamp": "string"              // Čas vygenerovania výsledku
+  }
+}
