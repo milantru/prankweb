@@ -41,6 +41,18 @@ Search is done via CLI
 Params:
 - `--max-seqs` - maximum number of returned matches
 - `--format-output` - columns in result file [MORE](https://github.com/soedinglab/MMseqs2/wiki#custom-alignment-format-with-convertalis)
+  - `query` - Query sequence identifier
+  - `target` - Target sequence identifier
+  - `alnlen` - Alignment length
+  - `qseq` - Query sequence - FULL
+  - `qstart` - 1-indexed alignment start position in query sequence
+  - `qend` - 1-indexed alignment end position in query sequence
+  - `qaln` - Aligned query sequence with gaps - Only aligned part
+  - `alntmscore` - Template modeling score
+  - `tseq` - Target sequence - FULL
+  - `tstart` - 1-indexed alignment start position in target sequence
+  - `tend` - 1-indexed alignment end position in target sequence
+  - `taln` - Aligned target sequence with gaps - Only aligned part
 
 ### TM-score
 
