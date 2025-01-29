@@ -20,12 +20,16 @@ wget https://mmseqs.com/foldseek/foldseek-linux-sse2.tar.gz; tar xvzf foldseek-l
 
 ### Download database
 
-We use `PDB` database. 
+We use `PDB` database. (Create `database` folder and `cd` there...)
 
 `foldseek databases PDB pdb pdb_tmp`
 
 `pdb` - name of local db
 `pdb_tmp` - is just for some temp files
+
+Create index for database.
+
+`foldseek createindex pdb pdb_tmp`
 
 ## Search
 
@@ -35,7 +39,7 @@ Search is done via CLI
 
 `foldseek easy-search [pdb_file] [database] [res_file] [tmp_folder] [PARAMS]`  
 
-`foldseek easy-search 2src.pdb ../pdb aln_res tmp --max-seqs 20 --format-output query,target,alnlen,qseq,qstart,qend,qaln,alntmscore,tseq,tstart,tend,taln`
+`foldseek easy-search 2src.pdb database/pdb aln_res tmp --max-seqs 20 --format-output query,target,alnlen,qseq,qstart,qend,qaln,alntmscore,tseq,tstart,tend,taln`
 
 
 Params:
