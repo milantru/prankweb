@@ -3,6 +3,14 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+foldseek
+database
+uploads
+tmp
+package.json
+package-lock.json
+node_modules
+
 *.pdb
 
 # C extensions
