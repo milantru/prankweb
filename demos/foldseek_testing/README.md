@@ -1,8 +1,16 @@
->### To Run - (API_TESTING)...
->`pip install -r requirements.txt`
+# Docker container
+
+Docker container is located in `data_source` folder.
+
+## Prep
+
+Windows: *Docker desktop should be installed & running*
+
+Run
+- `docker build -t foldseek-api .` inside `data_source` folder.
+- `docker run -p 8000:8000 foldseek-api`
 
 # Foldseek basic commands (CLI)
-
 
 ## Installation
 

@@ -40,7 +40,7 @@ app.get("/search", (req, res) => {
         return res.status(400).json({ error: "File not found" });
     }
 
-    exec(`foldseek easy-search ${queryFile} database/pdb results/aln_res_${pdbId} tmp --max-seqs 5 --format-output query,target,alnlen,qseq,qstart,qend,qaln,alntmscore,tseq,tstart,tend,taln`, (error, stdout, stderr) => {
+    exec(`foldseek easy-search ${queryFile} foldseek_db/pdb results/aln_res_${pdbId} tmp --max-seqs 5 --format-output query,target,alnlen,qseq,qstart,qend,qaln,alntmscore,tseq,tstart,tend,taln`, (error, stdout, stderr) => {
         if (error) {
             return res.status(500).json({ error: stderr });
         }
