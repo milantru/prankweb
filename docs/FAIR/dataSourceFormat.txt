@@ -1,0 +1,35 @@
+{
+  "proteins": [
+    {
+      "protein_id": "string",          // Systémom pridelené ID proteínu
+      "is_input": true/false,
+      "sequence_data": {
+        "format": "string",            // FASTA
+        "url": "string"                // HTTP API endpoint pre executor
+      },
+      "structure_data": {
+        "format": "string",            // pdb, mmcif ...
+        "url": "string"                // HTTP API endpoint pre executor
+      },
+      "binding_sites": [               // Zoznam väzobných miest proteínu
+        {
+          "site_id": "integer",        // ID väzobného miesta
+          "conf": "float",             // Confidence [0,1], 1 u experimentálne zistených
+          "amino_acids": [...]         // Zoznam aminokyselín, indexy
+        }
+      ],
+      "ligands": [                     // [potrebné ?] Zoznam ligandov proteínu (pre každý ligand existuje jedno väzobné miesto...)
+        {
+          "ligand_id": "string",       // získané z pdb, mmcif
+          "binding_site_id": "integer",// ID väzobného miesta ligandu
+        }
+      ],
+      "sequence_mapping": {...}        // Mapovanie sekv. na vstupný proteín - Foldseek executor
+    }
+  ],
+  "metadata": {
+    "source_name": "string",           // Názov dátového zdroja
+    "timestamp": "string"              // Čas vygenerovania výsledku
+    .... TODO
+  }
+}

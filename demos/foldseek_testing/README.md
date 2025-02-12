@@ -1,8 +1,16 @@
->### To Run - (API_TESTING)...
->`pip install -r requirements.txt`
+# Docker container
+
+Docker container is located in `data_source` folder.
+
+## Prep
+
+Windows: *Docker desktop should be installed & running*
+
+Run
+- `docker build -t foldseek-api .` inside `data_source` folder.
+- `docker run -p 8000:8000 foldseek-api`
 
 # Foldseek basic commands (CLI)
-
 
 ## Installation
 
@@ -20,12 +28,16 @@ wget https://mmseqs.com/foldseek/foldseek-linux-sse2.tar.gz; tar xvzf foldseek-l
 
 ### Download database
 
-We use `PDB` database. 
+We use `PDB` database. (Create `database` folder and `cd` there...)
 
 `foldseek databases PDB pdb pdb_tmp`
 
 `pdb` - name of local db
 `pdb_tmp` - is just for some temp files
+
+Create index for database.
+
+`foldseek createindex pdb pdb_tmp`
 
 ## Search
 
@@ -35,12 +47,24 @@ Search is done via CLI
 
 `foldseek easy-search [pdb_file] [database] [res_file] [tmp_folder] [PARAMS]`  
 
-`foldseek easy-search 2src.pdb ../pdb aln_res tmp --max-seqs 20 --format-output query,target,alnlen,qseq,qstart,qend,qaln,alntmscore,tseq,tstart,tend,taln`
+`foldseek easy-search 2src.pdb database/pdb aln_res tmp --max-seqs 20 --format-output query,target,alnlen,qseq,qstart,qend,qaln,alntmscore,tseq,tstart,tend,taln`
 
 
 Params:
 - `--max-seqs` - maximum number of returned matches
 - `--format-output` - columns in result file [MORE](https://github.com/soedinglab/MMseqs2/wiki#custom-alignment-format-with-convertalis)
+  - `query` - Query sequence identifier
+  - `target` - Target sequence identifier
+  - `alnlen` - Alignment length
+  - `qseq` - Query sequence - FULL
+  - `qstart` - 1-indexed alignment start position in query sequence
+  - `qend` - 1-indexed alignment end position in query sequence
+  - `qaln` - Aligned query sequence with gaps - Only aligned part
+  - `alntmscore` - Template modeling score
+  - `tseq` - Target sequence - FULL
+  - `tstart` - 1-indexed alignment start position in target sequence
+  - `tend` - 1-indexed alignment end position in target sequence
+  - `taln` - Aligned target sequence with gaps - Only aligned part
 
 ### TM-score
 
