@@ -1,9 +1,9 @@
-FROM node:18
+FROM python:3.9
 
 WORKDIR /app
 
-COPY package*.json ./
-RUN npm install
+COPY requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
@@ -13,11 +13,11 @@ RUN wget https://mmseqs.com/foldseek/foldseek-linux-avx2.tar.gz && \
 
 ENV PATH="/app/foldseek/bin/:$PATH"
 
-RUN mkdir -p /app/uploads /app/results /app/foldseek_db
+RUN mkdir -p /app/uploads /app/results /app/foldseek_db /app/status
 
 EXPOSE 8000
 
 CMD mkdir -p /app/uploads /app/results && \
     foldseek databases PDB /app/foldseek_db/pdb /app/foldseek_db/tmp && \
     foldseek createindex /app/foldseek_db/pdb /app/foldseek_db/tmp; \
-    node server.js
+    python executor.py
