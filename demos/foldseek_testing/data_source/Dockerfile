@@ -1,5 +1,8 @@
 FROM python:3.9
 
+RUN apt-get update \
+  && apt-get -y --no-install-recommends install celery
+
 WORKDIR /app
 
 COPY requirements.txt ./
@@ -20,4 +23,5 @@ EXPOSE 8000
 CMD mkdir -p /app/uploads /app/results && \
     foldseek databases PDB /app/foldseek_db/pdb /app/foldseek_db/tmp && \
     foldseek createindex /app/foldseek_db/pdb /app/foldseek_db/tmp; \
-    python executor.py
+    celery --app=ds_foldseek worker
+    # python executor.py
