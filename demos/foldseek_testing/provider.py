@@ -1,7 +1,7 @@
 import os
 import base64
 from celery import Celery
-celery = Celery(__name__, broker='redis://localhost:6379/0', backend='redis://localhost:6379/0')
+celery = Celery('tasks', broker='amqp://guest:guest@localhost:5672//', backend='rpc://')
 
 # Function to encode the PDB file for task submission
 def encode_pdb_file(filepath):
@@ -23,7 +23,7 @@ if __name__ == "__main__":
         # Send the task using the celery command-line interface
         result = celery.send_task('ds_foldseek', args=[encoded_pdb, pdb_id])
         print(f"Task submitted successfully. Task ID: {result.id}")
-        print(f"Status: {result.status}")
+        print(f"Status: {result.status}S")
 
     except Exception as e:
         print(f"Error submitting task: {e}")

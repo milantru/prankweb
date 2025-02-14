@@ -5,7 +5,7 @@ import tempfile
 import json
 
 # Celery configuration
-celery = Celery(__name__, broker='amqp://guest:guest@localhost:5672//', backend='rpc://')
+celery = Celery('tasks', broker='amqp://guest:guest@localhost:5672//', backend='rpc://')
 
 UPLOAD_FOLDER = "uploads"
 RESULTS_FOLDER = "results"
@@ -33,7 +33,7 @@ def ds_foldseek(file_content, pdb_id):
 
     try:
         with tempfile.NamedTemporaryFile(mode="w+t", suffix=".pdb", delete=False) as temp_file:
-            temp_file.write(file_content.decode('utf-8'))
+            temp_file.write(file_content)
             query_file = temp_file.name
 
         result_file = os.path.join(RESULTS_FOLDER, f"aln_res_{pdb_id}")
