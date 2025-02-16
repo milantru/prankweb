@@ -1,16 +1,24 @@
-# Docker container
+# Docker
 
-Docker container is located in `data_source` folder.
+Docker containers are located in `data_source`, `message-broker` and `provider` folders.
 
-## Prep
+## Prep for testing
 
 Windows: *Docker desktop should be installed & running*
-
 Run
-- `docker build -t foldseek-api .` inside `data_source` folder.
-- `docker run -p 8000:8000 foldseek-api`
+1. In `message-broker` folder
+  - `docker built -t broker .`
+  - `docker run --network host -p 5672:5672 broker`
+2. In `data_source` folder
+  - `docker build -t ds-foldseek .`
+  - `docker run --network host -p 8000:8000 ds-foldseek`
+3. In `provider` folder - ***Only for sending test task to foldseek***
+  - `docker build -t provider .`
+  - `docker run --network host provider`
 
-# Foldseek basic commands (CLI)
+> TODO - ***Use docker compose***
+
+# Foldseek & basic commands (CLI)
 
 ## Installation
 
@@ -28,7 +36,7 @@ wget https://mmseqs.com/foldseek/foldseek-linux-sse2.tar.gz; tar xvzf foldseek-l
 
 ### Download database
 
-We use `PDB` database. (Create `database` folder and `cd` there...)
+We will use `PDB` database. (Create `database` folder and `cd` there...)
 
 `foldseek databases PDB pdb pdb_tmp`
 

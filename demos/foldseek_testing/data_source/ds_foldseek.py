@@ -3,6 +3,7 @@ import subprocess
 from celery import Celery
 import tempfile
 import json
+import base64
 
 # Celery configuration
 celery = Celery('tasks', broker='amqp://guest:guest@localhost:5672//', backend='rpc://')
@@ -32,8 +33,10 @@ def ds_foldseek(file_content, pdb_id):
     update_status(pdb_id, "started")
 
     try:
-        with tempfile.NamedTemporaryFile(mode="w+t", suffix=".pdb", delete=False) as temp_file:
-            temp_file.write(file_content)
+        pdb_binary_content = base64.b64decode(file_content)
+
+        with tempfile.NamedTemporaryFile(mode="wb", suffix=".pdb", delete=False) as temp_file:
+            temp_file.write(pdb_binary_content)
             query_file = temp_file.name
 
         result_file = os.path.join(RESULTS_FOLDER, f"aln_res_{pdb_id}")
