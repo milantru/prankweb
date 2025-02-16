@@ -20,8 +20,8 @@ RUN mkdir -p /app/uploads /app/results /app/foldseek_db /app/status
 
 EXPOSE 8000
 
-CMD mkdir -p /app/uploads /app/results && \
-    foldseek databases PDB /app/foldseek_db/pdb /app/foldseek_db/tmp && \
-    foldseek createindex /app/foldseek_db/pdb /app/foldseek_db/tmp; \
-    celery --app=ds_foldseek worker
-    # python executor.py
+RUN foldseek databases PDB /app/foldseek_db/pdb /app/foldseek_db/tmp && \
+    foldseek createindex /app/foldseek_db/pdb /app/foldseek_db/tmp
+
+CMD celery --app=ds_foldseek worker
+

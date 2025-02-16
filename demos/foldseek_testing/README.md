@@ -2,21 +2,28 @@
 
 Docker containers are located in `data_source`, `message-broker` and `provider` folders.
 
-## Prep for testing
+## Build and run
 
-Windows: *Docker desktop should be installed & running*
-Run
-1. In `message-broker` folder
-  - `docker built -t broker .`
-  - `docker run --network host -p 5672:5672 broker`
-2. In `data_source` folder
-  - `docker build -t ds-foldseek .`
-  - `docker run --network host -p 8000:8000 ds-foldseek`
-3. In `provider` folder - ***Only for sending test task to foldseek***
-  - `docker build -t provider .`
-  - `docker run --network host provider`
+Windows: *Docker desktop should be installed & running*  
+In `foldseek_testing` folder:  
 
-> TODO - ***Use docker compose***
+```
+docker-compose up --build
+``` 
+
+(~15min)
+
+
+> ### Run - by dockerfiles (OLD)
+> 1. In `message-broker` folder
+>   - `docker built -t broker .`
+>   - `docker run --network host -p 5672:5672 broker`
+> 2. In `data_source` folder
+>   - `docker build -t ds-foldseek .`
+>   - `docker run --network host -p 8000:8000 ds-foldseek`
+> 3. In `provider` folder - ***Only for sending test task to foldseek***
+>   - `docker build -t provider .`
+>   - `docker run --network host provider`
 
 # Foldseek & basic commands (CLI)
 

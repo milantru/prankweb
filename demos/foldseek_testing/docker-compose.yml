@@ -1,0 +1,48 @@
+services:
+  message-broker:
+    image: broker
+    build:
+      context: ./message-broker
+    container_name: message-broker
+    restart: always
+    ports:
+      - "5672:5672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - broker_network
+
+  data-source:
+    image: ds-foldseek
+    build:
+      context: ./data_source
+    container_name: data-source
+    restart: always
+    depends_on:
+      - message-broker
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data_source/uploads:/app/uploads
+      - ./data_source/results:/app/results
+      - ./data_source/status:/app/status
+    networks:
+      - broker_network
+
+  provider:
+    image: provider
+    build:
+      context: ./provider
+    container_name: provider
+    restart: "no"
+    depends_on:
+      - message-broker
+      - data-source
+    networks:
+      - broker_network
+
+networks:
+  broker_network:
+
+volumes:
+  rabbitmq_data:
