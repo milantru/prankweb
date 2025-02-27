@@ -6,20 +6,20 @@ import json
 import base64
 
 # Celery configuration
-celery = Celery('tasks', broker='amqp://guest:guest@localhost:5672//', backend='rpc://')
+celery = Celery('tasks', broker='amqp://guest:guest@message-broker:5672//', backend='rpc://')
 
 UPLOAD_FOLDER = "uploads"
 RESULTS_FOLDER = "results"
-STATUS_FOLDER = "status"
+# STATUS_FOLDER = "status"
 FOLDSEEK_DB = "foldseek_db/pdb"
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(RESULTS_FOLDER, exist_ok=True)
-os.makedirs(STATUS_FOLDER, exist_ok=True)
+# os.makedirs(STATUS_FOLDER, exist_ok=True)
 
 
 def update_status(pdb_id, status, message=""):
-    status_file_path = os.path.join(STATUS_FOLDER, f"{pdb_id}.status")
+    status_file_path = os.path.join(RESULTS_FOLDER, f"{pdb_id}.status")
     try:
         with open(status_file_path, "w") as f:
             json.dump({"status": status, "message": message}, f)
@@ -29,7 +29,7 @@ def update_status(pdb_id, status, message=""):
 
 @celery.task(name='ds_foldseek')
 def ds_foldseek(file_content, pdb_id):
-    status_file_path = os.path.join(STATUS_FOLDER, f"{pdb_id}.status")
+    status_file_path = os.path.join(RESULTS_FOLDER, f"{pdb_id}.status")
     update_status(pdb_id, "started")
 
     try:
@@ -40,13 +40,13 @@ def ds_foldseek(file_content, pdb_id):
             query_file = temp_file.name
 
         result_file = os.path.join(RESULTS_FOLDER, f"aln_res_{pdb_id}")
-        command = [
-            "foldseek", "easy-search", query_file, FOLDSEEK_DB,
-            result_file, "tmp", "--max-seqs", "5",
-            "--format-output", "query,target,alnlen,qseq,qstart,qend,qaln,alntmscore,tseq,tstart,tend,taln"
-        ]
+        # # command = [
+        # #     "foldseek", "easy-search", query_file, FOLDSEEK_DB,
+        # #     result_file, "tmp", "--max-seqs", "5",
+        # #     "--format-output", "query,target,alnlen,qseq,qstart,qend,qaln,alntmscore,tseq,tstart,tend,taln"
+        # # ]
 
-        subprocess.run(command, check=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+        # subprocess.run(command, check=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
         os.remove(query_file)
         update_status(pdb_id, "completed")
 

@@ -7,8 +7,9 @@ services:
     restart: always
     ports:
       - "5672:5672"
+      - "15672:15672"
     volumes:
-      - rabbitmq_data:/var/lib/rabbitmq
+      - broker_data:/var/lib/rabbitmq
     networks:
       - broker_network
 
@@ -20,14 +21,24 @@ services:
     restart: always
     depends_on:
       - message-broker
+      - apache
     ports:
       - "8000:8000"
     volumes:
-      - ./data_source/uploads:/app/uploads
-      - ./data_source/results:/app/results
-      - ./data_source/status:/app/status
+      - foldseek_data:/app/results
     networks:
       - broker_network
+
+  apache:
+    image: apache
+    build:
+      context: ./results_provider
+    container_name: apache
+    restart: always
+    ports:
+      - "80:80"
+    volumes:
+      - foldseek_data:/usr/local/apache2/htdocs/foldseek
 
   provider:
     image: provider
@@ -45,4 +56,5 @@ networks:
   broker_network:
 
 volumes:
-  rabbitmq_data:
+  broker_data:
+  foldseek_data:

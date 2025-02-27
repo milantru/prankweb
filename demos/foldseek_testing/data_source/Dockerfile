@@ -16,12 +16,12 @@ RUN wget https://mmseqs.com/foldseek/foldseek-linux-avx2.tar.gz && \
 
 ENV PATH="/app/foldseek/bin/:$PATH"
 
-RUN mkdir -p /app/uploads /app/results /app/foldseek_db /app/status
+RUN mkdir -p /app/uploads /app/results /app/foldseek_db
 
 EXPOSE 8000
 
-RUN foldseek databases PDB /app/foldseek_db/pdb /app/foldseek_db/tmp && \
-    foldseek createindex /app/foldseek_db/pdb /app/foldseek_db/tmp
+#RUN foldseek databases PDB /app/foldseek_db/pdb /app/foldseek_db/tmp && \
+#    foldseek createindex /app/foldseek_db/pdb /app/foldseek_db/tmp
 
 CMD celery --app=ds_foldseek worker
 

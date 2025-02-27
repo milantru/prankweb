@@ -1,7 +1,7 @@
 import os
 import base64
 from celery import Celery
-celery = Celery('tasks', broker='amqp://guest:guest@127.0.0.1:5672//', backend='rpc://')
+celery = Celery('tasks', broker='amqp://guest:guest@message-broker:5672//', backend='rpc://')
 
 def encode_pdb_file(filepath):
     with open(filepath, "rb") as f:
