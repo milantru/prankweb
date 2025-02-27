@@ -3,7 +3,7 @@ function AnalyticalPage() {
 		<>
 			This is analytical page!
 		</>
-	)
+	);
 }
 
 export default AnalyticalPage;

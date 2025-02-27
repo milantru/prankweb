@@ -16,4 +16,6 @@
     - [ ] Zobrazovanie ligandov
     - [ ] Mód zvýr. vaz. m.
   - [ ] Prepojiť displays, eventy, highlighting
-- [ ] ...
+- [ ] Doplň stránky About atď. (viď navigácia)
+- [ ] Doplň partials
+- [ ] Skontroluj TODOs

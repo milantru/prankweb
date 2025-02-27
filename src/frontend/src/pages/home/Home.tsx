@@ -5,10 +5,10 @@ function Home() {
 		<>
 			<div className="container index-view" style={{marginTop: "3rem"}}>
 				<h1 className="text-center">
-					PlankWeb: Ligand Binding Site Prediction
+					PlankWeb: Ligand Binding Site Analysis
 				</h1>
 				<p className="text-center description">
-					PlankWeb builds upon P2Rank a machine learning-based method for prediction of ligand binding sites from
+					PlankWeb builds upon P2Rank and pLM - a machine and deep learning-based methods for prediction of ligand binding sites from
 					protein structure.
 				</p>
 
@@ -20,7 +20,7 @@ function Home() {
 			</div>
 			{/* @require("../partials/ga.html") */}
 		</>
-	)
+	);
 }
 
 export default Home;
