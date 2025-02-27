@@ -25,18 +25,20 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - plankweb_data:/results/foldseek
+      - foldseek_data:/app/results
     networks:
       - broker_network
 
-apache:
+  apache:
     image: apache
     build:
-      context: ./apache
+      context: ./results_provider
+    container_name: apache
+    restart: always
     ports:
       - "80:80"
     volumes:
-      - plankweb_data:/results
+      - foldseek_data:/usr/local/apache2/htdocs/foldseek
 
   provider:
     image: provider
@@ -55,4 +57,4 @@ networks:
 
 volumes:
   broker_data:
-  plankweb_data:
+  foldseek_data:
