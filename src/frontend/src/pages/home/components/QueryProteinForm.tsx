@@ -1,119 +1,79 @@
+import { ChangeEvent, FormEvent, useState } from "react";
+import InputPdbBlock, { InputPdbBlockData } from "./InputPdbBlock";
+import InputUniprotBlock, { InputUniprotBlockData } from "./InputUniprotBlock";
+import InputUserFileBlock, { InputUserFileBlockData, UserInputModel } from "./InputUserFileBlock";
+import InputSequenceBlock, { InputSequenceBlockData } from "./InputSequenceBlock";
+import { uploadData } from "../../../shared/services/apiCalls";
+
+enum InputMethods {
+    InputPdbBlock,
+    InputUserFileBlock,
+    InputUniprotBlock,
+    InputSequenceBlock
+}
+
+type InputBlockData = InputPdbBlockData
+    | InputUserFileBlockData
+    | InputUniprotBlockData
+    | InputSequenceBlockData;
+
+export type FormState = {
+    inputMethod: InputMethods;
+    inputBlockData: InputBlockData
+};
+
 function QueryProteinForm() {
+    const [formState, setFormState] = useState<FormState>({
+        inputMethod: InputMethods.InputPdbBlock,
+        inputBlockData: getInputBlockInitialData(InputMethods.InputPdbBlock)
+    });
+
     return (
-        <form name="input-form">
-            <div className="card" style={{marginTop: "2rem", marginBottom: "1rem"}}>
+        <form name="input-form" onSubmit={handleSubmit}>
+            <div className="card" style={{ marginTop: "2rem", marginBottom: "1rem" }}>
                 <div className="card-header">
                     Please select input method
                 </div>
                 <div className="card-body">
                     <div>
                         <div className="form-check form-check-inline">
-                            <input className="form-check-input" type="radio" id="input-pdb" value="input-pdb"
-                                name="input-type" />
+                            <input className="form-check-input" type="radio" id="input-pdb" name="input-type"
+                                value={InputMethods.InputPdbBlock} onChange={selectInputMethod}
+                                checked={formState.inputMethod === InputMethods.InputPdbBlock} />
                             <label className="form-check-label" htmlFor="input-pdb">
                                 Experimental structure
                             </label>
                         </div>
                         <div className="form-check form-check-inline">
-                            <input className="form-check-input" type="radio" id="input-user-file" value="input-user-file"
-                                name="input-type" />
+                            <input className="form-check-input" type="radio" id="input-user-file" name="input-type"
+                                value={InputMethods.InputUserFileBlock} onChange={selectInputMethod}
+                                checked={formState.inputMethod === InputMethods.InputUserFileBlock} />
                             <label className="form-check-label" htmlFor="input-user-file">
                                 Custom structure
                             </label>
                         </div>
                         <div className="form-check form-check-inline">
-                            <input className="form-check-input" type="radio" id="input-uniprot" value="input-uniprot"
-                                name="input-type" />
+                            <input className="form-check-input" type="radio" id="input-uniprot" name="input-type"
+                                value={InputMethods.InputUniprotBlock} onChange={selectInputMethod}
+                                checked={formState.inputMethod === InputMethods.InputUniprotBlock} />
                             <label className="form-check-label" htmlFor="input-uniprot">
                                 AlphaFold structure
                             </label>
                         </div>
+                        <div className="form-check form-check-inline">
+                            <input className="form-check-input" type="radio" id="input-sequence" name="input-type"
+                                value={InputMethods.InputSequenceBlock} onChange={selectInputMethod}
+                                checked={formState.inputMethod === InputMethods.InputSequenceBlock} />
+                            <label className="form-check-label" htmlFor="input-sequence">
+                                Sequence
+                            </label>
+                        </div>
                     </div>
                     <hr />
-                    <div id="input-pdb-block">
-                        <div className="mb-3">
-                            <label htmlFor="pdb-code" className="form-label">PDB Code</label>
-                            <input type="text" className="form-control" id="pdb-code" name="pdbCode" placeholder="2SRC"
-                                title="PrankWeb will use the protein file from PDB." />
-                        </div>
-                        <div className="form-check">
-                            <input className="form-check-input" type="checkbox" value="" id="pdb-seal-structure"
-                                title="Uncheck to allow chain filtering." checked />
-                            <label className="form-check-label" htmlFor="pdb-seal-structure">
-                                Use original structure
-                            </label>
-                        </div>
-                        <div id="pdb-chains" style={{ display: "none" }}>
-                            <input id="pdb-chains-store" style={{ display: "none" }} />
-                            <div id="pdb-chains-label">
-                                Loading chains from PDB ...
-                            </div>
-                            <div className="form-check-inline" id="pdb-chains-container">
-                                {/* Chain check boxes are here. */}
-                            </div>
-                        </div>
-                        <div className="form-check">
-                            <input className="form-check-input" type="checkbox" id="conservation-pdb"
-                                title="If checked, a model that exploits conservation will be used to classify protein binding sites."
-                                checked={true} />
-                            <label className="form-check-label" htmlFor="conservation-pdb">
-                                Use
-                                <a href="./help#conservation" target="_blank">conservation</a>
-                            </label>
-                        </div>
-                    </div>
-                    <div id="input-user-file-block" style={{ display: "none" }}>
-                        <div className="mb-3">
-                            <label htmlFor="user-file" className="form-label">
-                                Structure file (PDB/mmCIF) with biologically relevant unit
-                            </label>
-                            <input className="form-control" type="file" id="user-file" />
-                        </div>
-                        <div className="mb-3">
-                            <label htmlFor="user-file-chains" className="form-label">Restrict to chains</label>
-                            <input type="text" className="form-control" id="user-file-chains" name="userFileChains"
-                                placeholder="A,B" title="Optional. Comma separated list of chains to analyze." />
-                        </div>
-                        <div>
-                            <input type="radio" name="user-input-model" id="user-input-model-1" value="default"
-                                title="If selected, a default prediction model will be used." />
-                            <label htmlFor="user-input-model-1" className="form-label">Default prediction model</label><br />
-
-                            <input type="radio" name="user-input-model" id="user-input-model-2" value="conservation_hmm"
-                                checked={true}
-                                title="If selected, a default prediction model with conservation will be used." />
-                            <label htmlFor="user-input-model-2" className="form-label">Default model with
-                                <a href="./help#conservation" target="_blank">conservation</a></label><br />
-
-                            <input type="radio" name="user-input-model" id="user-input-model-3" value="alphafold"
-                                title="If selected, an AlphaFold prediction model will be used." />
-                            <label htmlFor="user-input-model-3" className="form-label">AlphaFold model</label><br />
-
-                            <input type="radio" name="user-input-model" id="user-input-model-4"
-                                value="alphafold_conservation_hmm"
-                                title="If selected, an AlphaFold prediction model with conservation will be used." />
-                            <label htmlFor="user-input-model-4" className="form-label">AlphaFold model with
-                                <a href="./help#conservation" target="_blank">conservation</a></label><br />
-                        </div>
-                    </div>
-                    <div id="input-uniprot-block" style={{ display: "none" }}>
-                        <div className="mb-3">
-                            <label htmlFor="uniprot-code" className="form-label">UniProt ID</label>
-                            <input type="text" className="form-control" id="uniprot-code" name="uniprotCode"
-                                placeholder="Q5VSL9" title="PrankWeb will use AlphaFold predicted structure." />
-                        </div>
-                        <div className="form-check">
-                            <input className="form-check-input" type="checkbox" id="conservation-uniprot"
-                                title="If checked, a model that exploits conservation will be used to classify protein binding sites."
-                                checked={true} />
-                            <label className="form-check-label" htmlFor="conservation-uniprot">
-                                Use
-                                <a href="./help#conservation" target="_blank">conservation</a>
-                            </label>
-                        </div>
-                    </div>
+                    {getInputBlock(formState.inputMethod)}
                 </div>
                 <div className="card-footer" id="message" style={{ display: "none" }}>
+                    {/* TODO Q What is this? */}
                     {/* Messages are here. */}
                 </div>
             </div>
@@ -123,7 +83,78 @@ function QueryProteinForm() {
                 </button>
             </div>
         </form>
-    )
+    );
+
+    function getInputBlockInitialData(inputMethod: InputMethods): InputBlockData {
+        switch (inputMethod) {
+            case InputMethods.InputPdbBlock:
+                const inputPdbBlockData: InputPdbBlockData = {
+                    pdbCode: "",
+                    useOriginalStructure: true,
+                    useConservation: true
+                };
+                return inputPdbBlockData;
+            case InputMethods.InputUserFileBlock:
+                const inputUserFileBlockData: InputUserFileBlockData = {
+                    userFile: null,
+                    userFileChains: "",
+                    userInputModel: UserInputModel.ConservationHmm
+                };
+                return inputUserFileBlockData;
+            case InputMethods.InputUniprotBlock:
+                const inputUniprotBlockData: InputUniprotBlockData = {
+                    uniprotCode: "",
+                    useConservation: true
+                };
+                return inputUniprotBlockData;
+            case InputMethods.InputSequenceBlock:
+                const inputSequenceBlockData: InputSequenceBlockData = {
+                    sequence: "",
+                    useConservation: true
+                };
+                return inputSequenceBlockData;
+            default:
+                throw new Error("Unknown input method.");
+        }
+    }
+
+    function getInputBlock(inputMethod: InputMethods) {
+        switch (inputMethod) {
+            case InputMethods.InputPdbBlock:
+                return <InputPdbBlock data={formState.inputBlockData as InputPdbBlockData}
+                    setData={data => setFormState({ ...formState, inputBlockData: data })} />;
+            case InputMethods.InputUserFileBlock:
+                return <InputUserFileBlock data={formState.inputBlockData as InputUserFileBlockData}
+                    setData={data => setFormState({ ...formState, inputBlockData: data })} />;
+            case InputMethods.InputUniprotBlock:
+                return <InputUniprotBlock data={formState.inputBlockData as InputUniprotBlockData}
+                    setData={data => setFormState({ ...formState, inputBlockData: data })} />;
+            case InputMethods.InputSequenceBlock:
+                return <InputSequenceBlock data={formState.inputBlockData as InputSequenceBlockData}
+                    setData={data => setFormState({ ...formState, inputBlockData: data })} />;
+            default:
+                throw new Error("Unknown input method.");
+        }
+    }
+
+    function selectInputMethod(event: ChangeEvent<HTMLInputElement>): void {
+        const newInputMethod = Number(event.target.value) as InputMethods;
+
+        setFormState(prevState => ({
+            ...prevState,
+            inputMethod: newInputMethod,
+            /* Changing input method will change input block in form, 
+             * so let's also initialize the inout block state */
+            inputBlockData: getInputBlockInitialData(newInputMethod)
+        }));
+    }
+
+    async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
+        event.preventDefault();
+
+        // TODO Maybe handle error messages?
+        const errorMessages = await uploadData(formState);
+    }
 }
 
 export default QueryProteinForm;
