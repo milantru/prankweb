@@ -52,3 +52,30 @@ if __name__ == "__main__":
 
     # Print the response
     print(response.json())
+
+
+    ### server
+
+    url = "http://web-server:3000/upload-data"
+
+    # Data to be sent in the request
+    data = {
+        "input_type": "method1",
+        "input_string": "exampleString"
+    }
+
+    # Make the POST request
+    response = requests.post(url, json=data)
+
+    # Print the response
+    print(response.json())
+
+    sleep(10.42)
+
+    # Make the POST request
+    response = requests.post(url, json=data)
+
+    # Print the response
+    print(response.json())
+
+    sleep(1000)

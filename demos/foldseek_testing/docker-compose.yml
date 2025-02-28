@@ -61,6 +61,19 @@ services:
     volumes:
       - foldseek_data:/usr/local/apache2/htdocs/foldseek
 
+  web-server:
+    image: web-server
+    container_name: web-server
+    build:
+      context: ./web-server
+    ports:
+      - "3000:3000"
+    networks:
+      - id_network
+    depends_on:
+      - id-provider
+      - message-broker
+
   provider:
     image: provider
     build:
@@ -70,6 +83,7 @@ services:
     depends_on:
       - message-broker
       - data-source
+      - web-server
     networks:
       - broker_network
       - id_network
