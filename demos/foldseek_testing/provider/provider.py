@@ -1,6 +1,10 @@
 import os
 import base64
 from celery import Celery
+import requests
+import json
+from time import sleep
+
 celery = Celery('tasks', broker='amqp://guest:guest@message-broker:5672//', backend='rpc://')
 
 def encode_pdb_file(filepath):
@@ -26,3 +30,25 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"Error submitting task: {e}")
         exit(1)
+
+    url = "http://id-provider:5000/generate"
+
+    # Data to be sent in the request
+    data = {
+        "input_type": "method1",
+        "input_string": "exampleString"
+    }
+
+    # Make the POST request
+    response = requests.post(url, json=data)
+
+    # Print the response
+    print(response.json())
+
+    sleep(10.42)
+
+    # Make the POST request
+    response = requests.post(url, json=data)
+
+    # Print the response
+    print(response.json())

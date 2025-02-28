@@ -13,6 +13,27 @@ services:
     networks:
       - broker_network
 
+  id-database:
+    image: redis:7.4.2
+    container_name: id-database
+    ports:
+      - "6379:6379"
+    volumes:
+      - id_data:/data
+    command: redis-server --save 600 1 --loglevel warning
+    networks:
+      - id_network
+
+  id-provider:
+    image: id-provider
+    build:
+      context: ./id-provider
+    container_name: id-provider
+    ports:
+      - "5000:5000"
+    networks:
+      - id_network
+
   data-source:
     image: ds-foldseek
     build:
@@ -51,10 +72,13 @@ services:
       - data-source
     networks:
       - broker_network
+      - id_network
 
 networks:
   broker_network:
+  id_network:
 
 volumes:
   broker_data:
   foldseek_data:
+  id_data:
