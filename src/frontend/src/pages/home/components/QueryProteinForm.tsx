@@ -4,6 +4,7 @@ import InputUniprotBlock, { InputUniprotBlockData } from "./InputUniprotBlock";
 import InputUserFileBlock, { InputUserFileBlockData, UserInputModel } from "./InputUserFileBlock";
 import InputSequenceBlock, { InputSequenceBlockData } from "./InputSequenceBlock";
 import { uploadData } from "../../../shared/services/apiCalls";
+import { useNavigate } from "react-router-dom";
 
 enum InputMethods {
     InputPdbBlock,
@@ -27,6 +28,7 @@ function QueryProteinForm() {
         inputMethod: InputMethods.InputPdbBlock,
         inputBlockData: getInputBlockInitialData(InputMethods.InputPdbBlock)
     });
+    const navigate = useNavigate();
 
     return (
         <form name="input-form" onSubmit={handleSubmit}>
@@ -153,7 +155,13 @@ function QueryProteinForm() {
         event.preventDefault();
 
         // TODO Maybe handle error messages?
-        const errorMessages = await uploadData(formState);
+        const { id, errorMessages } = await uploadData(formState);
+        if (errorMessages.length > 0) {
+            console.error(errorMessages);
+            return;
+        }
+
+        navigate(`/analytical-page?id=${id}`);
     }
 }
 
