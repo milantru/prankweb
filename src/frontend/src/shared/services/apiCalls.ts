@@ -19,8 +19,8 @@ import { getErrorMessages } from "../helperFunctions/errorHandling";
  */
 export async function uploadData(formState: FormState): Promise<{ id: number, errorMessages: string[] }> {
 	const formData = new FormData();
-	formData.append("inputMethod", formState.inputMethod.toString());
-	formData.append("data", JSON.stringify(formState.inputBlockData));
+	formData.append("input_type", formState.inputMethod.toString());
+	formData.append("input_string", JSON.stringify(formState.inputBlockData));
 
 	try {
 		const response = await axios.post<number>(apiBaseUrl + "/upload-data", formData, {
