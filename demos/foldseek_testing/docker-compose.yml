@@ -88,6 +88,19 @@ services:
       - broker_network
       - id_network
 
+  gateway:
+    image: gateway
+    build:
+      context: ../../
+      dockerfile: ./demos/foldseek_testing/gateway/Dockerfile
+    container_name: gateway
+    depends_on:
+      - web-server
+    ports:
+      - "8081:8081"
+    networks:
+      - id_network
+
 networks:
   broker_network:
   id_network:
