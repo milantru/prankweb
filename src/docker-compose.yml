@@ -1,0 +1,86 @@
+services:
+  message-broker:
+    build:
+      context: ./
+      dockerfile: ./containers/message-broker/Dockerfile
+    container_name: message-broker
+    restart: always
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq:/var/lib/rabbitmq
+
+  id-database:
+    image: redis:7.4.2
+    container_name: id-database
+    volumes:
+      - redis:/data
+    command: redis-server --save 600 1 --loglevel warning
+
+  executor-http-api:
+    image: httpd:2.4.63
+    container_name: apache
+    restart: always
+    ports:
+      - "80:80"
+    volumes:
+      - foldseek:/usr/local/apache2/htdocs/foldseek
+
+  id-provider:
+    build:
+      context: ./
+      dockerfile: ./containers/id-provider/Dockerfile
+    container_name: id-provider
+    depends_on:
+      - id-database
+    command: python id-provider.py
+
+  gateway:
+    image: gateway
+    build:
+      context: ./
+      dockerfile: ./containers/gateway/Dockerfile
+    container_name: gateway
+    depends_on:
+      - http-server
+    ports:
+      - "8000:8000"
+
+  http-server:
+    build:
+      context: ./
+      dockerfile: ./containers/http-server/Dockerfile
+    container_name: http-server
+    depends_on:
+      - id-provider
+      - message-broker
+    command: python http-server.py
+
+  ds-foldseek:
+    build:
+      context: ./
+      dockerfile: ./containers/data-source-executors/executor-foldseek
+    container_name: data-source
+    restart: always
+    depends_on:
+      - message-broker
+    volumes:
+      - foldseek:/app/
+    command: 
+
+  provider:
+    image: provider
+    build:
+      context: ./provider
+    container_name: provider
+    restart: "no"
+    depends_on:
+      - message-broker
+      - data-source
+      - web-server
+
+volumes:
+  rabbitmq:
+  redis:
+  foldseek:
