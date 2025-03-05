@@ -63,18 +63,29 @@ for ligand_id, residues in ligand_binding_sites.items():
     ligand_binding_sites[ligand_id] = sorted(residues, key=lambda x: x[1])
 
 print("\nBinding site residues by ligand (RESIDUE, SEQUENCE INDEX):")
+binding_sites = []
 for ligand_id, residues in ligand_binding_sites.items():
     print(f"\nLigand {ligand_id}:")
     print("Number of residues in binding site:", len(residues))
-    
+    binding_site_residues = []
     for residue in residues:
         nearby_residue_index = residue[1]
         if nearby_residue_index in residue_dict:
-            residue_name, structure_index = residue_dict[nearby_residue_index]
-            print(f"Residue: {residue_name}, Structure Index: {nearby_residue_index}, Sequence Index: {structure_index}")
+            residue_name, seq_index = residue_dict[nearby_residue_index]
+            print(f"Residue: {residue_name}, Structure Index: {nearby_residue_index}, Sequence Index: {seq_index}")
+            binding_site_residues.append({
+                "residue": residue_name,
+                "seq_index": seq_index
+            })
         else:
             print(f"Residue with Sequence Index: {nearby_residue_index} not found in residue_dict")
-
+    binding_site = {
+        "id": ligand_id,
+        "conf": 1.0, # experimantally determined binding site
+        "residues": binding_site_residues
+    }
+    binding_sites.append(binding_site)
+print(binding_sites)
 
 # # Print the residue dictionary
 # print("\nResidue dictionary (STRUCTURE INDEX: (RESIDUE_NAME, SEQUENCE_INDEX)):")
