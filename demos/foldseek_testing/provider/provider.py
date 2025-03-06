@@ -14,18 +14,18 @@ def encode_pdb_file(filepath):
 
 if __name__ == "__main__":
     pdb_filepath = "4k11.pdb" 
-    pdb_id = "4k11" 
+    id = "4k11" # will be id from id-provider ...
 
     if not os.path.exists(pdb_filepath):
         print(f"Error: PDB file '{pdb_filepath}' not found.")
         exit(1)
 
-    encoded_pdb = encode_pdb_file(pdb_filepath)
+    encoded_struct = encode_pdb_file(pdb_filepath)
 
     try:
-        result = celery.send_task('ds_foldseek', args=[encoded_pdb, pdb_id])
+        result = celery.send_task('ds_foldseek', args=[encoded_struct, id])
         print(f"Task submitted successfully. Task ID: {result.id}")
-        print(f"Status: {result.status}S")
+        print(f"Status: {result.status}")
 
     except Exception as e:
         print(f"Error submitting task: {e}")

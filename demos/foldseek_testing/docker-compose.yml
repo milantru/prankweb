@@ -46,9 +46,12 @@ services:
     ports:
       - "8000:8000"
     volumes:
+      - ./data_source/ds_foldseek.py:/app/ds_foldseek.py
+      - ./data_source/post_processor.py:/app/post_processor.py
       - foldseek_data:/app/results
     networks:
       - broker_network
+    command: celery --app=ds_foldseek worker
 
   apache:
     image: apache
