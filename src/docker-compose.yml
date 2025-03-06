@@ -66,7 +66,7 @@ services:
       - message-broker
     volumes:
       - foldseek:/app/results
-    command: celery --app=ds_foldseek worker
+    command: celery --app=ds_foldseek worker --queues=ds_foldseek --loglevel=debug
 
   metatask:
     build:
@@ -79,7 +79,7 @@ services:
       - ds-foldseek
     volumes:
       - inputs:/app/inputs
-    command: celery --app=metatask worker
+    command: celery --app=metatask worker --queues=metatask --loglevel=debug
 
 volumes:
   rabbitmq:

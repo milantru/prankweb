@@ -32,7 +32,7 @@ def update_status(status_file_path, id, status, message=""):
 def ds_foldseek(id):
 
     print("Sme tu")
-    exit(123)
+    return
     
     eval_folder = os.path.join(RESULTS_FOLDER, f"{id}")
     os.makedirs(eval_folder, exist_ok=True)

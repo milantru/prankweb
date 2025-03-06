@@ -6,9 +6,13 @@ import json
 from time import sleep
 
 celery = Celery('tasks', broker='amqp://guest:guest@message-broker:5672//', backend='rpc://')
-
+celery.conf.update({
+    "task_routes": {
+        "ds_foldseek": "ds_foldseek",
+    }
+})
 def download_pdb_file(pdb_id, output_file):
-    url = f"https://files.rcsb.org/download/{pdb_id}.pdb"
+    url = f"https://files.rcsb.org/download/2src.pdb"
     response = requests.get(url)
     if response.status_code == 200:
         with open(output_file, 'w') as file:
@@ -24,6 +28,8 @@ def encode_pdb_file(filepath):
 
 @celery.task(name='metatask')
 def run_metatask(input_method, input_data, id, existed):
+
+    print("METATASK")
     
     pdb_filepath = ""
     
@@ -42,7 +48,7 @@ def run_metatask(input_method, input_data, id, existed):
     # encoded_struct = encode_pdb_file(pdb_filepath)
 
     try:
-        result = celery.send_task('ds_foldseek', args=[id])
+        result = celery.send_task('ds_foldseek', args=[id], queue="ds_foldseek")
         print(f"Task submitted successfully. Task ID: {result.id}")
         print(f"Status: {result.status}")
 
