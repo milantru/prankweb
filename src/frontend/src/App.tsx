@@ -8,6 +8,7 @@ function App() {
         <Routes>
             <Route path="/" element={<Home />}></Route>
             <Route path="/analytical-page" element={<AnalyticalPage />}></Route>
+            <Route path="/not-found" element={<NotFound />}></Route>
             <Route path="*" element={<NotFound />}></Route>
         </Routes>
     )
