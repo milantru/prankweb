@@ -1,0 +1,3 @@
+celery
+flask
+requests

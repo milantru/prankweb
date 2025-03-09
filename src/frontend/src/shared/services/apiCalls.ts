@@ -1445,7 +1445,7 @@ export async function uploadDataAPI(formState: FormState): Promise<{ id: number,
 	try {
 		const response = await axios.post<number>(apiBaseUrl + "/upload-data", formData, {
 			headers: {
-				"Content-Type": "multipart/form-data"
+				"Content-Type": "application/json"
 			}
 		});
 
