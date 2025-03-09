@@ -2,7 +2,7 @@ import axios from "axios";
 import { FormState } from "../../pages/home/components/QueryProteinForm";
 import { apiBaseUrl } from "../constants";
 import { getErrorMessages } from "../helperFunctions/errorHandling";
-import { DataSourceExecutorResult } from "../../pages/analytical-page/AnalyticalPage";
+import { Result } from "../../pages/analytical-page/AnalyticalPage";
 import camelcaseKeys from "camelcase-keys";
 
 
@@ -1493,7 +1493,7 @@ export async function getDataSourceExecutorResultStatusAPI(dataSourceName: strin
 }
 
 export async function getDataSourceExecutorResultAPI(dataSourceName: string, id: string)
-	: Promise<{ data: DataSourceExecutorResult | null, errorMessages: string[] }> {
+	: Promise<{ results: Result[], errorMessages: string[] }> {
 	try {
 		// const response = await axios.get<DataSourceExecutorResult>(apiBaseUrl + `/${dataSourceName}/${id}`, {
 		// 	headers: {
@@ -1503,10 +1503,10 @@ export async function getDataSourceExecutorResultAPI(dataSourceName: string, id:
 
 		// return { data: response.data, errorMessages: [] };
 		const rawObject = JSON.parse(resultTmp);
-		const res: DataSourceExecutorResult = { proteins: camelcaseKeys(rawObject, { deep: true })};
-		return { data: res, errorMessages: [] };
+		const results: Result[] = camelcaseKeys(rawObject, { deep: true });
+		return { results, errorMessages: [] };
 	}
 	catch (error) {
-		return { data: null, errorMessages: getErrorMessages(error) };
+		return { results: [], errorMessages: getErrorMessages(error) };
 	}
 }
