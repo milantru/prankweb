@@ -4,20 +4,9 @@ import tempfile
 import requests
 from Bio.PDB import PDBParser, PDBIO, NeighborSearch
 
-def get_ligands(pdb_id):
-    pdb_file = f"{pdb_id}.pdb"
-    url = f"https://files.rcsb.org/download/{pdb_file}"
-    response = requests.get(url)
-    if response.status_code == 200:
-        with open(pdb_file, 'wb') as file:
-            file.write(response.content)
-    else:
-        print(f"Download failed. HTTP status: {response.status_code}")
-    
-    io = PDBIO()
-    with open(pdb_file, "r") as file:
+def extract_binding_sites(pdb_id, query_structure_file):
+    with open(query_structure_file, "r") as file:
         pdb = PDBParser().get_structure(pdb_id, file)
-    os.remove(pdb_file)
 
     atoms = list(pdb.get_atoms())
     ns = NeighborSearch(atom_list=atoms)
@@ -82,42 +71,42 @@ def get_ligands(pdb_id):
                 })
         binding_site = {
             "id": ligand_id[0],
-            "conf": 1.0, # experimantally determined binding site
+            "confidence": 1.0,              # experimantally determined binding site
             "residues": binding_site_residues
         }
         binding_sites.append(binding_site)
     return binding_sites
 
-def process_foldseek_output(result_folder, result_file, id):
+def process_foldseek_output(result_folder, result_file, id, query_structure_file):
     result_list = []
 
     with open(result_file) as f:
         for line in f:
             fields = line.strip().split("\t")
 
+            pdb_id = fields[1][:4] # extract pdb id
+
             sequence_mapping = {
-                "query_sequence_id": fields[0],
-                "target_sequence_id": fields[1],
-                "alignment_length": int(fields[2]),
-                "full_query_sequence": fields[3],
-                "query_alignment_start": int(fields[4]),
-                "query_alignment_end": int(fields[5]),
-                "aligned_query_sequence": fields[6],
-                "template_modeling_score": float(fields[7]),
-                "full_target_sequence": fields[8],
-                "target_alignment_start": int(fields[9]),
-                "target_alignment_end": int(fields[10]),
-                "aligned_target_sequence": fields[11]
+                "pdb_id": pdb_id,
+                #"query_sequence_id": fields[0],
+                #"target_sequence_id": fields[1],
+                #"alignment_length": int(fields[2]),
+                #"full_query_sequence": fields[3],
+                "query_seq_alignment_part_start_idx": int(fields[4]),
+                "query_seq_alignment_part_end_idx": int(fields[5]),
+                "query_seq_alignment_part": fields[6],
+                #"template_modeling_score": float(fields[7]),
+                "similar_sequence": fields[8],
+                "similar_seq_alignment_part_start_idx": int(fields[9]),
+                "similar_seq_alignment_part_end_idx": int(fields[10]),
+                "similar_seq_alignment_part": fields[11]
             }
 
-            pdb_id = sequence_mapping["target_sequence_id"][:4] # extract pdb id
-
-
-
             result_list.append({
-                "protein_id": pdb_id,
-                "binding_sites": get_ligands(pdb_id),
-                "alignment_data": sequence_mapping
+                "id": id,
+                "query_sequence": fields[3],
+                "binding_sites": extract_binding_sites(pdb_id, query_structure_file),
+                "similar_sequence_alignment_data": sequence_mapping
             })
 
     result_file = os.path.join(result_folder, f"{id}_result.json")

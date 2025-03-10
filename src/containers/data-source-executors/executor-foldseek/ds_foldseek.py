@@ -4,6 +4,7 @@ from celery import Celery
 import tempfile
 import json
 import base64
+import requests
 
 import post_processor
 
@@ -17,6 +18,7 @@ STATUS_MAPPING = {
     "completed": 1,
     "failed": 2
 }
+INPUTS_URL = "http://apache:80/inputs/"
 
 os.makedirs(RESULTS_FOLDER, exist_ok=True)
 
@@ -31,8 +33,8 @@ def update_status(status_file_path, id, status, message=""):
 @celery.task(name='ds_foldseek')
 def ds_foldseek(id):
 
-    print("Sme tu")
-    return
+    print("FOLDSEEK")
+    print(id)
     
     eval_folder = os.path.join(RESULTS_FOLDER, f"{id}")
     os.makedirs(eval_folder, exist_ok=True)
@@ -40,10 +42,15 @@ def ds_foldseek(id):
     update_status(status_file_path, id, "started")
 
     try:
-        binary_structure = base64.b64decode(structure)
+        pdb_url = INPUTS_URL + str(id) + "/structure.pdb"
+        query_structure_file = ""
+
+        response = requests.get(pdb_url, stream=True)
+        response.raise_for_status()
 
         with tempfile.NamedTemporaryFile(mode="wb", suffix=".pdb", delete=False) as struct_file:
-            struct_file.write(binary_structure)
+            for chunk in response.iter_content(chunk_size=8192):
+                struct_file.write(chunk)
             query_structure_file = struct_file.name
     
         foldseek_result_file = os.path.join(eval_folder, f"aln_res_{id}")
@@ -56,14 +63,20 @@ def ds_foldseek(id):
 
         subprocess.run(command, check=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
 
-        post_processor.process_foldseek_output(eval_folder, foldseek_result_file, id)
+        post_processor.process_foldseek_output(eval_folder, foldseek_result_file, id, query_structure_file)
 
-        os.remove(query_structure_file)
         update_status(status_file_path, id, "completed")
 
+    except requests.RequestException as e:
+        update_status(status_file_path, id, "failed", f"Failed to download PDB file: {str(e)}")
+        print(f"Failed to download PDB file for {id}: {e}")
     except subprocess.CalledProcessError as e:
         update_status(status_file_path, id, "failed", f"Foldseek crashed: {e.stderr.decode()}")
         print(f"Foldseek crashed for {id}: {e.stderr.decode()}")
     except Exception as e:
         update_status(status_file_path, id, "failed", f"An unexpected error occurred: {e}")
         print(f"An unexpected error occurred: {e}")
+    finally:
+        if query_structure_file and isinstance(query_structure_file, str) and os.path.exists(query_structure_file):
+            os.remove(query_structure_file)
+            print(f"Temporary PDB file deleted: {query_structure_file}")
