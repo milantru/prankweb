@@ -19,8 +19,8 @@ type SimilarSequenceAlignmentData = {
 };
 
 type Residue = {
-	id: string;
-	index: number; // index in related sequence
+	name: string;
+	seqIndex: number; // index in related sequence
 };
 
 type UnprocessedBindingSite = {
@@ -49,7 +49,7 @@ type DataSourceExecutor = { // data source executor can output multiple results
 
 type DataSourceExecutorData = {
 	dataSourceName: string;
-	bindingSites: BindingSite[];
+	bindingSites: BindingSite[][];
 	similarSequences: string[];
 };
 
@@ -141,14 +141,14 @@ function AnalyticalPage() {
 
 	return (
 		<div id="analyze" className="display-none row">
-			<div id="visualization" className="col-xs-12 col-md-7 col-xl-7">
+			<div id="visualization" className="col-xs-12 col-md-6 col-xl-6">
 				<div id="application-rcsb">
 					{processedResult && (
 						<RcsbSaguaro processedResult={processedResult} />
 					)}
 				</div>
 			</div>
-			<div id="information" className="col-xs-12 col-md-5 col-xl-5">
+			<div id="information" className="col-xs-12 col-md-6 col-xl-6">
 				<div id="pocket-list-aside">
 					<div id="application-molstar">
 						Mol*
@@ -162,11 +162,11 @@ function AnalyticalPage() {
 	function replaceWithAlignedPart(
 		sequence: string,
 		alignedPartStartIdx: number,
-		alignedPartEndtIdx: number,
+		alignedPartEndIdx: number,
 		alignedPart: string
 	) {
 		const startPart = sequence.slice(0, alignedPartStartIdx);
-		const endPart = sequence.slice(alignedPartEndtIdx);
+		const endPart = sequence.slice(alignedPartEndIdx + 1);
 
 		return startPart + alignedPart + endPart;
 	}
@@ -194,10 +194,10 @@ function AnalyticalPage() {
 
 	function updateBindingSiteResiduesIndices(bindingSite: UnprocessedBindingSite, mapping: Record<number, number>) {
 		bindingSite.residues.forEach(r =>
-			r.index = mapping[r.index]
+			r.seqIndex = mapping[r.seqIndex]
 		)
 	}
-	
+
 	function alignQueryAndSimilarSequence(result: Result): Result {
 		if (result.similarSequenceAlignmentData === null) {
 			return result;
@@ -241,7 +241,7 @@ function AnalyticalPage() {
 
 		// Update all residue indices of each result bindig site
 		const mapping = createMapping(result.querySequence, querySeq);
-		result.bindingSites.forEach(bindingSite => 
+		result.bindingSites.forEach(bindingSite =>
 			updateBindingSiteResiduesIndices(bindingSite, mapping));
 
 		result.querySequence = querySeq;
@@ -274,19 +274,37 @@ function AnalyticalPage() {
 		/* "Merge phase": Create master query sequence and align other sequences and binding sites to it.
 		 * Master query sequence is query sequence on which every similar sequence and binding site can be aligned with/mapped to. */
 		let masterQuerySeq = "";
-		const similarSeqResults: string[][] = new Array(dataSourceExecutors.length);
-		dataSourceExecutors.forEach((dse, dseIdx) => similarSeqResults[dseIdx] = new Array(dse.results.length).fill(""));
+		const similarSeqResults: string[][] = Array.from(
+			{ length: dataSourceExecutors.length },
+			() => []
+		);
+		dataSourceExecutors.forEach((dse, dseIdx) => {
+			similarSeqResults[dseIdx] = Array(dse.results.length).fill("");
+		});
 		// const bindingSiteResults: BindingSite[][][] = new Array(dataSourceExecutors.length);
 		// dataSourceExecutors.forEach((dse, dseIdx) => similarSeqResults[dseIdx] = new Array(dse.results.length).fill([]));
 
 		// Length of the query sequence (sequence with no gaps)
 		const querySeqLength = getQuerySeqLength(dataSourceExecutors[0].results[0].querySequence);
 
-		const offsets: number[][] = new Array(dataSourceExecutors.length);
-		dataSourceExecutors.forEach((dse, dseIdx) => offsets[dseIdx] = new Array(dse.results.length).fill(0));
+		const offsets: number[][] = Array.from(
+			{ length: dataSourceExecutors.length },
+			() => []
+		);
+		dataSourceExecutors.forEach((dse, dseIdx) => {
+			offsets[dseIdx] = Array(dse.results.length).fill(0);
+		});
 
-		const mapping: Record<number, number>[][] = new Array(dataSourceExecutors.length);
-		mapping.forEach((m, dseIdx) => m[dseIdx] = new Array(dataSourceExecutors[dseIdx].results.length).fill({}))
+		const mapping: Record<number, number>[][] = Array.from(
+			{ length: dataSourceExecutors.length },
+			() => []
+		);
+		dataSourceExecutors.forEach((executor, dseIdx) => {
+			mapping[dseIdx] = Array.from(
+				{ length: executor.results.length },
+				() => ({})
+			);
+		});
 
 		for (let aminoAcidIdx = 0; aminoAcidIdx < querySeqLength; aminoAcidIdx++) {
 			const isGapMode = dataSourceExecutors.some((dse, dseIdx) =>
@@ -297,12 +315,12 @@ function AnalyticalPage() {
 				const dataSourceExecutor = dataSourceExecutors[dataSourceExecutorIdx];
 				for (let resultIdx = 0; resultIdx < dataSourceExecutor.results.length; resultIdx++) {
 					const result = dataSourceExecutor.results[resultIdx];
-					/* Master query sequence is being built iteratively character by character (that is why we can use masterQuerySeq.length 
-					 * to point to the newest character). This variable points to the current character (amino acid) of master query sequence 
-					 * that will be outputted/added later in code. And because it will be added later + 1 is used here. */
-					const aminoAcidOfMasterQuerySeqCurrIdx = masterQuerySeq.length + 1;
+					/* Master query sequence is being built iteratively character by character, that is why we can use masterQuerySeq.length 
+					 * to point to the newest character. This variable holds index of the current character (amino acid or gap) of
+					 * master query sequence that will be outputted/added later in code. */
+					const aminoAcidOrGapOfMasterQuerySeqCurrIdx = masterQuerySeq.length;
 					if (result.similarSequenceAlignmentData === null) {
-						mapping[dataSourceExecutorIdx][resultIdx][aminoAcidIdx] = aminoAcidOfMasterQuerySeqCurrIdx;
+						mapping[dataSourceExecutorIdx][resultIdx][aminoAcidIdx] = aminoAcidOrGapOfMasterQuerySeqCurrIdx;
 						continue;
 					}
 					const offset = offsets[dataSourceExecutorIdx][resultIdx];
@@ -310,11 +328,11 @@ function AnalyticalPage() {
 					const aminoAcidOrGapOfQuerySeq = result.querySequence[aminoAcidIdx + offset];
 					if (isGapMode) {
 						if (aminoAcidOrGapOfQuerySeq === '-') {
-							similarSeqResults[dataSourceExecutorIdx][resultIdx] = similarSeqResults[dataSourceExecutorIdx][resultIdx] + result.similarSequenceAlignmentData.similarSequence[aminoAcidIdx + offset];
-							mapping[dataSourceExecutorIdx][resultIdx][aminoAcidIdx + offset] = aminoAcidOfMasterQuerySeqCurrIdx;
+							similarSeqResults[dataSourceExecutorIdx][resultIdx] += result.similarSequenceAlignmentData.similarSequence[aminoAcidIdx + offset];
+							mapping[dataSourceExecutorIdx][resultIdx][aminoAcidIdx + offset] = aminoAcidOrGapOfMasterQuerySeqCurrIdx;
 							offsets[dataSourceExecutorIdx][resultIdx] = offset + 1;
 						} else {
-							similarSeqResults[dataSourceExecutorIdx][resultIdx] = similarSeqResults[dataSourceExecutorIdx][resultIdx] + '-';
+							similarSeqResults[dataSourceExecutorIdx][resultIdx] += '-';
 						}
 					} else {
 						/* All of the results have the same query sequence (if we ignore gaps). On the (aminoAcidIdx + offset) index
@@ -322,39 +340,49 @@ function AnalyticalPage() {
 						* always assigned the same amino acid. Which might seem odd (that we keep reassigning the same value),
 						* but it is correct and to avoid further program branching it will be left like this. */
 						aminoAcidOfQuerySeq = aminoAcidOrGapOfQuerySeq;
-						similarSeqResults[dataSourceExecutorIdx][resultIdx] = similarSeqResults[dataSourceExecutorIdx][resultIdx] + result.similarSequenceAlignmentData.similarSequence[aminoAcidIdx + offset];
-						mapping[dataSourceExecutorIdx][resultIdx][aminoAcidIdx + offset] = aminoAcidOfMasterQuerySeqCurrIdx;
+						similarSeqResults[dataSourceExecutorIdx][resultIdx] += result.similarSequenceAlignmentData.similarSequence[aminoAcidIdx + offset];
+						mapping[dataSourceExecutorIdx][resultIdx][aminoAcidIdx + offset] = aminoAcidOrGapOfMasterQuerySeqCurrIdx;
 					}
 				}
 			}
 
 			if (isGapMode) {
-				masterQuerySeq = masterQuerySeq + '-';
+				masterQuerySeq += '-';
 				aminoAcidIdx--; // Sequences with gaps where shifted, repeat for the same amino acid
 			} else {
-				masterQuerySeq = masterQuerySeq + aminoAcidOfQuerySeq;
+				masterQuerySeq += aminoAcidOfQuerySeq;
 			}
 		}
 
-		const bindingSiteResults: BindingSite[][] = new Array(dataSourceExecutors.length).fill([]);
+		const bindingSiteResults: BindingSite[][][] = Array.from(
+			{ length: dataSourceExecutors.length },
+			() => []
+		);
+		bindingSiteResults.forEach((_, dseIdx) => {
+			bindingSiteResults[dseIdx] = Array.from(
+				{ length: dataSourceExecutors[dseIdx].results.length },
+				() => []
+			);
+		});
 		// Update all residue indices of each binding site, map binding sites to proper type and store them to return them later
 		dataSourceExecutors.forEach((dse, dseIdx) =>
 			dse.results.forEach((res, resIdx) => {
 				res.bindingSites.forEach(bindingSite => updateBindingSiteResiduesIndices(bindingSite, mapping[dseIdx][resIdx]));
-				
+
 				const bindingSites: BindingSite[] = res.bindingSites.map<BindingSite>(bindingSite => {
 					const residues: Record<string, number[]> = {};
 					bindingSite.residues.forEach(r => {
-						if (/* TODO add condition: key r.id does not exist in residues */) {
-							residues[r.id] = [];
+						if (!(r.name in residues)) {
+							residues[r.name] = [];
 						}
-						residues[r.id].push(r.index); 
+						residues[r.name].push(r.seqIndex);
 					});
-					// TODO implement: sort residues by indices, ascending (in-place is possible)
-					return {id: bindingSite.id, confidence: bindingSite.confidence, residues: residues};
+					// Sort residues by indices, ascending
+					Object.values(residues).forEach(indices => indices.sort((a, b) => a - b));
+					return { id: bindingSite.id, confidence: bindingSite.confidence, residues: residues };
 				});
 
-				bindingSiteResults[dseIdx].push(...bindingSites);
+				bindingSiteResults[dseIdx][resIdx] = bindingSites;
 			})
 		);
 

@@ -27,10 +27,13 @@ function RcsbSaguaro({ processedResult }: Props) {
     const rowConfigData = [];
     rowConfigData.push(createQuerySequenceRow(processedResult.querySequence));
     processedResult.dataSourceExecutorsData.forEach(dseData => {
-        dseData.similarSequences.forEach((similarSeq, i) =>
-            rowConfigData.push(createSequenceRow(i.toString(), `Similar sequence #${i}`, similarSeq)));
-        dseData.bindingSites.forEach(bindingSite =>
-            rowConfigData.push(createBlockRow(bindingSite.id, bindingSite.id, bindingSite.residues)));
+        dseData.similarSequences.forEach((simSeq, resIdx) => {
+            const bindingSites = dseData.bindingSites[resIdx];
+
+            rowConfigData.push(createSequenceRow(resIdx.toString(), `Similar sequence #${resIdx}`, simSeq));
+            bindingSites.forEach(bindingSite =>
+                rowConfigData.push(createBlockRow(`${resIdx}-${bindingSite.id}`, bindingSite.id, bindingSite.residues)));
+        });
     });
 
     useEffect(() => {
@@ -131,7 +134,7 @@ function RcsbSaguaro({ processedResult }: Props) {
             trackData: [
                 {
                     begin: 0,
-                    label: querySequence.length
+                    label: querySequence
                 }
             ]
         };
@@ -148,7 +151,7 @@ function RcsbSaguaro({ processedResult }: Props) {
             trackData: [
                 {
                     begin: 0,
-                    label: sequence.length
+                    label: sequence
                 }
             ]
         };
@@ -167,7 +170,7 @@ function RcsbSaguaro({ processedResult }: Props) {
             displayType: "block",
             displayColor: "#FF0000",
             rowTitle: title,
-            trackData: [trackData]
+            trackData: trackData
         };
     }
 }
