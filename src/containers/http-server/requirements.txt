@@ -1,3 +1,4 @@
 celery
 flask
 requests
+biopython
