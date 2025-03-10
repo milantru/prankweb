@@ -92,14 +92,14 @@ def process_foldseek_output(result_folder, result_file, id, query_structure_file
                 #"target_sequence_id": fields[1],
                 #"alignment_length": int(fields[2]),
                 #"full_query_sequence": fields[3],
-                "query_seq_alignment_part_start_idx": int(fields[4]),
-                "query_seq_alignment_part_end_idx": int(fields[5]),
-                "query_seq_alignment_part": fields[6],
+                "query_seq_aligned_part_start_idx": int(fields[4]),
+                "query_seq_aligned_part_end_idx": int(fields[5]),
+                "query_seq_aligned_part": fields[6],
                 #"template_modeling_score": float(fields[7]),
                 "similar_sequence": fields[8],
-                "similar_seq_alignment_part_start_idx": int(fields[9]),
-                "similar_seq_alignment_part_end_idx": int(fields[10]),
-                "similar_seq_alignment_part": fields[11]
+                "similar_seq_aligned_part_start_idx": int(fields[9]),
+                "similar_seq_aligned_part_end_idx": int(fields[10]),
+                "similar_seq_aligned_part": fields[11]
             }
 
             result_list.append({
