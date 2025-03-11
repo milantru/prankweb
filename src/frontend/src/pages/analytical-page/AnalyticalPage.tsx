@@ -7,40 +7,55 @@ import RcsbSaguaro from "./components/RcsbSaguaro";
 
 const POLLING_INTERVAL = 1000 * 5; // every 5 seconds
 
-type Residue = {
-	id: string;
-	index: number; // index in related sequence
+type SimilarSequenceAlignmentData = {
+	pdbId: string; // pdb id of the similar sequence
+	querySeqAlignedPartStartIdx: number;
+	querySeqAlignedPartEndIdx: number;
+	querySeqAlignedPart: string;
+	similarSequence: string;
+	similarSeqAlignedPartStartIdx: number;
+	similarSeqAlignedPartEndIdx: number;
+	similarSeqAlignedPart: string;
 };
 
-type BindingSite = {
+type Residue = {
+	name: string;
+	seqIndex: number; // index in related sequence
+};
+
+type UnprocessedBindingSite = {
 	id: string;
 	confidence: number;
 	residues: Residue[];
 };
 
-type AlignmentData = {
-	querySequenceId: string;
-	targetSequenceId: string;
-	alignmentLength: number; // TODO asi netreba
-	querySequence: string;
-	querySequenceAlignmentPartStartIdx: number;
-	querySequenceAlignmentPartEndIdx: number;
-	querySequenceAlignmentPart: string;
-	templateModelingScore: number; // TODO asi netreba
-	targetSequence: string;
-	targetSequenceAlignmentPartStartIdx: number;
-	targetSequenceAlignmentPartEndIdx: number;
-	targetSequenceAlignmentPart: string;
-};
-
-type Protein = {
+type BindingSite = {
 	id: string;
-	bindingSites: BindingSite[];
-	alignmentData: AlignmentData;
+	confidence: number;
+	residues: Record<string, number[]>; // key is id of the residue, value is index of the residue
 };
 
-export type DataSourceExecutorResult = {
-	proteins: Protein[];
+export type Result = {
+	id: string; // id from the IdProvider
+	querySequence: string;
+	bindingSites: UnprocessedBindingSite[]; // e.g. found them experimentally (1 source) or predicted (another source) 
+	similarSequenceAlignmentData: SimilarSequenceAlignmentData | null;
+};
+
+type DataSourceExecutor = { // data source executor can output multiple results
+	name: string;
+	results: Result[];
+};
+
+type DataSourceExecutorData = {
+	dataSourceName: string;
+	bindingSites: BindingSite[][];
+	similarSequences: string[];
+};
+
+export type ProcessedResult = {
+	querySequence: string;
+	dataSourceExecutorsData: DataSourceExecutorData[];
 };
 
 function AnalyticalPage() {
@@ -49,38 +64,15 @@ function AnalyticalPage() {
 	if (!id) {
 		return <>No id provided.</>
 	}
-	const dataSourceNames = [
-		"foldseek"
-	];
 	// When pollingInterval is set to null, it is turned off
 	const [pollingInterval, setPollingInterval] = useState<number | null>(POLLING_INTERVAL);
 	const isPageVisible = useVisibilityChange();
-	const [isPollingFinished, setIsPollingFinished] = useState<boolean[]>(new Array(dataSourceNames.length).fill(true));
-	const [isFetching, setIsFetching] = useState<boolean[]>(new Array(dataSourceNames.length).fill(false));
-	const [dataSourceExecutorResults, setDataSourceExecutorResults] = useState<(DataSourceExecutorResult | null)[]>(new Array(dataSourceNames.length).fill(null));
-	const [alignedSequences, setAlignedSequences] = useState<string[]>([]);
-
-	useEffect(() => {
-		if (isPollingFinished.some(x => x === false) || dataSourceExecutorResults.some(x => x === null)) {
-			return;
-		}
-		const proteins = dataSourceExecutorResults.map(res => res!.proteins).flat();
-		const alignedSequencesTmp = alignSequences(proteins.map(p => ({
-			querySequenceAlignmentObject: {
-				sequence: p.alignmentData.querySequence,
-				alignedPartStartIdx: p.alignmentData.querySequenceAlignmentPartStartIdx,
-				alignedPartEndtIdx: p.alignmentData.querySequenceAlignmentPartEndIdx,
-				alignedPart: p.alignmentData.querySequenceAlignmentPart
-			},
-			targetSequenceAlignmentObject: {
-				sequence: p.alignmentData.targetSequence,
-				alignedPartStartIdx: p.alignmentData.targetSequenceAlignmentPartStartIdx,
-				alignedPartEndtIdx: p.alignmentData.targetSequenceAlignmentPartEndIdx,
-				alignedPart: p.alignmentData.targetSequenceAlignmentPart
-			}
-		})));
-		setAlignedSequences(alignedSequencesTmp);
-	}, [dataSourceExecutorResults]);
+	const dataSourceExecutors: DataSourceExecutor[] = [
+		{ name: "foldseek", results: [] }
+	]
+	const isFetching: boolean[] = new Array(dataSourceExecutors.length).fill(false);
+	const isPollingFinished: boolean[] = new Array(dataSourceExecutors.length).fill(true);
+	const [processedResult, setProcessedResult] = useState<ProcessedResult | null>(null);
 
 	useEffect(() => {
 		if (isPollingFinished.every(x => x)) {
@@ -95,59 +87,68 @@ function AnalyticalPage() {
 
 	useInterval(() => {
 		async function fetchDataFromDataSource(dataSourceIndex: number) {
-			updateIsFetching(dataSourceIndex, true);
-			const { status, errorMessages: statusFetchingErrorMessages } = await getDataSourceExecutorResultStatusAPI(dataSourceNames[dataSourceIndex], id!);
+			isFetching[dataSourceIndex] = true;
+			const {
+				status,
+				errorMessages: statusFetchingErrorMessages
+			} = await getDataSourceExecutorResultStatusAPI(dataSourceExecutors[dataSourceIndex].name, id!);
 			if (statusFetchingErrorMessages.length > 0) {
 				// TODO stop polling for this data source?
 				// TODO display error messages
 				// TODO what about DataStatus.Failed? Maybe handle here as well as some other error?
-				updateIsFetching(dataSourceIndex, false);
+				isFetching[dataSourceIndex] = false;
 				return;
 			}
 			if (status !== DataStatus.Completed) {
-				updateIsFetching(dataSourceIndex, false);
+				isFetching[dataSourceIndex] = false;
 				return;
 			}
-			
-			const { data, errorMessages: dataFetchingErrorMessages } = await getDataSourceExecutorResultAPI(dataSourceNames[dataSourceIndex], id!);
+
+			const {
+				results,
+				errorMessages: dataFetchingErrorMessages
+			} = await getDataSourceExecutorResultAPI(dataSourceExecutors[dataSourceIndex].name, id!);
 			if (dataFetchingErrorMessages.length > 0) {
 				// TODO Maybe handle/display error messages somehow?
-				updateIsPollingFinished(dataSourceIndex, true);
+				isPollingFinished[dataSourceIndex] = true;
 				if (isPollingFinished.every(x => x)) {
 					setPollingInterval(null);
 				}
-				updateIsFetching(dataSourceIndex, false);
+				isFetching[dataSourceIndex] = false;
 				return;
 			}
-			
-			updateDataSourceExecutorResults(dataSourceIndex, data);
+
+			dataSourceExecutors[dataSourceIndex].results = results;
 			// Data was received, its state won't change, so polling is not required anymore
-			updateIsPollingFinished(dataSourceIndex, true);
+			isPollingFinished[dataSourceIndex] = true;
 			if (isPollingFinished.every(x => x)) {
 				setPollingInterval(null);
+
+				setProcessedResult(alignSequences(dataSourceExecutors));
+				dataSourceExecutors.forEach(dse => dse.results = []); // Free space (data has been processed and stored, we don't need this anymore)
 			}
-			updateIsFetching(dataSourceIndex, false);
+			isFetching[dataSourceIndex] = false;
 		}
 
-		for (let i = 0; i < dataSourceNames.length; i++) {
-			if (isFetching[i]) {
+		for (let dataSourceExecutorIdx = 0; dataSourceExecutorIdx < dataSourceExecutors.length; dataSourceExecutorIdx++) {
+			if (isFetching[dataSourceExecutorIdx]) {
 				continue;
 			}
-			fetchDataFromDataSource(i);
+			fetchDataFromDataSource(dataSourceExecutorIdx);
 		}
 	}, pollingInterval);
 
 
 	return (
 		<div id="analyze" className="display-none row">
-			<div id="visualization" className="col-xs-12 col-md-7 col-xl-7">
+			<div id="visualization" className="col-xs-12 col-md-6 col-xl-6">
 				<div id="application-rcsb">
-					{alignedSequences.length > 0 && (
-						<RcsbSaguaro proteins={alignedSequences} />
+					{processedResult && (
+						<RcsbSaguaro processedResult={processedResult} />
 					)}
 				</div>
 			</div>
-			<div id="information" className="col-xs-12 col-md-5 col-xl-5">
+			<div id="information" className="col-xs-12 col-md-6 col-xl-6">
 				<div id="pocket-list-aside">
 					<div id="application-molstar">
 						Mol*
@@ -158,138 +159,239 @@ function AnalyticalPage() {
 		</div>
 	);
 
-	function updateIsFetching(index: number, newValue: boolean) {
-		setIsFetching(prevState =>
-			prevState.map((item, i) => (i === index ? newValue : item))
-		);
-	};
+	function replaceWithAlignedPart(
+		sequence: string,
+		alignedPartStartIdx: number,
+		alignedPartEndIdx: number,
+		alignedPart: string
+	) {
+		const startPart = sequence.slice(0, alignedPartStartIdx);
+		const endPart = sequence.slice(alignedPartEndIdx + 1);
 
-	function updateIsPollingFinished(index: number, newValue: boolean) {
-		setIsPollingFinished(prevState =>
-			prevState.map((item, i) => (i === index ? newValue : item))
-		);
-	};
-
-	function updateDataSourceExecutorResults(index: number, newValue: any | null) {
-		setDataSourceExecutorResults(prevState =>
-			prevState.map((item, i) => (i === index ? newValue : item))
-		);
-	};
-
-	type SequenceAlignmentObject = {
-		sequence: string;
-		alignedPartStartIdx: number;
-		alignedPartEndtIdx: number;
-		alignedPart: string;
-	};
-	
-	type SequenceAlignmentObjectPair = {
-		querySequenceAlignmentObject: SequenceAlignmentObject,
-		targetSequenceAlignmentObject: SequenceAlignmentObject
-	};
-	
-	type AlignedSequencePair = {
-		querySequence: string;
-		querySequenceAlignedPartStartIdx: number;
-		targetSequence: string;
-		targetSequenceAlignedPartStartIdx: number;
-	};
-	
-	function replaceWithAlignedPart(sequenceAlignmentObject: SequenceAlignmentObject) {
-		const startPart = sequenceAlignmentObject.sequence.slice(0, sequenceAlignmentObject.alignedPartStartIdx);
-		const endPart = sequenceAlignmentObject.sequence.slice(sequenceAlignmentObject.alignedPartEndtIdx);
-	
-		return startPart + sequenceAlignmentObject.alignedPart + endPart;
+		return startPart + alignedPart + endPart;
 	}
-	
-	function alignSequencePair(sequenceAlignmentObjectPair: SequenceAlignmentObjectPair): AlignedSequencePair {
-		const querySequenceAlignmentObject = sequenceAlignmentObjectPair.querySequenceAlignmentObject;
-		const targetSequenceAlignmentObject = sequenceAlignmentObjectPair.targetSequenceAlignmentObject;
-	
-		let querySeqWithAlignedPart = replaceWithAlignedPart(querySequenceAlignmentObject);
-		let targetSeqWithAlignedPart = replaceWithAlignedPart(targetSequenceAlignmentObject);
-	
-		let querySeqAlignedPartStartIdx = querySequenceAlignmentObject.alignedPartStartIdx;
-		let targetSeqAlignedPartStartIdx = targetSequenceAlignmentObject.alignedPartStartIdx;
+
+	function createMapping(sequence: string, sequenceWithGaps: string) {
+		// key: idx in original seq (without gaps), value: idx in query seq with gaps
+		const mapping: Record<number, number> = {};
+
+		for (let i = 0, j = 0; i < sequence.length; i++, j++) {
+			let aminoAcidOrGap = sequenceWithGaps[j];
+			if (aminoAcidOrGap === "-") {
+				do {
+					j++;
+					aminoAcidOrGap = sequenceWithGaps[j];
+				} while (aminoAcidOrGap === "-");
+				/* In do while we don't have to check for j < sequence.length, there always has to be
+				 * some related amino acid (because we have the same sequence but one is with gaps). */
+			}
+
+			mapping[i] = j;
+		}
+
+		return mapping;
+	}
+
+	function updateBindingSiteResiduesIndices(bindingSite: UnprocessedBindingSite, mapping: Record<number, number>) {
+		bindingSite.residues.forEach(r =>
+			r.seqIndex = mapping[r.seqIndex]
+		)
+	}
+
+	function alignQueryAndSimilarSequence(result: Result): Result {
+		if (result.similarSequenceAlignmentData === null) {
+			return result;
+		}
+
+		let querySeq = replaceWithAlignedPart(
+			result.querySequence,
+			result.similarSequenceAlignmentData.querySeqAlignedPartStartIdx,
+			result.similarSequenceAlignmentData.querySeqAlignedPartEndIdx,
+			result.similarSequenceAlignmentData.querySeqAlignedPart
+		);
+		let similarSeq = replaceWithAlignedPart(
+			result.similarSequenceAlignmentData.similarSequence,
+			result.similarSequenceAlignmentData.similarSeqAlignedPartStartIdx,
+			result.similarSequenceAlignmentData.similarSeqAlignedPartEndIdx,
+			result.similarSequenceAlignmentData.similarSeqAlignedPart
+		);
+		const querySeqAlignedPartStartIdx = result.similarSequenceAlignmentData.querySeqAlignedPartStartIdx;
+		const targetSeqAlignedPartStartIdx = result.similarSequenceAlignmentData.similarSeqAlignedPartStartIdx;
+
 		/* Pad the beginning of the sequence with the smaller start index  
-		 * to align the start indices of both sequences. */
-		if (querySequenceAlignmentObject.alignedPartStartIdx < targetSequenceAlignmentObject.alignedPartStartIdx) {
-			const gapCount = targetSequenceAlignmentObject.alignedPartStartIdx - querySequenceAlignmentObject.alignedPartStartIdx;
-			querySeqWithAlignedPart = querySeqWithAlignedPart.padStart(querySeqWithAlignedPart.length + gapCount, "-");
-			querySeqAlignedPartStartIdx += gapCount;
+		* to align the start indices of both sequences. */
+		if (querySeqAlignedPartStartIdx < targetSeqAlignedPartStartIdx) {
+			const gapCount = targetSeqAlignedPartStartIdx - querySeqAlignedPartStartIdx;
+			querySeq = querySeq.padStart(querySeq.length + gapCount, "-");
+			result.similarSequenceAlignmentData.querySeqAlignedPartStartIdx += gapCount;
 		} else {
-			const gapCount = querySequenceAlignmentObject.alignedPartStartIdx - targetSequenceAlignmentObject.alignedPartStartIdx;
-			targetSeqWithAlignedPart = targetSeqWithAlignedPart.padStart(targetSeqWithAlignedPart.length + gapCount, "-");
-			targetSeqAlignedPartStartIdx += gapCount;
+			const gapCount = querySeqAlignedPartStartIdx - targetSeqAlignedPartStartIdx;
+			similarSeq = similarSeq.padStart(similarSeq.length + gapCount, "-");
+			result.similarSequenceAlignmentData.similarSeqAlignedPartStartIdx += gapCount;
 		}
-	
-		/* Pad the shorter sequence to match the length of the longer one. */
-		if (querySeqWithAlignedPart.length < targetSeqWithAlignedPart.length) {
-			const gapCount = targetSeqWithAlignedPart.length - querySeqWithAlignedPart.length;
-			querySeqWithAlignedPart = querySeqWithAlignedPart.padEnd(querySeqWithAlignedPart.length + gapCount, "-");
+
+		// Pad the shorter sequence to match the length of the longer one.
+		if (querySeq.length < similarSeq.length) {
+			const gapCount = similarSeq.length - querySeq.length;
+			similarSeq = querySeq.padEnd(querySeq.length + gapCount, "-");
 		} else {
-			const gapCount = querySeqWithAlignedPart.length - targetSeqWithAlignedPart.length;
-			targetSeqWithAlignedPart = targetSeqWithAlignedPart.padEnd(targetSeqWithAlignedPart.length + gapCount, "-");
+			const gapCount = querySeq.length - similarSeq.length;
+			similarSeq = similarSeq.padEnd(similarSeq.length + gapCount, "-");
 		}
-	
-		const alignedSequencePair: AlignedSequencePair = {
-			querySequence: querySeqWithAlignedPart,
-			querySequenceAlignedPartStartIdx: querySeqAlignedPartStartIdx,
-			targetSequence: targetSeqWithAlignedPart,
-			targetSequenceAlignedPartStartIdx: targetSeqAlignedPartStartIdx
-		};
-		return alignedSequencePair;
+
+		// Update all residue indices of each result bindig site
+		const mapping = createMapping(result.querySequence, querySeq);
+		result.bindingSites.forEach(bindingSite =>
+			updateBindingSiteResiduesIndices(bindingSite, mapping));
+
+		result.querySequence = querySeq;
+		result.similarSequenceAlignmentData.similarSequence = similarSeq;
+		return result;
 	}
-	
-	function alignSequences(sequenceAlignmentObjectPairs: SequenceAlignmentObjectPair[]) {
-		if (sequenceAlignmentObjectPairs.length === 0) {
-			return [];
+
+	function getQuerySeqLength(querySeqWithGaps: string) {
+		let counter = 0;
+
+		for (const c of querySeqWithGaps) {
+			if (c !== '-') {
+				counter++;
+			}
 		}
-		const alignedPairs = sequenceAlignmentObjectPairs.map(pair => alignSequencePair(pair));
-		console.log("aligned paaary")
-		for (const pair of alignedPairs) console.log(`${pair.querySequence.length} - ${pair.targetSequence.length}`)
-	
-		let querySeqResult = "";
-		const targetSeqResults: string[] = new Array(alignedPairs.length).fill("");
+
+		return counter;
+	}
+
+	function alignSequences(dataSourceExecutors: DataSourceExecutor[]): ProcessedResult {
+		if (dataSourceExecutors.length == 0 || dataSourceExecutors[0].results.length == 0) {
+			return { querySequence: "", dataSourceExecutorsData: [] };
+		}
+
+		/* "Preprocessing phase": Align query and similar sequences while also updating binding site indices.
+		 * Results without similar sequences are skipped (unchanged). */
+		dataSourceExecutors.forEach(dse =>
+			dse.results = dse.results.map(res => alignQueryAndSimilarSequence(res)));
+
+		/* "Merge phase": Create master query sequence and align other sequences and binding sites to it.
+		 * Master query sequence is query sequence on which every similar sequence and binding site can be aligned with/mapped to. */
+		let masterQuerySeq = "";
+		const similarSeqResults: string[][] = Array.from(
+			{ length: dataSourceExecutors.length },
+			() => []
+		);
+		dataSourceExecutors.forEach((dse, dseIdx) => {
+			similarSeqResults[dseIdx] = Array(dse.results.length).fill("");
+		});
+		// const bindingSiteResults: BindingSite[][][] = new Array(dataSourceExecutors.length);
+		// dataSourceExecutors.forEach((dse, dseIdx) => similarSeqResults[dseIdx] = new Array(dse.results.length).fill([]));
+
 		// Length of the query sequence (sequence with no gaps)
-		const querySeqLength = alignedPairs[0].querySequence.split('').filter(c => c !== '-').join("").length;
-		const offsets: number[] = new Array(alignedPairs.length).fill(0);
-	
+		const querySeqLength = getQuerySeqLength(dataSourceExecutors[0].results[0].querySequence);
+
+		const offsets: number[][] = Array.from(
+			{ length: dataSourceExecutors.length },
+			() => []
+		);
+		dataSourceExecutors.forEach((dse, dseIdx) => {
+			offsets[dseIdx] = Array(dse.results.length).fill(0);
+		});
+
+		const mapping: Record<number, number>[][] = Array.from(
+			{ length: dataSourceExecutors.length },
+			() => []
+		);
+		dataSourceExecutors.forEach((executor, dseIdx) => {
+			mapping[dseIdx] = Array.from(
+				{ length: executor.results.length },
+				() => ({})
+			);
+		});
+
 		for (let aminoAcidIdx = 0; aminoAcidIdx < querySeqLength; aminoAcidIdx++) {
-			const isGapMode = alignedPairs.some((pair, pairIdx) => pair.querySequence[aminoAcidIdx + offsets[pairIdx]] === '-');
-	
+			const isGapMode = dataSourceExecutors.some((dse, dseIdx) =>
+				dse.results.some((res, resIdx) => res.querySequence[aminoAcidIdx + offsets[dseIdx][resIdx]] === '-'));
+
 			let aminoAcidOfQuerySeq: string = null!;
-			for (let pairIdx = 0; pairIdx < alignedPairs.length; pairIdx++) {
-				const pair = alignedPairs[pairIdx];
-				const offset = offsets[pairIdx];
-	
-				const aminoAcidOrGapOfQuerySeq = pair.querySequence[aminoAcidIdx + offset];
-				if (isGapMode) {
-					if (aminoAcidOrGapOfQuerySeq === '-') {
-						targetSeqResults[pairIdx] = targetSeqResults[pairIdx] + pair.targetSequence[aminoAcidIdx + offset];
-						offsets[pairIdx] = offset + 1;
-					} else {
-						targetSeqResults[pairIdx] = targetSeqResults[pairIdx] + '-';
+			for (let dataSourceExecutorIdx = 0; dataSourceExecutorIdx < dataSourceExecutors.length; dataSourceExecutorIdx++) {
+				const dataSourceExecutor = dataSourceExecutors[dataSourceExecutorIdx];
+				for (let resultIdx = 0; resultIdx < dataSourceExecutor.results.length; resultIdx++) {
+					const result = dataSourceExecutor.results[resultIdx];
+					/* Master query sequence is being built iteratively character by character, that is why we can use masterQuerySeq.length 
+					 * to point to the newest character. This variable holds index of the current character (amino acid or gap) of
+					 * master query sequence that will be outputted/added later in code. */
+					const aminoAcidOrGapOfMasterQuerySeqCurrIdx = masterQuerySeq.length;
+					if (result.similarSequenceAlignmentData === null) {
+						mapping[dataSourceExecutorIdx][resultIdx][aminoAcidIdx] = aminoAcidOrGapOfMasterQuerySeqCurrIdx;
+						continue;
 					}
-				} else {
-					/* All of the pairs have the same query sequence (if we ignore gaps). On the (aminoAcidIdx + offset) index
-					* is the same amino acid for all the pairs, which means that here is (for all of the pairs)
-					* always assigned the same amino acid. Which might seem odd (that we keep reassigning the same value),
-					* but it is correct and to avoid further program branching it will be left like this. */
-					aminoAcidOfQuerySeq = aminoAcidOrGapOfQuerySeq;
-					targetSeqResults[pairIdx] = targetSeqResults[pairIdx] + pair.targetSequence[aminoAcidIdx + offset];
+					const offset = offsets[dataSourceExecutorIdx][resultIdx];
+
+					const aminoAcidOrGapOfQuerySeq = result.querySequence[aminoAcidIdx + offset];
+					if (isGapMode) {
+						if (aminoAcidOrGapOfQuerySeq === '-') {
+							similarSeqResults[dataSourceExecutorIdx][resultIdx] += result.similarSequenceAlignmentData.similarSequence[aminoAcidIdx + offset];
+							mapping[dataSourceExecutorIdx][resultIdx][aminoAcidIdx + offset] = aminoAcidOrGapOfMasterQuerySeqCurrIdx;
+							offsets[dataSourceExecutorIdx][resultIdx] = offset + 1;
+						} else {
+							similarSeqResults[dataSourceExecutorIdx][resultIdx] += '-';
+						}
+					} else {
+						/* All of the results have the same query sequence (if we ignore gaps). On the (aminoAcidIdx + offset) index
+						* is the same amino acid for all the results, which means that here is (for all of the results)
+						* always assigned the same amino acid. Which might seem odd (that we keep reassigning the same value),
+						* but it is correct and to avoid further program branching it will be left like this. */
+						aminoAcidOfQuerySeq = aminoAcidOrGapOfQuerySeq;
+						similarSeqResults[dataSourceExecutorIdx][resultIdx] += result.similarSequenceAlignmentData.similarSequence[aminoAcidIdx + offset];
+						mapping[dataSourceExecutorIdx][resultIdx][aminoAcidIdx + offset] = aminoAcidOrGapOfMasterQuerySeqCurrIdx;
+					}
 				}
 			}
-	
+
 			if (isGapMode) {
-				querySeqResult = querySeqResult + '-';
+				masterQuerySeq += '-';
 				aminoAcidIdx--; // Sequences with gaps where shifted, repeat for the same amino acid
 			} else {
-				querySeqResult = querySeqResult + aminoAcidOfQuerySeq;
+				masterQuerySeq += aminoAcidOfQuerySeq;
 			}
 		}
-	
-		return [querySeqResult, ...targetSeqResults];
+
+		const bindingSiteResults: BindingSite[][][] = Array.from(
+			{ length: dataSourceExecutors.length },
+			() => []
+		);
+		bindingSiteResults.forEach((_, dseIdx) => {
+			bindingSiteResults[dseIdx] = Array.from(
+				{ length: dataSourceExecutors[dseIdx].results.length },
+				() => []
+			);
+		});
+		// Update all residue indices of each binding site, map binding sites to proper type and store them to return them later
+		dataSourceExecutors.forEach((dse, dseIdx) =>
+			dse.results.forEach((res, resIdx) => {
+				res.bindingSites.forEach(bindingSite => updateBindingSiteResiduesIndices(bindingSite, mapping[dseIdx][resIdx]));
+
+				const bindingSites: BindingSite[] = res.bindingSites.map<BindingSite>(bindingSite => {
+					const residues: Record<string, number[]> = {};
+					bindingSite.residues.forEach(r => {
+						if (!(r.name in residues)) {
+							residues[r.name] = [];
+						}
+						residues[r.name].push(r.seqIndex);
+					});
+					// Sort residues by indices, ascending
+					Object.values(residues).forEach(indices => indices.sort((a, b) => a - b));
+					return { id: bindingSite.id, confidence: bindingSite.confidence, residues: residues };
+				});
+
+				bindingSiteResults[dseIdx][resIdx] = bindingSites;
+			})
+		);
+
+		const dataSourceExecutorsData: DataSourceExecutorData[] = dataSourceExecutors.map<DataSourceExecutorData>((dse, dseIdx) => ({
+			dataSourceName: dse.name,
+			bindingSites: bindingSiteResults[dseIdx],
+			similarSequences: similarSeqResults[dseIdx]
+		}));
+		return { querySequence: masterQuerySeq, dataSourceExecutorsData };
 	}
 }
 

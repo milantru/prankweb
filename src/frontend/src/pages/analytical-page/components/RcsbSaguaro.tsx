@@ -1,11 +1,12 @@
 import { useEffect } from "react";
 import { RcsbFv } from "@rcsb/rcsb-saguaro";
+import { ProcessedResult } from "../AnalyticalPage";
 
 type Props = {
-    proteins: string[];
+    processedResult: ProcessedResult;
 };
 
-function RcsbSaguaro({ proteins }: Props) {
+function RcsbSaguaro({ processedResult }: Props) {
     // ID of the DOM element where the plugin is placed
     const elementId = "application-rcsb";
     /* If query seq is set to start at 0, it means some sequences might 
@@ -18,65 +19,22 @@ function RcsbSaguaro({ proteins }: Props) {
         //     max: boardRange.to
         // },
         // length: boardRange.to - boardRange.from,
-        length: proteins[0].length,
+        length: processedResult.querySequence.length,
         // trackWidth: 940,
         includeAxis: true
     };
 
-    const rowConfigData = proteins.map(protein => createSequenceRow(protein));
-    // const rowConfigData = [
-    //     {
-    //         trackId: "queryBlockTrack",
-    //         trackHeight: 20,
-    //         trackColor: "#F9F9F9",
-    //         displayType: "block",
-    //         displayColor: "#FF0000",
-    //         rowTitle: "BLOCK",
-    //         trackData: [
-    //             {
-    //                 begin: 30,
-    //                 end: 60,
-    //                 gaps: [{
-    //                     begin: 40,
-    //                     end: 50
-    //                 }]
-    //             },
-    //             {
-    //                 begin: 50,
-    //                 end: 80
-    //             }
-    //         ]
-    //     },
-    //     ,
-    //     {
-    //         trackId: "similarSequence2BlockTrack",
-    //         trackHeight: 20,
-    //         trackColor: "#90D5FF77",
-    //         displayType: "block",
-    //         displayColor: "#33FF33",
-    //         rowTitle: "BLOCK",
-    //         trackData: [
-    //             {
-    //                 begin: 20,
-    //                 end: 20
-    //             },
-    //             {
-    //                 begin: 30,
-    //                 end: 30,
-    //                 color: "#000000"
-    //             },
-    //             {
-    //                 begin: 50,
-    //                 end: 50
-    //             },
-    //             {
-    //                 begin: 50,
-    //                 end: 50,
-    //                 color: "#FF3333"
-    //             }
-    //         ]
-    //     }
-    // ];
+    const rowConfigData = [];
+    rowConfigData.push(createQuerySequenceRow(processedResult.querySequence));
+    processedResult.dataSourceExecutorsData.forEach(dseData => {
+        dseData.similarSequences.forEach((simSeq, resIdx) => {
+            const bindingSites = dseData.bindingSites[resIdx];
+
+            rowConfigData.push(createSequenceRow(resIdx.toString(), `Similar sequence #${resIdx}`, simSeq));
+            bindingSites.forEach(bindingSite =>
+                rowConfigData.push(createBlockRow(`${resIdx}-${bindingSite.id}`, bindingSite.id, bindingSite.residues)));
+        });
+    });
 
     useEffect(() => {
         const pfv = new RcsbFv({
@@ -165,20 +123,54 @@ function RcsbSaguaro({ proteins }: Props) {
         return range;
     }
 
-    function createSequenceRow(protein: string) {
+    function createQuerySequenceRow(querySequence: string) {
         return {
-            trackId: Math.random(),
+            trackId: "query-seq",
             trackHeight: 20,
             trackColor: "#F9F9F9",
             displayType: "sequence",
             nonEmptyDisplay: true,
-            rowTitle: "protein.id",
+            rowTitle: "Query sequence",
             trackData: [
                 {
                     begin: 0,
-                    label: protein//.sequence
+                    label: querySequence
                 }
             ]
+        };
+    }
+
+    function createSequenceRow(id: string, title: string, sequence: string) {
+        return {
+            trackId: id,
+            trackHeight: 20,
+            trackColor: "#F9F9F9",
+            displayType: "sequence",
+            nonEmptyDisplay: true,
+            rowTitle: title,
+            trackData: [
+                {
+                    begin: 0,
+                    label: sequence
+                }
+            ]
+        };
+    }
+
+    function createBlockRow(id: string, title: string, residues: Record<string, number[]>) {
+        const trackData = [];
+        Object.entries(residues).forEach(([id, indices]) =>
+            trackData.push(...indices.map(idx => ({ begin: idx, end: idx })))
+        );
+
+        return {
+            trackId: id,
+            trackHeight: 20,
+            trackColor: "#F9F9F9",
+            displayType: "block",
+            displayColor: "#FF0000",
+            rowTitle: title,
+            trackData: trackData
         };
     }
 }

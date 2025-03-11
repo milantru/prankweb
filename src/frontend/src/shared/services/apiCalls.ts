@@ -2,7 +2,7 @@ import axios from "axios";
 import { FormState } from "../../pages/home/components/QueryProteinForm";
 import { apiBaseUrl } from "../constants";
 import { getErrorMessages } from "../helperFunctions/errorHandling";
-import { DataSourceExecutorResult } from "../../pages/analytical-page/AnalyticalPage";
+import { Result } from "../../pages/analytical-page/AnalyticalPage";
 import camelcaseKeys from "camelcase-keys";
 
 
@@ -15,1411 +15,947 @@ const statusTmp = `
 const resultTmp =  `
 [
     {
-        "id": "4k11",
+        "id": 1,
+        "query_sequence": "TTFVALYDYESRTETDLSFKKGERLQIVNNTEGDWWLAHSLSTGQTGYIPSNYVAPSDSIQAEEWYFGKITRRESERLLLNAENPRGTFLVRESETTKGAYCLSVSDFDNAKGLNVKHYKIRKLDSGGFYITSRTQFNSLQQLVAYYSKHADGLCHRLTTVCPTSKPQTQGLAKDAWEIPRESLRLEVKLGQGCFGEVWMGTWNGTTRVAIKTLKPGTMSPEAFLQEAQVMKKLRHEKLVQLYAVVSEEPIYIVTEYMSKGSLLDFLKGETGKYLRLPQLVDMAAQIASGMAYVERMNYVHRDLRAANILVGENLVCKVADFGLARLIEDNEYTARQGAKFPIKWTAPEAALYGRFTIKSDVWSFGILLTELTTKGRVPYPGMVNREVLDQVERGYRMPCPPECPESLHDLMCQCWRKEPEERPTFEYLQAFLEDYFTSTEPQYQPGENL",
         "binding_sites": [
             {
                 "id": "H_PTR",
                 "confidence": 1.0,
                 "residues": [
                     {
-                        "id": "ARG",
-                        "index": 72
+                        "residue": "ARG",
+                        "seq_index": 72
                     },
                     {
-                        "id": "ARG",
-                        "index": 92
+                        "residue": "ARG",
+                        "seq_index": 92
                     },
                     {
-                        "id": "GLU",
-                        "index": 93
+                        "residue": "GLU",
+                        "seq_index": 93
                     },
                     {
-                        "id": "SER",
-                        "index": 94
+                        "residue": "SER",
+                        "seq_index": 94
                     },
                     {
-                        "id": "GLU",
-                        "index": 95
+                        "residue": "GLU",
+                        "seq_index": 95
                     },
                     {
-                        "id": "THR",
-                        "index": 96
+                        "residue": "THR",
+                        "seq_index": 96
                     },
                     {
-                        "id": "THR",
-                        "index": 97
+                        "residue": "CYS",
+                        "seq_index": 102
                     },
                     {
-                        "id": "CYS",
-                        "index": 102
+                        "residue": "HIS",
+                        "seq_index": 118
                     },
                     {
-                        "id": "HIS",
-                        "index": 118
+                        "residue": "TYR",
+                        "seq_index": 119
                     },
                     {
-                        "id": "TYR",
-                        "index": 119
+                        "residue": "LYS",
+                        "seq_index": 120
                     },
                     {
-                        "id": "LYS",
-                        "index": 120
+                        "residue": "GLU",
+                        "seq_index": 441
                     },
                     {
-                        "id": "PRO",
-                        "index": 442
+                        "residue": "PRO",
+                        "seq_index": 442
                     },
                     {
-                        "id": "GLN",
-                        "index": 443
+                        "residue": "GLN",
+                        "seq_index": 443
                     },
                     {
-                        "id": "GLN",
-                        "index": 444
+                        "residue": "GLN",
+                        "seq_index": 444
                     },
                     {
-                        "id": "PRO",
-                        "index": 445
+                        "residue": "PRO",
+                        "seq_index": 445
                     }
                 ]
             },
             {
-                "id": "H_0J9",
+                "id": "H_ANP",
                 "confidence": 1.0,
                 "residues": [
                     {
-                        "id": "LEU",
-                        "index": 190
+                        "residue": "LEU",
+                        "seq_index": 190
                     },
                     {
-                        "id": "GLY",
-                        "index": 191
+                        "residue": "GLY",
+                        "seq_index": 191
                     },
                     {
-                        "id": "VAL",
-                        "index": 198
+                        "residue": "GLN",
+                        "seq_index": 192
                     },
                     {
-                        "id": "ALA",
-                        "index": 210
+                        "residue": "GLY",
+                        "seq_index": 193
                     },
                     {
-                        "id": "ILE",
-                        "index": 211
+                        "residue": "CYS",
+                        "seq_index": 194
                     },
                     {
-                        "id": "LYS",
-                        "index": 212
+                        "residue": "PHE",
+                        "seq_index": 195
                     },
                     {
-                        "id": "VAL",
-                        "index": 240
+                        "residue": "GLY",
+                        "seq_index": 196
                     },
                     {
-                        "id": "ILE",
-                        "index": 253
+                        "residue": "VAL",
+                        "seq_index": 198
                     },
                     {
-                        "id": "VAL",
-                        "index": 254
+                        "residue": "ALA",
+                        "seq_index": 210
                     },
                     {
-                        "id": "GLY",
-                        "index": 255
+                        "residue": "LYS",
+                        "seq_index": 212
                     },
                     {
-                        "id": "GLU",
-                        "index": 256
+                        "residue": "VAL",
+                        "seq_index": 240
                     },
                     {
-                        "id": "TYR",
-                        "index": 257
+                        "residue": "THR",
+                        "seq_index": 255
                     },
                     {
-                        "id": "MET",
-                        "index": 258
+                        "residue": "GLU",
+                        "seq_index": 256
                     },
                     {
-                        "id": "SER",
-                        "index": 259
+                        "residue": "TYR",
+                        "seq_index": 257
                     },
                     {
-                        "id": "GLY",
-                        "index": 261
+                        "residue": "MET",
+                        "seq_index": 258
                     },
                     {
-                        "id": "SER",
-                        "index": 262
+                        "residue": "SER",
+                        "seq_index": 259
                     },
                     {
-                        "id": "LEU",
-                        "index": 310
+                        "residue": "GLY",
+                        "seq_index": 261
                     },
                     {
-                        "id": "ALA",
-                        "index": 320
+                        "residue": "SER",
+                        "seq_index": 262
                     },
                     {
-                        "id": "ASP",
-                        "index": 321
+                        "residue": "ASP",
+                        "seq_index": 265
+                    },
+                    {
+                        "residue": "ASP",
+                        "seq_index": 303
+                    },
+                    {
+                        "residue": "ARG",
+                        "seq_index": 305
+                    },
+                    {
+                        "residue": "ALA",
+                        "seq_index": 307
+                    },
+                    {
+                        "residue": "ASN",
+                        "seq_index": 308
+                    },
+                    {
+                        "residue": "LEU",
+                        "seq_index": 310
+                    },
+                    {
+                        "residue": "ASP",
+                        "seq_index": 321
                     }
                 ]
             }
         ],
-        "alignment_data": {
-            "query_sequence_id": "tmp1or06uio",
-            "target_sequence_id": "4k11-assembly1.cif.gz_A",
-            "alignment_length": 448,
-            "query_sequence": "TTFVALYDYESRTETDLSFKKGERLQIVNNTEGDWWLAHSLSTGQTGYIPSNYVAPSDSIQAEEWYFGKITRRESERLLLNAENPRGTFLVRESETTKGAYCLSVSDFDNAKGLNVKHYKIRKLDSGGFYITSRTQFNSLQQLVAYYSKHADGLCHRLTTVCPTSKPQTQGLAKDAWEIPRESLRLEVKLGQGCFGEVWMGTWNGTTRVAIKTLKPGTMSPEAFLQEAQVMKKLRHEKLVQLYAVVSEEPIYIVGEYMSKGSLLDFLKGETGKYLRLPQLVDMAAQIASGMAYVERMNYVHRDLRAANILVGENLVCKVADFGLARLIEDNEYTARQGAKFPIKWTAPEAALYGRFTIKSDVWSFGILLTELTTKGRVPYPGMVNREVLDQVERGYRMPCPPECPESLHDLMCQCWRKEPEERPTFEYLQAFLEDYFTSTEPQYQPGE",
-            "query_sequence_alignment_part_start_idx": 1,
-            "query_sequence_alignment_part_end_idx": 448,
-            "query_sequence_alignment_part": "TTFVALYDYESRTETDLSFKKGERLQIVNNTEGDWWLAHSLSTGQTGYIPSNYVAPSDSIQAEEWYFGKITRRESERLLLNAENPRGTFLVRESETTKGAYCLSVSDFDNAKGLNVKHYKIRKLDSGGFYITSRTQFNSLQQLVAYYSKHADGLCHRLTTVCPTSKPQTQGLAKDAWEIPRESLRLEVKLGQGCFGEVWMGTWNGTTRVAIKTLKPGTMSPEAFLQEAQVMKKLRHEKLVQLYAVVSEEPIYIVGEYMSKGSLLDFLKGETGKYLRLPQLVDMAAQIASGMAYVERMNYVHRDLRAANILVGENLVCKVADFGLARLIEDNEYTARQGAKFPIKWTAPEAALYGRFTIKSDVWSFGILLTELTTKGRVPYPGMVNREVLDQVERGYRMPCPPECPESLHDLMCQCWRKEPEERPTFEYLQAFLEDYFTSTEPQYQPGE",
-            "template_modeling_score": 1.002,
-            "target_sequence": "TTFVALYDYESRTETDLSFKKGERLQIVNNTEGDWWLAHSLSTGQTGYIPSNYVAPSDSIQAEEWYFGKITRRESERLLLNAENPRGTFLVRESETTKGAYCLSVSDFDNAKGLNVKHYKIRKLDSGGFYITSRTQFNSLQQLVAYYSKHADGLCHRLTTVCPTSKPQTQGLAKDAWEIPRESLRLEVKLGQGCFGEVWMGTWNGTTRVAIKTLKPGTMSPEAFLQEAQVMKKLRHEKLVQLYAVVSEEPIYIVGEYMSKGSLLDFLKGETGKYLRLPQLVDMAAQIASGMAYVERMNYVHRDLRAANILVGENLVCKVADFGLARLIEDNEYTARQGAKFPIKWTAPEAALYGRFTIKSDVWSFGILLTELTTKGRVPYPGMVNREVLDQVERGYRMPCPPECPESLHDLMCQCWRKEPEERPTFEYLQAFLEDYFTSTEPQYQPGE",
-            "target_sequence_alignment_part_start_idx": 1,
-            "target_sequence_alignment_part_end_idx": 448,
-            "target_sequence_alignment_part": "TTFVALYDYESRTETDLSFKKGERLQIVNNTEGDWWLAHSLSTGQTGYIPSNYVAPSDSIQAEEWYFGKITRRESERLLLNAENPRGTFLVRESETTKGAYCLSVSDFDNAKGLNVKHYKIRKLDSGGFYITSRTQFNSLQQLVAYYSKHADGLCHRLTTVCPTSKPQTQGLAKDAWEIPRESLRLEVKLGQGCFGEVWMGTWNGTTRVAIKTLKPGTMSPEAFLQEAQVMKKLRHEKLVQLYAVVSEEPIYIVGEYMSKGSLLDFLKGETGKYLRLPQLVDMAAQIASGMAYVERMNYVHRDLRAANILVGENLVCKVADFGLARLIEDNEYTARQGAKFPIKWTAPEAALYGRFTIKSDVWSFGILLTELTTKGRVPYPGMVNREVLDQVERGYRMPCPPECPESLHDLMCQCWRKEPEERPTFEYLQAFLEDYFTSTEPQYQPGE"
+        "similar_sequence_alignment_data": {
+            "pdb_id": "4k11",
+            "query_seq_aligned_part_start_idx": 0,
+            "query_seq_aligned_part_end_idx": 447,
+            "query_seq_aligned_part": "TTFVALYDYESRTETDLSFKKGERLQIVNNTEGDWWLAHSLSTGQTGYIPSNYVAPSDSIQAEEWYFGKITRRESERLLLNAENPRGTFLVRESETTKGAYCLSVSDFDNAKGLNVKHYKIRKLDSGGFYITSRTQFNSLQQLVAYYSKHADGLCHRLTTVCPTSKPQTQGLAKDAWEIPRESLRLEVKLGQGCFGEVWMGTWNGTTRVAIKTLKPGTMSPEAFLQEAQVMKKLRHEKLVQLYAVVSEEPIYIVTEYMSKGSLLDFLKGETGKYLRLPQLVDMAAQIASGMAYVERMNYVHRDLRAANILVGENLVCKVADFGLARLIEDNEYTARQGAKFPIKWTAPEAALYGRFTIKSDVWSFGILLTELTTKGRVPYPGMVNREVLDQVERGYRMPCPPECPESLHDLMCQCWRKEPEERPTFEYLQAFLEDYFTSTEPQYQPGE",
+            "similar_sequence": "TTFVALYDYESRTETDLSFKKGERLQIVNNTEGDWWLAHSLSTGQTGYIPSNYVAPSDSIQAEEWYFGKITRRESERLLLNAENPRGTFLVRESETTKGAYCLSVSDFDNAKGLNVKHYKIRKLDSGGFYITSRTQFNSLQQLVAYYSKHADGLCHRLTTVCPTSKPQTQGLAKDAWEIPRESLRLEVKLGQGCFGEVWMGTWNGTTRVAIKTLKPGTMSPEAFLQEAQVMKKLRHEKLVQLYAVVSEEPIYIVGEYMSKGSLLDFLKGETGKYLRLPQLVDMAAQIASGMAYVERMNYVHRDLRAANILVGENLVCKVADFGLARLIEDNEYTARQGAKFPIKWTAPEAALYGRFTIKSDVWSFGILLTELTTKGRVPYPGMVNREVLDQVERGYRMPCPPECPESLHDLMCQCWRKEPEERPTFEYLQAFLEDYFTSTEPQYQPGE",
+            "similar_seq_aligned_part_start_idx": 0,
+            "similar_seq_aligned_part_end_idx": 447,
+            "similar_seq_aligned_part": "TTFVALYDYESRTETDLSFKKGERLQIVNNTEGDWWLAHSLSTGQTGYIPSNYVAPSDSIQAEEWYFGKITRRESERLLLNAENPRGTFLVRESETTKGAYCLSVSDFDNAKGLNVKHYKIRKLDSGGFYITSRTQFNSLQQLVAYYSKHADGLCHRLTTVCPTSKPQTQGLAKDAWEIPRESLRLEVKLGQGCFGEVWMGTWNGTTRVAIKTLKPGTMSPEAFLQEAQVMKKLRHEKLVQLYAVVSEEPIYIVGEYMSKGSLLDFLKGETGKYLRLPQLVDMAAQIASGMAYVERMNYVHRDLRAANILVGENLVCKVADFGLARLIEDNEYTARQGAKFPIKWTAPEAALYGRFTIKSDVWSFGILLTELTTKGRVPYPGMVNREVLDQVERGYRMPCPPECPESLHDLMCQCWRKEPEERPTFEYLQAFLEDYFTSTEPQYQPGE"
         }
     },
     {
-        "id": "2h8h",
+        "id": 1,
+        "query_sequence": "TTFVALYDYESRTETDLSFKKGERLQIVNNTEGDWWLAHSLSTGQTGYIPSNYVAPSDSIQAEEWYFGKITRRESERLLLNAENPRGTFLVRESETTKGAYCLSVSDFDNAKGLNVKHYKIRKLDSGGFYITSRTQFNSLQQLVAYYSKHADGLCHRLTTVCPTSKPQTQGLAKDAWEIPRESLRLEVKLGQGCFGEVWMGTWNGTTRVAIKTLKPGTMSPEAFLQEAQVMKKLRHEKLVQLYAVVSEEPIYIVTEYMSKGSLLDFLKGETGKYLRLPQLVDMAAQIASGMAYVERMNYVHRDLRAANILVGENLVCKVADFGLARLIEDNEYTARQGAKFPIKWTAPEAALYGRFTIKSDVWSFGILLTELTTKGRVPYPGMVNREVLDQVERGYRMPCPPECPESLHDLMCQCWRKEPEERPTFEYLQAFLEDYFTSTEPQYQPGENL",
         "binding_sites": [
             {
                 "id": "H_PTR",
                 "confidence": 1.0,
                 "residues": [
                     {
-                        "id": "ARG",
-                        "index": 71
+                        "residue": "ARG",
+                        "seq_index": 72
                     },
                     {
-                        "id": "ARG",
-                        "index": 91
+                        "residue": "ARG",
+                        "seq_index": 92
                     },
                     {
-                        "id": "GLU",
-                        "index": 92
+                        "residue": "GLU",
+                        "seq_index": 93
                     },
                     {
-                        "id": "SER",
-                        "index": 93
+                        "residue": "SER",
+                        "seq_index": 94
                     },
                     {
-                        "id": "GLU",
-                        "index": 94
+                        "residue": "GLU",
+                        "seq_index": 95
                     },
                     {
-                        "id": "THR",
-                        "index": 95
+                        "residue": "THR",
+                        "seq_index": 96
                     },
                     {
-                        "id": "THR",
-                        "index": 96
+                        "residue": "CYS",
+                        "seq_index": 102
                     },
                     {
-                        "id": "CYS",
-                        "index": 101
+                        "residue": "HIS",
+                        "seq_index": 118
                     },
                     {
-                        "id": "HIS",
-                        "index": 117
+                        "residue": "TYR",
+                        "seq_index": 119
                     },
                     {
-                        "id": "TYR",
-                        "index": 118
+                        "residue": "LYS",
+                        "seq_index": 120
                     },
                     {
-                        "id": "LYS",
-                        "index": 119
+                        "residue": "GLU",
+                        "seq_index": 441
                     },
                     {
-                        "id": "PRO",
-                        "index": 441
+                        "residue": "PRO",
+                        "seq_index": 442
                     },
                     {
-                        "id": "GLN",
-                        "index": 442
+                        "residue": "GLN",
+                        "seq_index": 443
                     },
                     {
-                        "id": "GLN",
-                        "index": 443
+                        "residue": "GLN",
+                        "seq_index": 444
                     },
                     {
-                        "id": "PRO",
-                        "index": 444
+                        "residue": "PRO",
+                        "seq_index": 445
                     }
                 ]
             },
             {
-                "id": "H_H8H",
+                "id": "H_ANP",
                 "confidence": 1.0,
                 "residues": [
                     {
-                        "id": "LEU",
-                        "index": 189
+                        "residue": "LEU",
+                        "seq_index": 190
                     },
                     {
-                        "id": "GLY",
-                        "index": 190
+                        "residue": "GLY",
+                        "seq_index": 191
                     },
                     {
-                        "id": "VAL",
-                        "index": 197
+                        "residue": "GLN",
+                        "seq_index": 192
                     },
                     {
-                        "id": "ALA",
-                        "index": 209
+                        "residue": "GLY",
+                        "seq_index": 193
                     },
                     {
-                        "id": "ILE",
-                        "index": 210
+                        "residue": "CYS",
+                        "seq_index": 194
                     },
                     {
-                        "id": "LYS",
-                        "index": 211
+                        "residue": "PHE",
+                        "seq_index": 195
                     },
                     {
-                        "id": "ILE",
-                        "index": 252
+                        "residue": "GLY",
+                        "seq_index": 196
                     },
                     {
-                        "id": "THR",
-                        "index": 254
+                        "residue": "VAL",
+                        "seq_index": 198
                     },
                     {
-                        "id": "GLU",
-                        "index": 255
+                        "residue": "ALA",
+                        "seq_index": 210
                     },
                     {
-                        "id": "TYR",
-                        "index": 256
+                        "residue": "LYS",
+                        "seq_index": 212
                     },
                     {
-                        "id": "MET",
-                        "index": 257
+                        "residue": "VAL",
+                        "seq_index": 240
                     },
                     {
-                        "id": "SER",
-                        "index": 258
+                        "residue": "THR",
+                        "seq_index": 255
                     },
                     {
-                        "id": "LYS",
-                        "index": 259
+                        "residue": "GLU",
+                        "seq_index": 256
                     },
                     {
-                        "id": "GLY",
-                        "index": 260
+                        "residue": "TYR",
+                        "seq_index": 257
                     },
                     {
-                        "id": "SER",
-                        "index": 261
+                        "residue": "MET",
+                        "seq_index": 258
                     },
                     {
-                        "id": "ALA",
-                        "index": 306
+                        "residue": "SER",
+                        "seq_index": 259
                     },
                     {
-                        "id": "ASN",
-                        "index": 307
+                        "residue": "GLY",
+                        "seq_index": 261
                     },
                     {
-                        "id": "LEU",
-                        "index": 309
+                        "residue": "SER",
+                        "seq_index": 262
                     },
                     {
-                        "id": "ALA",
-                        "index": 319
+                        "residue": "ASP",
+                        "seq_index": 265
                     },
                     {
-                        "id": "ASP",
-                        "index": 320
+                        "residue": "ASP",
+                        "seq_index": 303
+                    },
+                    {
+                        "residue": "ARG",
+                        "seq_index": 305
+                    },
+                    {
+                        "residue": "ALA",
+                        "seq_index": 307
+                    },
+                    {
+                        "residue": "ASN",
+                        "seq_index": 308
+                    },
+                    {
+                        "residue": "LEU",
+                        "seq_index": 310
+                    },
+                    {
+                        "residue": "ASP",
+                        "seq_index": 321
                     }
                 ]
             }
         ],
-        "alignment_data": {
-            "query_sequence_id": "tmp1or06uio",
-            "target_sequence_id": "2h8h-assembly1.cif.gz_A",
-            "alignment_length": 444,
-            "query_sequence": "TTFVALYDYESRTETDLSFKKGERLQIVNNTEGDWWLAHSLSTGQTGYIPSNYVAPSDSIQAEEWYFGKITRRESERLLLNAENPRGTFLVRESETTKGAYCLSVSDFDNAKGLNVKHYKIRKLDSGGFYITSRTQFNSLQQLVAYYSKHADGLCHRLTTVCPTSKPQTQGLAKDAWEIPRESLRLEVKLGQGCFGEVWMGTWNGTTRVAIKTLKPGTMSPEAFLQEAQVMKKLRHEKLVQLYAVVSEEPIYIVGEYMSKGSLLDFLKGETGKYLRLPQLVDMAAQIASGMAYVERMNYVHRDLRAANILVGENLVCKVADFGLARLIEDNEYTARQGAKFPIKWTAPEAALYGRFTIKSDVWSFGILLTELTTKGRVPYPGMVNREVLDQVERGYRMPCPPECPESLHDLMCQCWRKEPEERPTFEYLQAFLEDYFTSTEPQYQPGE",
-            "query_sequence_alignment_part_start_idx": 3,
-            "query_sequence_alignment_part_end_idx": 446,
-            "query_sequence_alignment_part": "FVALYDYESRTETDLSFKKGERLQIVNNTEGDWWLAHSLSTGQTGYIPSNYVAPSDSIQAEEWYFGKITRRESERLLLNAENPRGTFLVRESETTKGAYCLSVSDFDNAKGLNVKHYKIRKLDSGGFYITSRTQFNSLQQLVAYYSKHADGLCHRLTTVCPTSKPQTQGLAKDAWEIPRESLRLEVKLGQGCFGEVWMGTWNGTTRVAIKTLKPGTMSPEAFLQEAQVMKKLRHEKLVQLYAVVSEEPIYIVGEYMSKGSLLDFLKGETGKYLRLPQLVDMAAQIASGMAYVERMNYVHRDLRAANILVGENLVCKVADFGLARLIEDNEYTARQGAKFPIKWTAPEAALYGRFTIKSDVWSFGILLTELTTKGRVPYPGMVNREVLDQVERGYRMPCPPECPESLHDLMCQCWRKEPEERPTFEYLQAFLEDYFTSTEPQYQP",
-            "template_modeling_score": 0.9994,
-            "target_sequence": "TFVALYDYESRTETDLSFKKGERLQIVNNTEGDWWLAHSLSTGQTGYIPSNYVAPSDSIQAEEWYFGKITRRESERLLLNAENPRGTFLVRESETTKGAYCLSVSDFDNAKGLNVKHYKIRKLDSGGFYITSRTQFNSLQQLVAYYSKHADGLCHRLTTVCPTSKPQTQGLAKDAWEIPRESLRLEVKLGQGCFGEVWMGTWNGTTRVAIKTLKPGTMSPEAFLQEAQVMKKLRHEKLVQLYAVVSEEPIYIVTEYMSKGSLLDFLKGETGKYLRLPQLVDMAAQIASGMAYVERMNYVHRDLRAANILVGENLVCKVADFGLARLIEDNEYTARQGAKFPIKWTAPEAALYGRFTIKSDVWSFGILLTELTTKGRVPYPGMVNREVLDQVERGYRMPCPPECPESLHDLMCQCWRKEPEERPTFEYLQAFLEDYFTSTEPQYQP",
-            "target_sequence_alignment_part_start_idx": 2,
-            "target_sequence_alignment_part_end_idx": 445,
-            "target_sequence_alignment_part": "FVALYDYESRTETDLSFKKGERLQIVNNTEGDWWLAHSLSTGQTGYIPSNYVAPSDSIQAEEWYFGKITRRESERLLLNAENPRGTFLVRESETTKGAYCLSVSDFDNAKGLNVKHYKIRKLDSGGFYITSRTQFNSLQQLVAYYSKHADGLCHRLTTVCPTSKPQTQGLAKDAWEIPRESLRLEVKLGQGCFGEVWMGTWNGTTRVAIKTLKPGTMSPEAFLQEAQVMKKLRHEKLVQLYAVVSEEPIYIVTEYMSKGSLLDFLKGETGKYLRLPQLVDMAAQIASGMAYVERMNYVHRDLRAANILVGENLVCKVADFGLARLIEDNEYTARQGAKFPIKWTAPEAALYGRFTIKSDVWSFGILLTELTTKGRVPYPGMVNREVLDQVERGYRMPCPPECPESLHDLMCQCWRKEPEERPTFEYLQAFLEDYFTSTEPQYQP"
+        "similar_sequence_alignment_data": {
+            "pdb_id": "2h8h",
+            "query_seq_aligned_part_start_idx": 2,
+            "query_seq_aligned_part_end_idx": 445,
+            "query_seq_aligned_part": "FVALYDYESRTETDLSFKKGERLQIVNNTEGDWWLAHSLSTGQTGYIPSNYVAPSDSIQAEEWYFGKITRRESERLLLNAENPRGTFLVRESETTKGAYCLSVSDFDNAKGLNVKHYKIRKLDSGGFYITSRTQFNSLQQLVAYYSKHADGLCHRLTTVCPTSKPQTQGLAKDAWEIPRESLRLEVKLGQGCFGEVWMGTWNGTTRVAIKTLKPGTMSPEAFLQEAQVMKKLRHEKLVQLYAVVSEEPIYIVTEYMSKGSLLDFLKGETGKYLRLPQLVDMAAQIASGMAYVERMNYVHRDLRAANILVGENLVCKVADFGLARLIEDNEYTARQGAKFPIKWTAPEAALYGRFTIKSDVWSFGILLTELTTKGRVPYPGMVNREVLDQVERGYRMPCPPECPESLHDLMCQCWRKEPEERPTFEYLQAFLEDYFTSTEPQYQP",
+            "similar_sequence": "TFVALYDYESRTETDLSFKKGERLQIVNNTEGDWWLAHSLSTGQTGYIPSNYVAPSDSIQAEEWYFGKITRRESERLLLNAENPRGTFLVRESETTKGAYCLSVSDFDNAKGLNVKHYKIRKLDSGGFYITSRTQFNSLQQLVAYYSKHADGLCHRLTTVCPTSKPQTQGLAKDAWEIPRESLRLEVKLGQGCFGEVWMGTWNGTTRVAIKTLKPGTMSPEAFLQEAQVMKKLRHEKLVQLYAVVSEEPIYIVTEYMSKGSLLDFLKGETGKYLRLPQLVDMAAQIASGMAYVERMNYVHRDLRAANILVGENLVCKVADFGLARLIEDNEYTARQGAKFPIKWTAPEAALYGRFTIKSDVWSFGILLTELTTKGRVPYPGMVNREVLDQVERGYRMPCPPECPESLHDLMCQCWRKEPEERPTFEYLQAFLEDYFTSTEPQYQP",
+            "similar_seq_aligned_part_start_idx": 1,
+            "similar_seq_aligned_part_end_idx": 444,
+            "similar_seq_aligned_part": "FVALYDYESRTETDLSFKKGERLQIVNNTEGDWWLAHSLSTGQTGYIPSNYVAPSDSIQAEEWYFGKITRRESERLLLNAENPRGTFLVRESETTKGAYCLSVSDFDNAKGLNVKHYKIRKLDSGGFYITSRTQFNSLQQLVAYYSKHADGLCHRLTTVCPTSKPQTQGLAKDAWEIPRESLRLEVKLGQGCFGEVWMGTWNGTTRVAIKTLKPGTMSPEAFLQEAQVMKKLRHEKLVQLYAVVSEEPIYIVTEYMSKGSLLDFLKGETGKYLRLPQLVDMAAQIASGMAYVERMNYVHRDLRAANILVGENLVCKVADFGLARLIEDNEYTARQGAKFPIKWTAPEAALYGRFTIKSDVWSFGILLTELTTKGRVPYPGMVNREVLDQVERGYRMPCPPECPESLHDLMCQCWRKEPEERPTFEYLQAFLEDYFTSTEPQYQP"
         }
     },
     {
-        "id": "6f3f",
+        "id": 1,
+        "query_sequence": "TTFVALYDYESRTETDLSFKKGERLQIVNNTEGDWWLAHSLSTGQTGYIPSNYVAPSDSIQAEEWYFGKITRRESERLLLNAENPRGTFLVRESETTKGAYCLSVSDFDNAKGLNVKHYKIRKLDSGGFYITSRTQFNSLQQLVAYYSKHADGLCHRLTTVCPTSKPQTQGLAKDAWEIPRESLRLEVKLGQGCFGEVWMGTWNGTTRVAIKTLKPGTMSPEAFLQEAQVMKKLRHEKLVQLYAVVSEEPIYIVTEYMSKGSLLDFLKGETGKYLRLPQLVDMAAQIASGMAYVERMNYVHRDLRAANILVGENLVCKVADFGLARLIEDNEYTARQGAKFPIKWTAPEAALYGRFTIKSDVWSFGILLTELTTKGRVPYPGMVNREVLDQVERGYRMPCPPECPESLHDLMCQCWRKEPEERPTFEYLQAFLEDYFTSTEPQYQPGENL",
         "binding_sites": [
             {
                 "id": "H_PTR",
                 "confidence": 1.0,
                 "residues": [
                     {
-                        "id": "ARG",
-                        "index": 75
+                        "residue": "ARG",
+                        "seq_index": 72
                     },
                     {
-                        "id": "ARG",
-                        "index": 95
+                        "residue": "ARG",
+                        "seq_index": 92
                     },
                     {
-                        "id": "GLU",
-                        "index": 96
+                        "residue": "GLU",
+                        "seq_index": 93
                     },
                     {
-                        "id": "SER",
-                        "index": 97
+                        "residue": "SER",
+                        "seq_index": 94
                     },
                     {
-                        "id": "GLU",
-                        "index": 98
+                        "residue": "GLU",
+                        "seq_index": 95
                     },
                     {
-                        "id": "THR",
-                        "index": 99
+                        "residue": "THR",
+                        "seq_index": 96
                     },
                     {
-                        "id": "CYS",
-                        "index": 105
+                        "residue": "CYS",
+                        "seq_index": 102
                     },
                     {
-                        "id": "HIS",
-                        "index": 121
+                        "residue": "HIS",
+                        "seq_index": 118
                     },
                     {
-                        "id": "TYR",
-                        "index": 122
+                        "residue": "TYR",
+                        "seq_index": 119
                     },
                     {
-                        "id": "LYS",
-                        "index": 123
+                        "residue": "LYS",
+                        "seq_index": 120
                     },
                     {
-                        "id": "GLU",
-                        "index": 444
+                        "residue": "GLU",
+                        "seq_index": 441
                     },
                     {
-                        "id": "PRO",
-                        "index": 445
+                        "residue": "PRO",
+                        "seq_index": 442
                     },
                     {
-                        "id": "GLN",
-                        "index": 446
+                        "residue": "GLN",
+                        "seq_index": 443
                     },
                     {
-                        "id": "GLN",
-                        "index": 447
+                        "residue": "GLN",
+                        "seq_index": 444
                     },
                     {
-                        "id": "PRO",
-                        "index": 448
+                        "residue": "PRO",
+                        "seq_index": 445
                     }
                 ]
             },
             {
-                "id": "H_ADP",
+                "id": "H_ANP",
                 "confidence": 1.0,
                 "residues": [
                     {
-                        "id": "LEU",
-                        "index": 193
+                        "residue": "LEU",
+                        "seq_index": 190
                     },
                     {
-                        "id": "GLY",
-                        "index": 194
+                        "residue": "GLY",
+                        "seq_index": 191
                     },
                     {
-                        "id": "GLN",
-                        "index": 195
+                        "residue": "GLN",
+                        "seq_index": 192
                     },
                     {
-                        "id": "GLY",
-                        "index": 196
+                        "residue": "GLY",
+                        "seq_index": 193
                     },
                     {
-                        "id": "CYS",
-                        "index": 197
+                        "residue": "CYS",
+                        "seq_index": 194
                     },
                     {
-                        "id": "GLY",
-                        "index": 199
+                        "residue": "PHE",
+                        "seq_index": 195
                     },
                     {
-                        "id": "GLU",
-                        "index": 200
+                        "residue": "GLY",
+                        "seq_index": 196
                     },
                     {
-                        "id": "VAL",
-                        "index": 201
+                        "residue": "VAL",
+                        "seq_index": 198
                     },
                     {
-                        "id": "ALA",
-                        "index": 213
+                        "residue": "ALA",
+                        "seq_index": 210
                     },
                     {
-                        "id": "LYS",
-                        "index": 215
+                        "residue": "LYS",
+                        "seq_index": 212
                     },
                     {
-                        "id": "VAL",
-                        "index": 243
+                        "residue": "VAL",
+                        "seq_index": 240
                     },
                     {
-                        "id": "THR",
-                        "index": 258
+                        "residue": "THR",
+                        "seq_index": 255
                     },
                     {
-                        "id": "GLU",
-                        "index": 259
+                        "residue": "GLU",
+                        "seq_index": 256
                     },
                     {
-                        "id": "TYR",
-                        "index": 260
+                        "residue": "TYR",
+                        "seq_index": 257
                     },
                     {
-                        "id": "MET",
-                        "index": 261
+                        "residue": "MET",
+                        "seq_index": 258
                     },
                     {
-                        "id": "ASN",
-                        "index": 262
+                        "residue": "SER",
+                        "seq_index": 259
                     },
                     {
-                        "id": "GLY",
-                        "index": 264
+                        "residue": "GLY",
+                        "seq_index": 261
                     },
                     {
-                        "id": "SER",
-                        "index": 265
+                        "residue": "SER",
+                        "seq_index": 262
                     },
                     {
-                        "id": "ASP",
-                        "index": 268
+                        "residue": "ASP",
+                        "seq_index": 265
                     },
                     {
-                        "id": "ARG",
-                        "index": 308
+                        "residue": "ASP",
+                        "seq_index": 303
                     },
                     {
-                        "id": "ALA",
-                        "index": 310
+                        "residue": "ARG",
+                        "seq_index": 305
                     },
                     {
-                        "id": "ASN",
-                        "index": 311
+                        "residue": "ALA",
+                        "seq_index": 307
                     },
                     {
-                        "id": "LEU",
-                        "index": 313
+                        "residue": "ASN",
+                        "seq_index": 308
                     },
                     {
-                        "id": "ALA",
-                        "index": 323
+                        "residue": "LEU",
+                        "seq_index": 310
                     },
                     {
-                        "id": "ASP",
-                        "index": 324
-                    }
-                ]
-            },
-            {
-                "id": "H_MG",
-                "confidence": 1.0,
-                "residues": [
-                    {
-                        "id": "LYS",
-                        "index": 215
-                    },
-                    {
-                        "id": "ASP",
-                        "index": 306
-                    },
-                    {
-                        "id": "ARG",
-                        "index": 308
-                    },
-                    {
-                        "id": "ASN",
-                        "index": 311
-                    },
-                    {
-                        "id": "ASP",
-                        "index": 324
-                    },
-                    {
-                        "id": "LEU",
-                        "index": 327
+                        "residue": "ASP",
+                        "seq_index": 321
                     }
                 ]
             }
         ],
-        "alignment_data": {
-            "query_sequence_id": "tmp1or06uio",
-            "target_sequence_id": "6f3f-assembly1.cif.gz_A",
-            "alignment_length": 446,
-            "query_sequence": "TTFVALYDYESRTETDLSFKKGERLQIVNNTEGDWWLAHSLSTGQTGYIPSNYVAPSDSIQAEEWYFGKITRRESERLLLNAENPRGTFLVRESETTKGAYCLSVSDFDNAKGLNVKHYKIRKLDSGGFYITSRTQFNSLQQLVAYYSKHADGLCHRLTTVCPTSKPQTQGLAKDAWEIPRESLRLEVKLGQGCFGEVWMGTWNGTTRVAIKTLKPGTMSPEAFLQEAQVMKKLRHEKLVQLYAVVSEEPIYIVGEYMSKGSLLDFLKGETGKYLRLPQLVDMAAQIASGMAYVERMNYVHRDLRAANILVGENLVCKVADFGLARLIEDNEYTARQGAKFPIKWTAPEAALYGRFTIKSDVWSFGILLTELTTKGRVPYPGMVNREVLDQVERGYRMPCPPECPESLHDLMCQCWRKEPEERPTFEYLQAFLEDYFTSTEPQYQPGE",
-            "query_sequence_alignment_part_start_idx": 1,
-            "query_sequence_alignment_part_end_idx": 446,
-            "query_sequence_alignment_part": "TTFVALYDYESRTETDLSFKKGERLQIVNNTEGDWWLAHSLSTGQTGYIPSNYVAPSDSIQAEEWYFGKITRRESERLLLNAENPRGTFLVRESETTKGAYCLSVSDFDNAKGLNVKHYKIRKLDSGGFYITSRTQFNSLQQLVAYYSKHADGLCHRLTTVCPTSKPQTQGLAKDAWEIPRESLRLEVKLGQGCFGEVWMGTWNGTTRVAIKTLKPGTMSPEAFLQEAQVMKKLRHEKLVQLYAVVSEEPIYIVGEYMSKGSLLDFLKGETGKYLRLPQLVDMAAQIASGMAYVERMNYVHRDLRAANILVGENLVCKVADFGLARLIEDNEYTARQGAKFPIKWTAPEAALYGRFTIKSDVWSFGILLTELTTKGRVPYPGMVNREVLDQVERGYRMPCPPECPESLHDLMCQCWRKEPEERPTFEYLQAFLEDYFTSTEPQYQP",
-            "template_modeling_score": 0.9709,
-            "target_sequence": "RMVTTFVALYDYESRTETDLSFKKGERLQIVNNTEGDWWLAHSLSTGQTGYIPSNYVAPSDSIQAEEWYFGKITRRESERLLLNAENPRGTFLVRESETTKGAYCLSVSDFDNAKGLNVKHYKIRKLDSGGFYITSRTQFNSLQQLVAYYSKHADGLCHRLTTVCPTSKPQTQGLAKDAWEIPRESLRLEVKLGQGCFGEVWMGTWNGTTRVAIKTLKPGTMSPEAFLQEAQVMKKLRHEKLVQLYAVVSEEPIYIVTEYMNKGSLLDFLKGETGKYLRLPQLVDMSAQIASGMAYVERMNYVHRDLRAANILVGENLVCKVADFGLARLIEDNEYTARQGAKFPIKWTAPEAALYGRFTIKSDVWSFGILLTELTTKGRVPYPGMVNREVLDQVERGYRMPCPPECPESLHDLMCQCWRKEPEERPTFEYLQAFLEDYFTSTEPQYQP",
-            "target_sequence_alignment_part_start_idx": 4,
-            "target_sequence_alignment_part_end_idx": 449,
-            "target_sequence_alignment_part": "TTFVALYDYESRTETDLSFKKGERLQIVNNTEGDWWLAHSLSTGQTGYIPSNYVAPSDSIQAEEWYFGKITRRESERLLLNAENPRGTFLVRESETTKGAYCLSVSDFDNAKGLNVKHYKIRKLDSGGFYITSRTQFNSLQQLVAYYSKHADGLCHRLTTVCPTSKPQTQGLAKDAWEIPRESLRLEVKLGQGCFGEVWMGTWNGTTRVAIKTLKPGTMSPEAFLQEAQVMKKLRHEKLVQLYAVVSEEPIYIVTEYMNKGSLLDFLKGETGKYLRLPQLVDMSAQIASGMAYVERMNYVHRDLRAANILVGENLVCKVADFGLARLIEDNEYTARQGAKFPIKWTAPEAALYGRFTIKSDVWSFGILLTELTTKGRVPYPGMVNREVLDQVERGYRMPCPPECPESLHDLMCQCWRKEPEERPTFEYLQAFLEDYFTSTEPQYQP"
+        "similar_sequence_alignment_data": {
+            "pdb_id": "6f3f",
+            "query_seq_aligned_part_start_idx": 0,
+            "query_seq_aligned_part_end_idx": 445,
+            "query_seq_aligned_part": "TTFVALYDYESRTETDLSFKKGERLQIVNNTEGDWWLAHSLSTGQTGYIPSNYVAPSDSIQAEEWYFGKITRRESERLLLNAENPRGTFLVRESETTKGAYCLSVSDFDNAKGLNVKHYKIRKLDSGGFYITSRTQFNSLQQLVAYYSKHADGLCHRLTTVCPTSKPQTQGLAKDAWEIPRESLRLEVKLGQGCFGEVWMGTWNGTTRVAIKTLKPGTMSPEAFLQEAQVMKKLRHEKLVQLYAVVSEEPIYIVTEYMSKGSLLDFLKGETGKYLRLPQLVDMAAQIASGMAYVERMNYVHRDLRAANILVGENLVCKVADFGLARLIEDNEYTARQGAKFPIKWTAPEAALYGRFTIKSDVWSFGILLTELTTKGRVPYPGMVNREVLDQVERGYRMPCPPECPESLHDLMCQCWRKEPEERPTFEYLQAFLEDYFTSTEPQYQP",
+            "similar_sequence": "RMVTTFVALYDYESRTETDLSFKKGERLQIVNNTEGDWWLAHSLSTGQTGYIPSNYVAPSDSIQAEEWYFGKITRRESERLLLNAENPRGTFLVRESETTKGAYCLSVSDFDNAKGLNVKHYKIRKLDSGGFYITSRTQFNSLQQLVAYYSKHADGLCHRLTTVCPTSKPQTQGLAKDAWEIPRESLRLEVKLGQGCFGEVWMGTWNGTTRVAIKTLKPGTMSPEAFLQEAQVMKKLRHEKLVQLYAVVSEEPIYIVTEYMNKGSLLDFLKGETGKYLRLPQLVDMSAQIASGMAYVERMNYVHRDLRAANILVGENLVCKVADFGLARLIEDNEYTARQGAKFPIKWTAPEAALYGRFTIKSDVWSFGILLTELTTKGRVPYPGMVNREVLDQVERGYRMPCPPECPESLHDLMCQCWRKEPEERPTFEYLQAFLEDYFTSTEPQYQP",
+            "similar_seq_aligned_part_start_idx": 3,
+            "similar_seq_aligned_part_end_idx": 448,
+            "similar_seq_aligned_part": "TTFVALYDYESRTETDLSFKKGERLQIVNNTEGDWWLAHSLSTGQTGYIPSNYVAPSDSIQAEEWYFGKITRRESERLLLNAENPRGTFLVRESETTKGAYCLSVSDFDNAKGLNVKHYKIRKLDSGGFYITSRTQFNSLQQLVAYYSKHADGLCHRLTTVCPTSKPQTQGLAKDAWEIPRESLRLEVKLGQGCFGEVWMGTWNGTTRVAIKTLKPGTMSPEAFLQEAQVMKKLRHEKLVQLYAVVSEEPIYIVTEYMNKGSLLDFLKGETGKYLRLPQLVDMSAQIASGMAYVERMNYVHRDLRAANILVGENLVCKVADFGLARLIEDNEYTARQGAKFPIKWTAPEAALYGRFTIKSDVWSFGILLTELTTKGRVPYPGMVNREVLDQVERGYRMPCPPECPESLHDLMCQCWRKEPEERPTFEYLQAFLEDYFTSTEPQYQP"
         }
     },
     {
-        "id": "7uy0",
+        "id": 1,
+        "query_sequence": "TTFVALYDYESRTETDLSFKKGERLQIVNNTEGDWWLAHSLSTGQTGYIPSNYVAPSDSIQAEEWYFGKITRRESERLLLNAENPRGTFLVRESETTKGAYCLSVSDFDNAKGLNVKHYKIRKLDSGGFYITSRTQFNSLQQLVAYYSKHADGLCHRLTTVCPTSKPQTQGLAKDAWEIPRESLRLEVKLGQGCFGEVWMGTWNGTTRVAIKTLKPGTMSPEAFLQEAQVMKKLRHEKLVQLYAVVSEEPIYIVTEYMSKGSLLDFLKGETGKYLRLPQLVDMAAQIASGMAYVERMNYVHRDLRAANILVGENLVCKVADFGLARLIEDNEYTARQGAKFPIKWTAPEAALYGRFTIKSDVWSFGILLTELTTKGRVPYPGMVNREVLDQVERGYRMPCPPECPESLHDLMCQCWRKEPEERPTFEYLQAFLEDYFTSTEPQYQPGENL",
         "binding_sites": [
             {
                 "id": "H_PTR",
                 "confidence": 1.0,
                 "residues": [
                     {
-                        "id": "ARG",
-                        "index": 519
+                        "residue": "ARG",
+                        "seq_index": 72
                     },
                     {
-                        "id": "ARG",
-                        "index": 519
+                        "residue": "ARG",
+                        "seq_index": 92
                     },
                     {
-                        "id": "ARG",
-                        "index": 539
+                        "residue": "GLU",
+                        "seq_index": 93
                     },
                     {
-                        "id": "ARG",
-                        "index": 539
+                        "residue": "SER",
+                        "seq_index": 94
                     },
                     {
-                        "id": "GLU",
-                        "index": 540
+                        "residue": "GLU",
+                        "seq_index": 95
                     },
                     {
-                        "id": "GLU",
-                        "index": 540
+                        "residue": "THR",
+                        "seq_index": 96
                     },
                     {
-                        "id": "SER",
-                        "index": 541
+                        "residue": "CYS",
+                        "seq_index": 102
                     },
                     {
-                        "id": "SER",
-                        "index": 541
+                        "residue": "HIS",
+                        "seq_index": 118
                     },
                     {
-                        "id": "GLU",
-                        "index": 542
+                        "residue": "TYR",
+                        "seq_index": 119
                     },
                     {
-                        "id": "GLU",
-                        "index": 542
+                        "residue": "LYS",
+                        "seq_index": 120
                     },
                     {
-                        "id": "THR",
-                        "index": 543
+                        "residue": "GLU",
+                        "seq_index": 441
                     },
                     {
-                        "id": "THR",
-                        "index": 543
+                        "residue": "PRO",
+                        "seq_index": 442
                     },
                     {
-                        "id": "SER",
-                        "index": 549
+                        "residue": "GLN",
+                        "seq_index": 443
                     },
                     {
-                        "id": "SER",
-                        "index": 549
+                        "residue": "GLN",
+                        "seq_index": 444
                     },
                     {
-                        "id": "HIS",
-                        "index": 565
-                    },
-                    {
-                        "id": "HIS",
-                        "index": 565
-                    },
-                    {
-                        "id": "TYR",
-                        "index": 566
-                    },
-                    {
-                        "id": "TYR",
-                        "index": 566
-                    },
-                    {
-                        "id": "LYS",
-                        "index": 567
-                    },
-                    {
-                        "id": "LYS",
-                        "index": 567
-                    },
-                    {
-                        "id": "PRO",
-                        "index": 888
-                    },
-                    {
-                        "id": "PRO",
-                        "index": 888
-                    },
-                    {
-                        "id": "GLN",
-                        "index": 889
-                    },
-                    {
-                        "id": "GLN",
-                        "index": 889
-                    },
-                    {
-                        "id": "GLU",
-                        "index": 890
-                    },
-                    {
-                        "id": "GLU",
-                        "index": 890
-                    },
-                    {
-                        "id": "GLU",
-                        "index": 891
-                    },
-                    {
-                        "id": "GLU",
-                        "index": 891
+                        "residue": "PRO",
+                        "seq_index": 445
                     }
                 ]
             },
             {
-                "id": "H_GOL",
+                "id": "H_ANP",
                 "confidence": 1.0,
                 "residues": [
                     {
-                        "id": "PHE",
-                        "index": 642
+                        "residue": "LEU",
+                        "seq_index": 190
                     },
                     {
-                        "id": "LYS",
-                        "index": 659
+                        "residue": "GLY",
+                        "seq_index": 191
                     },
                     {
-                        "id": "LEU",
-                        "index": 661
+                        "residue": "GLN",
+                        "seq_index": 192
                     },
                     {
-                        "id": "ASP",
-                        "index": 749
+                        "residue": "GLY",
+                        "seq_index": 193
                     },
                     {
-                        "id": "ARG",
-                        "index": 751
+                        "residue": "CYS",
+                        "seq_index": 194
                     },
                     {
-                        "id": "ASN",
-                        "index": 754
+                        "residue": "PHE",
+                        "seq_index": 195
                     },
                     {
-                        "id": "ASP",
-                        "index": 767
+                        "residue": "GLY",
+                        "seq_index": 196
                     },
                     {
-                        "id": "LEU",
-                        "index": 770
+                        "residue": "VAL",
+                        "seq_index": 198
                     },
                     {
-                        "id": "ILE",
-                        "index": 774
+                        "residue": "ALA",
+                        "seq_index": 210
                     },
                     {
-                        "id": "TYR",
-                        "index": 779
+                        "residue": "LYS",
+                        "seq_index": 212
                     },
                     {
-                        "id": "TYR",
-                        "index": 826
+                        "residue": "VAL",
+                        "seq_index": 240
                     },
                     {
-                        "id": "PRO",
-                        "index": 827
+                        "residue": "THR",
+                        "seq_index": 255
                     },
                     {
-                        "id": "GLY",
-                        "index": 828
+                        "residue": "GLU",
+                        "seq_index": 256
                     },
                     {
-                        "id": "MET",
-                        "index": 829
+                        "residue": "TYR",
+                        "seq_index": 257
                     },
                     {
-                        "id": "TYR",
-                        "index": 842
+                        "residue": "MET",
+                        "seq_index": 258
                     },
                     {
-                        "id": "MET",
-                        "index": 844
+                        "residue": "SER",
+                        "seq_index": 259
                     },
                     {
-                        "id": "PRO",
-                        "index": 845
-                    }
-                ]
-            },
-            {
-                "id": "H_GOL",
-                "confidence": 1.0,
-                "residues": [
-                    {
-                        "id": "LEU",
-                        "index": 681
-                    },
-                    {
-                        "id": "ARG",
-                        "index": 682
-                    },
-                    {
-                        "id": "HIS",
-                        "index": 683
-                    },
-                    {
-                        "id": "ASP",
-                        "index": 684
-                    },
-                    {
-                        "id": "LYS",
-                        "index": 685
-                    },
-                    {
-                        "id": "LEU",
-                        "index": 686
-                    },
-                    {
-                        "id": "VAL",
-                        "index": 687
-                    },
-                    {
-                        "id": "GLN",
-                        "index": 688
-                    },
-                    {
-                        "id": "LEU",
-                        "index": 689
-                    },
-                    {
-                        "id": "GLU",
-                        "index": 703
-                    },
-                    {
-                        "id": "LYS",
-                        "index": 764
-                    },
-                    {
-                        "id": "PHE",
-                        "index": 768
-                    }
-                ]
-            },
-            {
-                "id": "H_VSE",
-                "confidence": 1.0,
-                "residues": [
-                    {
-                        "id": "LEU",
-                        "index": 637
-                    },
-                    {
-                        "id": "GLY",
-                        "index": 638
-                    },
-                    {
-                        "id": "VAL",
-                        "index": 645
-                    },
-                    {
-                        "id": "ALA",
-                        "index": 657
-                    },
-                    {
-                        "id": "LYS",
-                        "index": 659
-                    },
-                    {
-                        "id": "MET",
-                        "index": 678
-                    },
-                    {
-                        "id": "VAL",
-                        "index": 687
-                    },
-                    {
-                        "id": "LEU",
-                        "index": 689
-                    },
-                    {
-                        "id": "ILE",
-                        "index": 700
-                    },
-                    {
-                        "id": "THR",
-                        "index": 702
-                    },
-                    {
-                        "id": "GLU",
-                        "index": 703
-                    },
-                    {
-                        "id": "PHE",
-                        "index": 704
-                    },
-                    {
-                        "id": "MET",
-                        "index": 705
-                    },
-                    {
-                        "id": "GLY",
-                        "index": 707
-                    },
-                    {
-                        "id": "SER",
-                        "index": 708
-                    },
-                    {
-                        "id": "ASP",
-                        "index": 711
-                    },
-                    {
-                        "id": "LEU",
-                        "index": 756
-                    },
-                    {
-                        "id": "ILE",
-                        "index": 765
-                    },
-                    {
-                        "id": "ALA",
-                        "index": 766
-                    },
-                    {
-                        "id": "ASP",
-                        "index": 767
-                    },
-                    {
-                        "id": "PHE",
-                        "index": 768
-                    },
-                    {
-                        "id": "LEU",
-                        "index": 770
-                    }
-                ]
-            },
-            {
-                "id": "H_CL",
-                "confidence": 1.0,
-                "residues": [
-                    {
-                        "id": "ARG",
-                        "index": 459
-                    },
-                    {
-                        "id": "SER",
-                        "index": 541
-                    },
-                    {
-                        "id": "GLU",
-                        "index": 542
-                    },
-                    {
-                        "id": "THR",
-                        "index": 543
-                    },
-                    {
-                        "id": "THR",
-                        "index": 544
-                    },
-                    {
-                        "id": "LYS",
-                        "index": 545
-                    },
-                    {
-                        "id": "GLN",
-                        "index": 615
-                    },
-                    {
-                        "id": "THR",
-                        "index": 616
-                    },
-                    {
-                        "id": "THR",
-                        "index": 654
-                    },
-                    {
-                        "id": "TYR",
-                        "index": 690
-                    }
-                ]
-            },
-            {
-                "id": "H_CME",
-                "confidence": 1.0,
-                "residues": [
-                    {
-                        "id": "PHE",
-                        "index": 704
+                        "residue": "GLY",
+                        "seq_index": 261
                     },
                     {
-                        "id": "MET",
-                        "index": 705
+                        "residue": "SER",
+                        "seq_index": 262
                     },
-                    {
-                        "id": "CYS",
-                        "index": 259
-                    },
-                    {
-                        "id": "HIS",
-                        "index": 706
-                    },
-                    {
-                        "id": "GLY",
-                        "index": 707
-                    },
-                    {
-                        "id": "VAL",
-                        "index": 757
-                    },
-                    {
-                        "id": "GLY",
-                        "index": 758
-                    },
-                    {
-                        "id": "GLU",
-                        "index": 759
-                    },
-                    {
-                        "id": "ARG",
-                        "index": 760
-                    }
-                ]
-            },
-            {
-                "id": "H_VSE",
-                "confidence": 1.0,
-                "residues": [
-                    {
-                        "id": "LEU",
-                        "index": 637
-                    },
-                    {
-                        "id": "GLY",
-                        "index": 638
-                    },
-                    {
-                        "id": "VAL",
-                        "index": 645
-                    },
-                    {
-                        "id": "ALA",
-                        "index": 657
-                    },
-                    {
-                        "id": "LYS",
-                        "index": 659
-                    },
-                    {
-                        "id": "MET",
-                        "index": 678
-                    },
-                    {
-                        "id": "VAL",
-                        "index": 687
-                    },
-                    {
-                        "id": "LEU",
-                        "index": 689
-                    },
-                    {
-                        "id": "ILE",
-                        "index": 700
-                    },
-                    {
-                        "id": "THR",
-                        "index": 702
-                    },
-                    {
-                        "id": "GLU",
-                        "index": 703
-                    },
-                    {
-                        "id": "PHE",
-                        "index": 704
-                    },
-                    {
-                        "id": "MET",
-                        "index": 705
-                    },
-                    {
-                        "id": "GLY",
-                        "index": 707
-                    },
-                    {
-                        "id": "SER",
-                        "index": 708
-                    },
-                    {
-                        "id": "ASP",
-                        "index": 711
-                    },
-                    {
-                        "id": "LEU",
-                        "index": 756
-                    },
-                    {
-                        "id": "ILE",
-                        "index": 765
-                    },
-                    {
-                        "id": "ALA",
-                        "index": 766
-                    },
-                    {
-                        "id": "ASP",
-                        "index": 767
-                    },
-                    {
-                        "id": "PHE",
-                        "index": 768
-                    },
-                    {
-                        "id": "LEU",
-                        "index": 770
-                    }
-                ]
-            },
-            {
-                "id": "H_CL",
-                "confidence": 1.0,
-                "residues": [
-                    {
-                        "id": "PHE",
-                        "index": 787
-                    },
-                    {
-                        "id": "PRO",
-                        "index": 788
-                    },
-                    {
-                        "id": "ILE",
-                        "index": 789
-                    },
-                    {
-                        "id": "LYS",
-                        "index": 790
-                    },
-                    {
-                        "id": "TRP",
-                        "index": 791
-                    },
-                    {
-                        "id": "LYS",
-                        "index": 831
-                    }
-                ]
-            },
-            {
-                "id": "H_CL",
-                "confidence": 1.0,
-                "residues": [
-                    {
-                        "id": "ARG",
-                        "index": 459
-                    },
-                    {
-                        "id": "GLN",
-                        "index": 615
-                    },
-                    {
-                        "id": "THR",
-                        "index": 616
-                    },
-                    {
-                        "id": "TYR",
-                        "index": 690
-                    }
-                ]
-            },
-            {
-                "id": "H_PO4",
-                "confidence": 1.0,
-                "residues": [
-                    {
-                        "id": "GLY",
-                        "index": 515
-                    },
-                    {
-                        "id": "LYS",
-                        "index": 516
-                    },
-                    {
-                        "id": "ILE",
-                        "index": 517
-                    },
-                    {
-                        "id": "GLY",
-                        "index": 518
-                    },
-                    {
-                        "id": "GLU",
-                        "index": 540
-                    },
-                    {
-                        "id": "SER",
-                        "index": 541
-                    },
-                    {
-                        "id": "GLU",
-                        "index": 542
-                    }
-                ]
-            },
-            {
-                "id": "H_PO4",
-                "confidence": 1.0,
-                "residues": [
                     {
-                        "id": "ILE",
-                        "index": 507
+                        "residue": "ASP",
+                        "seq_index": 265
                     },
                     {
-                        "id": "TYR",
-                        "index": 548
+                        "residue": "ASP",
+                        "seq_index": 303
                     },
                     {
-                        "id": "TYR",
-                        "index": 576
+                        "residue": "ARG",
+                        "seq_index": 305
                     },
                     {
-                        "id": "ASN",
-                        "index": 585
+                        "residue": "ALA",
+                        "seq_index": 307
                     },
                     {
-                        "id": "SER",
-                        "index": 586
+                        "residue": "ASN",
+                        "seq_index": 308
                     },
                     {
-                        "id": "VAL",
-                        "index": 587
+                        "residue": "LEU",
+                        "seq_index": 310
                     },
                     {
-                        "id": "GLN",
-                        "index": 588
+                        "residue": "ASP",
+                        "seq_index": 321
                     }
                 ]
             }
         ],
-        "alignment_data": {
-            "query_sequence_id": "tmp1or06uio",
-            "target_sequence_id": "7uy0-assembly2.cif.gz_B",
-            "alignment_length": 445,
-            "query_sequence": "TTFVALYDYESRTETDLSFKKGERLQIVNNTEGDWWLAHSLSTGQTGYIPSNYVAPSDSIQAEEWYFGKITRRESERLLLNAENPRGTFLVRESETTKGAYCLSVSDFDNAKGLNVKHYKIRKLDSGGFYITSRTQFNSLQQLVAYYSKHADGLCHRLTTVCPTSKPQTQGLAKDAWEIPRESLRLEVKLGQGCFGEVWMGTWNGTTRVAIKTLKPGTMSPEAFLQEAQVMKKLRHEKLVQLYAVVSEEPIYIVGEYMSKGSLLDFLKGETGKYLRLPQLVDMAAQIASGMAYVERMNYVHRDLRAANILVGENLVCKVADFGLARLIEDNEYTARQGAKFPIKWTAPEAALYGRFTIKSDVWSFGILLTELTTKGRVPYPGMVNREVLDQVERGYRMPCPPECPESLHDLMCQCWRKEPEERPTFEYLQAFLEDYFTSTEPQYQPGE",
-            "query_sequence_alignment_part_start_idx": 1,
-            "query_sequence_alignment_part_end_idx": 445,
-            "query_sequence_alignment_part": "TTFVALYDYESRTETDLSFKKGERLQIVNNTEGDWWLAHSLSTGQTGYIPSNYVAPSDSIQAEEWYFGKITRRESERLLLNAENPRGTFLVRESETTKGAYCLSVSDFDNAKGLNVKHYKIRKLDSGGFYITSRTQFNSLQQLVAYYSKHADGLCHRLTTVCPTSKPQTQGLAKDAWEIPRESLRLEVKLGQGCFGEVWMGTWNGTTRVAIKTLKPGTMSPEAFLQEAQVMKKLRHEKLVQLYAVVSEEPIYIVGEYMSKGSLLDFLKGETGKYLRLPQLVDMAAQIASGMAYVERMNYVHRDLRAANILVGENLVCKVADFGLARLIEDNEYTARQGAKFPIKWTAPEAALYGRFTIKSDVWSFGILLTELTTKGRVPYPGMVNREVLDQVERGYRMPCPPECPESLHDLMCQCWRKEPEERPTFEYLQAFLEDYFTSTEPQYQ",
-            "template_modeling_score": 0.9747,
-            "target_sequence": "TLFIALYDYEARTEDDLTFTKGEKFHILNNTEGDWWEARSLSSGKTGCIPSNYVAPVDSIQAEEWYFGKIGRKDAERQLLSPGNPQGAFLIRESETTKGAYSLSIRDWDQTRGDHVKHYKIRKLDMGGYYITTRVQFNSVQELVQHYMEVNDGLCNLLIAPCTIMKPQTLGLAKDAWEISRSSITLERRLGTGCFGDVWLGTWNGSTKVAVKTLKPGTMSPKAFLEEAQVMKLLRHDKLVQLYAVVSEEPIYIVTEFMCHGSLLDFLKNPEGQDLRLPQLVDMAAQVAEGMAYMERMNYIHRDLRAANILVGERLACKIADFGLARLIKDDEYNPCQGSKFPIKWTAPEAALFGRFTIKSDVWSFGILLTELITKGRIPYPGMNKREVLEQVEQGYHMPCPPGCPASLYEAMEQTWRLDPEERPTFEYLQSFLEDYFTSAEPQYEEIP",
-            "target_sequence_alignment_part_start_idx": 1,
-            "target_sequence_alignment_part_end_idx": 445,
-            "target_sequence_alignment_part": "TLFIALYDYEARTEDDLTFTKGEKFHILNNTEGDWWEARSLSSGKTGCIPSNYVAPVDSIQAEEWYFGKIGRKDAERQLLSPGNPQGAFLIRESETTKGAYSLSIRDWDQTRGDHVKHYKIRKLDMGGYYITTRVQFNSVQELVQHYMEVNDGLCNLLIAPCTIMKPQTLGLAKDAWEISRSSITLERRLGTGCFGDVWLGTWNGSTKVAVKTLKPGTMSPKAFLEEAQVMKLLRHDKLVQLYAVVSEEPIYIVTEFMCHGSLLDFLKNPEGQDLRLPQLVDMAAQVAEGMAYMERMNYIHRDLRAANILVGERLACKIADFGLARLIKDDEYNPCQGSKFPIKWTAPEAALFGRFTIKSDVWSFGILLTELITKGRIPYPGMNKREVLEQVEQGYHMPCPPGCPASLYEAMEQTWRLDPEERPTFEYLQSFLEDYFTSAEPQYE"
+        "similar_sequence_alignment_data": {
+            "pdb_id": "7uy0",
+            "query_seq_aligned_part_start_idx": 0,
+            "query_seq_aligned_part_end_idx": 446,
+            "query_seq_aligned_part": "TTFVALYDYESRTETDLSFKKGERLQIVNNTEGDWWLAHSLSTGQTGYIPSNYVAPSDSIQAEEWYFGKITRRESERLLLNAENPRGTFLVRESETTKGAYCLSVSDFDNAKGLNVKHYKIRKLDSGGFYITSRTQFNSLQQLVAYYSKHADGLCHRLTTVCPTSKPQTQGLAKDAWEIPRESLRLEVKLGQGCFGEVWMGTWNGTTRVAIKTLKPGTMSPEAFLQEAQVMKKLRHEKLVQLYAVVSEEPIYIVTEYMSKGSLLDFLKGETGKYLRLPQLVDMAAQIASGMAYVERMNYVHRDLRAANILVGENLVCKVADFGLARLIEDNEYTARQGAKFPIKWTAPEAALYGRFTIKSDVWSFGILLTELTTKGRVPYPGMVNREVLDQVERGYRMPCPPECPESLHDLMCQCWRKEPEERPTFEYLQAFLEDYFTSTEPQYQPG",
+            "similar_sequence": "TLFIALYDYEARTEDDLTFTKGEKFHILNNTEGDWWEARSLSSGKTGCIPSNYVAPVDSIQAEEWYFGKIGRKDAERQLLSPGNPQGAFLIRESETTKGAYSLSIRDWDQTRGDHVKHYKIRKLDMGGYYITTRVQFNSVQELVQHYMEVNDGLCNLLIAPCTIMKPQTLGLAKDAWEISRSSITLERRLGTGCFGDVWLGTWNGSTKVAVKTLKPGTMSPKAFLEEAQVMKLLRHDKLVQLYAVVSEEPIYIVTEFMCHGSLLDFLKNPEGQDLRLPQLVDMAAQVAEGMAYMERMNYIHRDLRAANILVGERLACKIADFGLARLIKDDEYNPCQGSKFPIKWTAPEAALFGRFTIKSDVWSFGILLTELITKGRIPYPGMNKREVLEQVEQGYHMPCPPGCPASLYEAMEQTWRLDPEERPTFEYLQSFLEDYFTSAEPQYEEIP",
+            "similar_seq_aligned_part_start_idx": 0,
+            "similar_seq_aligned_part_end_idx": 446,
+            "similar_seq_aligned_part": "TLFIALYDYEARTEDDLTFTKGEKFHILNNTEGDWWEARSLSSGKTGCIPSNYVAPVDSIQAEEWYFGKIGRKDAERQLLSPGNPQGAFLIRESETTKGAYSLSIRDWDQTRGDHVKHYKIRKLDMGGYYITTRVQFNSVQELVQHYMEVNDGLCNLLIAPCTIMKPQTLGLAKDAWEISRSSITLERRLGTGCFGDVWLGTWNGSTKVAVKTLKPGTMSPKAFLEEAQVMKLLRHDKLVQLYAVVSEEPIYIVTEFMCHGSLLDFLKNPEGQDLRLPQLVDMAAQVAEGMAYMERMNYIHRDLRAANILVGERLACKIADFGLARLIKDDEYNPCQGSKFPIKWTAPEAALFGRFTIKSDVWSFGILLTELITKGRIPYPGMNKREVLEQVEQGYHMPCPPGCPASLYEAMEQTWRLDPEERPTFEYLQSFLEDYFTSAEPQYEEI"
         }
     },
     {
-        "id": "5h09",
+        "id": 1,
+        "query_sequence": "TTFVALYDYESRTETDLSFKKGERLQIVNNTEGDWWLAHSLSTGQTGYIPSNYVAPSDSIQAEEWYFGKITRRESERLLLNAENPRGTFLVRESETTKGAYCLSVSDFDNAKGLNVKHYKIRKLDSGGFYITSRTQFNSLQQLVAYYSKHADGLCHRLTTVCPTSKPQTQGLAKDAWEIPRESLRLEVKLGQGCFGEVWMGTWNGTTRVAIKTLKPGTMSPEAFLQEAQVMKKLRHEKLVQLYAVVSEEPIYIVTEYMSKGSLLDFLKGETGKYLRLPQLVDMAAQIASGMAYVERMNYVHRDLRAANILVGENLVCKVADFGLARLIEDNEYTARQGAKFPIKWTAPEAALYGRFTIKSDVWSFGILLTELTTKGRVPYPGMVNREVLDQVERGYRMPCPPECPESLHDLMCQCWRKEPEERPTFEYLQAFLEDYFTSTEPQYQPGENL",
         "binding_sites": [
             {
                 "id": "H_PTR",
                 "confidence": 1.0,
                 "residues": [
                     {
-                        "id": "ARG",
-                        "index": 72
+                        "residue": "ARG",
+                        "seq_index": 72
                     },
                     {
-                        "id": "ARG",
-                        "index": 92
+                        "residue": "ARG",
+                        "seq_index": 92
                     },
                     {
-                        "id": "ASP",
-                        "index": 93
+                        "residue": "GLU",
+                        "seq_index": 93
                     },
                     {
-                        "id": "SER",
-                        "index": 94
+                        "residue": "SER",
+                        "seq_index": 94
                     },
                     {
-                        "id": "GLU",
-                        "index": 95
+                        "residue": "GLU",
+                        "seq_index": 95
                     },
                     {
-                        "id": "THR",
-                        "index": 96
+                        "residue": "THR",
+                        "seq_index": 96
                     },
                     {
-                        "id": "SER",
-                        "index": 102
+                        "residue": "CYS",
+                        "seq_index": 102
                     },
                     {
-                        "id": "HIS",
-                        "index": 118
+                        "residue": "HIS",
+                        "seq_index": 118
                     },
                     {
-                        "id": "TYR",
-                        "index": 119
+                        "residue": "TYR",
+                        "seq_index": 119
                     },
                     {
-                        "id": "LYS",
-                        "index": 120
+                        "residue": "LYS",
+                        "seq_index": 120
                     },
                     {
-                        "id": "SER",
-                        "index": 441
+                        "residue": "GLU",
+                        "seq_index": 441
                     },
                     {
-                        "id": "GLN",
-                        "index": 442
+                        "residue": "PRO",
+                        "seq_index": 442
                     },
                     {
-                        "id": "GLU",
-                        "index": 443
+                        "residue": "GLN",
+                        "seq_index": 443
                     },
                     {
-                        "id": "GLU",
-                        "index": 444
+                        "residue": "GLN",
+                        "seq_index": 444
+                    },
+                    {
+                        "residue": "PRO",
+                        "seq_index": 445
                     }
                 ]
             },
             {
-                "id": "H_OOO",
+                "id": "H_ANP",
                 "confidence": 1.0,
                 "residues": [
                     {
-                        "id": "LEU",
-                        "index": 189
+                        "residue": "LEU",
+                        "seq_index": 190
                     },
                     {
-                        "id": "GLY",
-                        "index": 190
+                        "residue": "GLY",
+                        "seq_index": 191
                     },
                     {
-                        "id": "ALA",
-                        "index": 191
+                        "residue": "GLN",
+                        "seq_index": 192
                     },
                     {
-                        "id": "GLY",
-                        "index": 192
+                        "residue": "GLY",
+                        "seq_index": 193
                     },
                     {
-                        "id": "VAL",
-                        "index": 197
+                        "residue": "CYS",
+                        "seq_index": 194
                     },
                     {
-                        "id": "ALA",
-                        "index": 209
+                        "residue": "PHE",
+                        "seq_index": 195
                     },
                     {
-                        "id": "LYS",
-                        "index": 211
+                        "residue": "GLY",
+                        "seq_index": 196
                     },
                     {
-                        "id": "MET",
-                        "index": 230
+                        "residue": "VAL",
+                        "seq_index": 198
                     },
                     {
-                        "id": "VAL",
-                        "index": 239
+                        "residue": "ALA",
+                        "seq_index": 210
                     },
                     {
-                        "id": "LEU",
-                        "index": 241
+                        "residue": "LYS",
+                        "seq_index": 212
                     },
                     {
-                        "id": "ILE",
-                        "index": 252
+                        "residue": "VAL",
+                        "seq_index": 240
                     },
                     {
-                        "id": "THR",
-                        "index": 254
+                        "residue": "THR",
+                        "seq_index": 255
                     },
                     {
-                        "id": "GLU",
-                        "index": 255
+                        "residue": "GLU",
+                        "seq_index": 256
                     },
                     {
-                        "id": "PHE",
-                        "index": 256
+                        "residue": "TYR",
+                        "seq_index": 257
                     },
                     {
-                        "id": "MET",
-                        "index": 257
+                        "residue": "MET",
+                        "seq_index": 258
                     },
                     {
-                        "id": "GLY",
-                        "index": 260
+                        "residue": "SER",
+                        "seq_index": 259
                     },
                     {
-                        "id": "SER",
-                        "index": 261
+                        "residue": "GLY",
+                        "seq_index": 261
                     },
                     {
-                        "id": "ASP",
-                        "index": 264
+                        "residue": "SER",
+                        "seq_index": 262
                     },
                     {
-                        "id": "ALA",
-                        "index": 306
+                        "residue": "ASP",
+                        "seq_index": 265
                     },
                     {
-                        "id": "LEU",
-                        "index": 309
+                        "residue": "ASP",
+                        "seq_index": 303
                     },
                     {
-                        "id": "ALA",
-                        "index": 319
+                        "residue": "ARG",
+                        "seq_index": 305
                     },
                     {
-                        "id": "ASP",
-                        "index": 320
+                        "residue": "ALA",
+                        "seq_index": 307
                     },
                     {
-                        "id": "PHE",
-                        "index": 321
+                        "residue": "ASN",
+                        "seq_index": 308
                     },
                     {
-                        "id": "LEU",
-                        "index": 323
+                        "residue": "LEU",
+                        "seq_index": 310
+                    },
+                    {
+                        "residue": "ASP",
+                        "seq_index": 321
                     }
                 ]
             }
         ],
-        "alignment_data": {
-            "query_sequence_id": "tmp1or06uio",
-            "target_sequence_id": "5h09-assembly1.cif.gz_A",
-            "alignment_length": 444,
-            "query_sequence": "TTFVALYDYESRTETDLSFKKGERLQIVNNTEGDWWLAHSLSTGQTGYIPSNYVAPSDSIQAEEWYFGKITRRESERLLLNAENPRGTFLVRESETTKGAYCLSVSDFDNAKGLNVKHYKIRKLDSGGFYITSRTQFNSLQQLVAYYSKHADGLCHRLTTVCPTSKPQTQGLAKDAWEIPRESLRLEVKLGQGCFGEVWMGTWNGTTRVAIKTLKPGTMSPEAFLQEAQVMKKLRHEKLVQLYAVVSEEPIYIVGEYMSKGSLLDFLKGETGKYLRLPQLVDMAAQIASGMAYVERMNYVHRDLRAANILVGENLVCKVADFGLARLIEDNEYTARQGAKFPIKWTAPEAALYGRFTIKSDVWSFGILLTELTTKGRVPYPGMVNREVLDQVERGYRMPCPPECPESLHDLMCQCWRKEPEERPTFEYLQAFLEDYFTSTEPQYQPGE",
-            "query_sequence_alignment_part_start_idx": 2,
-            "query_sequence_alignment_part_end_idx": 445,
-            "query_sequence_alignment_part": "TFVALYDYESRTETDLSFKKGERLQIVNNTEGDWWLAHSLSTGQTGYIPSNYVAPSDSIQAEEWYFGKITRRESERLLLNAENPRGTFLVRESETTKGAYCLSVSDFDNAKGLNVKHYKIRKLDSGGFYITSRTQFNSLQQLVAYYSKHADGLCHRLTTVCPTSKPQTQGLAKDAWEIPRESLRLEVKLGQGCFGEVWMGTWNGTTRVAIKTLKPGTMSPEAFLQEAQVMKKLRHEKLVQLYAVVSEEPIYIVGEYMSKGSLLDFLKGETGKYLRLPQLVDMAAQIASGMAYVERMNYVHRDLRAANILVGENLVCKVADFGLARLIEDNEYTARQGAKFPIKWTAPEAALYGRFTIKSDVWSFGILLTELTTKGRVPYPGMVNREVLDQVERGYRMPCPPECPESLHDLMCQCWRKEPEERPTFEYLQAFLEDYFTSTEPQYQ",
-            "template_modeling_score": 0.9447,
-            "target_sequence": "RIIVVALYDYEAIHHEDLSFQKGDQMVVLEESGEWWKARSLATRKEGYIPSNYVARVDSLETEEWFFKGISRKDAERQLLAPGNMLGSFMIRDSETTKGSYSLSVRDYDPRQGDTVKHYKIRTLDNGGFYISPRSTFSTLQELVDHYKKGNDGLCQKLSVPCMSSKPQKPWEKDAWEIPRESLKLEKKLGAGQFGEVWMATYNKHTKVAVKTMKPGSMSVEAFLAEANVMKTLQHDKLVKLHAVVTKEPIYIITEFMAKGSLLDFLKSDEGSKQPLPKLIDFSAQIAEGMAFIEQRNYIHRDLRAANILVSASLVCKIADFGLARVIEDNEYTAREGAKFPIKWTAPEAINFGSFTIKSDVWSFGILLMEIVTYGRIPYPGMSNPEVIRALERGYRMPRPENCPEELYNIMMRCWKNRPEERPTFEYIQSVLDDFYTATESQYEEIP",
-            "target_sequence_alignment_part_start_idx": 3,
-            "target_sequence_alignment_part_end_idx": 444,
-            "target_sequence_alignment_part": "IVVALYDYEAIHHEDLSFQKGDQMVVLE-ESGEWWKARSLATRKEGYIPSNYVARVDSLETEEWFFKGISRKDAERQLLAPGNMLGSFMIRDSETTKGSYSLSVRDYDPRQGDTVKHYKIRTLDNGGFYISPRSTFSTLQELVDHYKKGNDGLCQKLSVPCMSSKPQKPW-EKDAWEIPRESLKLEKKLGAGQFGEVWMATYNKHTKVAVKTMKPGSMSVEAFLAEANVMKTLQHDKLVKLHAVVTKEPIYIITEFMAKGSLLDFLKSDEGSKQPLPKLIDFSAQIAEGMAFIEQRNYIHRDLRAANILVSASLVCKIADFGLARVIEDNEYTAREGAKFPIKWTAPEAINFGSFTIKSDVWSFGILLMEIVTYGRIPYPGMSNPEVIRALERGYRMPRPENCPEELYNIMMRCWKNRPEERPTFEYIQSVLDDFYTATESQYE"
+        "similar_sequence_alignment_data": {
+            "pdb_id": "5h09",
+            "query_seq_aligned_part_start_idx": 1,
+            "query_seq_aligned_part_end_idx": 446,
+            "query_seq_aligned_part": "TFVALYDYESRTETDLSFKKGERLQIVNNTEGDWWLAHSLSTGQTGYIPSNYVAPSDSIQAEEWYFGKITRRESERLLLNAENPRGTFLVRESETTKGAYCLSVSDFDNAKGLNVKHYKIRKLDSGGFYITSRTQFNSLQQLVAYYSKHADGLCHRLTTVCPTSKPQTQGLAKDAWEIPRESLRLEVKLGQGCFGEVWMGTWNGTTRVAIKTLKPGTMSPEAFLQEAQVMKKLRHEKLVQLYAVVSEEPIYIVTEYMSKGSLLDFLKGETGKYLRLPQLVDMAAQIASGMAYVERMNYVHRDLRAANILVGENLVCKVADFGLARLIEDNEYTARQGAKFPIKWTAPEAALYGRFTIKSDVWSFGILLTELTTKGRVPYPGMVNREVLDQVERGYRMPCPPECPESLHDLMCQCWRKEPEERPTFEYLQAFLEDYFTSTEPQYQPG",
+            "similar_sequence": "RIIVVALYDYEAIHHEDLSFQKGDQMVVLEESGEWWKARSLATRKEGYIPSNYVARVDSLETEEWFFKGISRKDAERQLLAPGNMLGSFMIRDSETTKGSYSLSVRDYDPRQGDTVKHYKIRTLDNGGFYISPRSTFSTLQELVDHYKKGNDGLCQKLSVPCMSSKPQKPWEKDAWEIPRESLKLEKKLGAGQFGEVWMATYNKHTKVAVKTMKPGSMSVEAFLAEANVMKTLQHDKLVKLHAVVTKEPIYIITEFMAKGSLLDFLKSDEGSKQPLPKLIDFSAQIAEGMAFIEQRNYIHRDLRAANILVSASLVCKIADFGLARVIEDNEYTAREGAKFPIKWTAPEAINFGSFTIKSDVWSFGILLMEIVTYGRIPYPGMSNPEVIRALERGYRMPRPENCPEELYNIMMRCWKNRPEERPTFEYIQSVLDDFYTATESQYEEIP",
+            "similar_seq_aligned_part_start_idx": 2,
+            "similar_seq_aligned_part_end_idx": 445,
+            "similar_seq_aligned_part": "IVVALYDYEAIHHEDLSFQKGDQMVVLEE-SGEWWKARSLATRKEGYIPSNYVARVDSLETEEWFFKGISRKDAERQLLAPGNMLGSFMIRDSETTKGSYSLSVRDYDPRQGDTVKHYKIRTLDNGGFYISPRSTFSTLQELVDHYKKGNDGLCQKLSVPCMSSKPQKPW-EKDAWEIPRESLKLEKKLGAGQFGEVWMATYNKHTKVAVKTMKPGSMSVEAFLAEANVMKTLQHDKLVKLHAVVTKEPIYIITEFMAKGSLLDFLKSDEGSKQPLPKLIDFSAQIAEGMAFIEQRNYIHRDLRAANILVSASLVCKIADFGLARVIEDNEYTAREGAKFPIKWTAPEAINFGSFTIKSDVWSFGILLMEIVTYGRIPYPGMSNPEVIRALERGYRMPRPENCPEELYNIMMRCWKNRPEERPTFEYIQSVLDDFYTATESQYEEI"
         }
     }
 ]
 `;
-
 
 
 
@@ -1493,7 +1029,7 @@ export async function getDataSourceExecutorResultStatusAPI(dataSourceName: strin
 }
 
 export async function getDataSourceExecutorResultAPI(dataSourceName: string, id: string)
-	: Promise<{ data: DataSourceExecutorResult | null, errorMessages: string[] }> {
+	: Promise<{ results: Result[], errorMessages: string[] }> {
 	try {
 		// const response = await axios.get<DataSourceExecutorResult>(apiBaseUrl + `/${dataSourceName}/${id}`, {
 		// 	headers: {
@@ -1503,10 +1039,10 @@ export async function getDataSourceExecutorResultAPI(dataSourceName: string, id:
 
 		// return { data: response.data, errorMessages: [] };
 		const rawObject = JSON.parse(resultTmp);
-		const res: DataSourceExecutorResult = { proteins: camelcaseKeys(rawObject, { deep: true })};
-		return { data: res, errorMessages: [] };
+		const results: Result[] = camelcaseKeys(rawObject, { deep: true });
+		return { results, errorMessages: [] };
 	}
 	catch (error) {
-		return { data: null, errorMessages: getErrorMessages(error) };
+		return { results: [], errorMessages: getErrorMessages(error) };
 	}
 }
