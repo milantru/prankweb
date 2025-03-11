@@ -3,7 +3,7 @@ import InputPdbBlock, { InputPdbBlockData } from "./InputPdbBlock";
 import InputUniprotBlock, { InputUniprotBlockData } from "./InputUniprotBlock";
 import InputUserFileBlock, { InputUserFileBlockData, UserInputModel } from "./InputUserFileBlock";
 import InputSequenceBlock, { InputSequenceBlockData } from "./InputSequenceBlock";
-import { uploadData } from "../../../shared/services/apiCalls";
+import { uploadDataAPI } from "../../../shared/services/apiCalls";
 import { useNavigate } from "react-router-dom";
 
 enum InputMethods {
@@ -155,7 +155,7 @@ function QueryProteinForm() {
         event.preventDefault();
 
         // TODO Maybe handle error messages?
-        const { id, errorMessages } = await uploadData(formState);
+        const { id, errorMessages } = await uploadDataAPI(formState);
         if (errorMessages.length > 0) {
             console.error(errorMessages);
             return;
