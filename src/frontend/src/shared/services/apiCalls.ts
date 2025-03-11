@@ -39,11 +39,13 @@ export async function uploadDataAPI(formState: FormState): Promise<{ id: number,
 				"Content-Type": "multipart/form-data"
 			}
 		});
-
+		console.log("GOT data: " + response.data);
 		const id = response.data as number;
 		return { id: id, errorMessages: [] };
 	}
 	catch (error) {
+		console.log("ERROR");
+		console.log(error);
 		return { id: 0, errorMessages: getErrorMessages(error) };
 	}
 }
@@ -63,19 +65,19 @@ type DataStatusResponse = {
 export async function getDataSourceExecutorResultStatusAPI(dataSourceName: string, id: string)
 	: Promise<{ status: DataStatus | null, errorMessages: string[] }> {
 	try {
-		// const response = await axios.get<string>(apiBaseUrl + `/${dataSourceName}/${id}/status.json}`, {
-		// 	headers: {
-		// 		"Content-Type": "application/json"
-		// 	}
-		// });
-		// const rawObject = JSON.parse(response.data);
-		const dataStatusResponse: DataStatusResponse = JSON.parse(statusTmp);
-
-		if (dataStatusResponse.errorMessages.length > 0) {
-			return { status: null, errorMessages: dataStatusResponse.errorMessages };
+		console.log("STATUS")
+		console.log(apiBaseUrl + `/${dataSourceName}/${id}/status.json`);
+		const dataStatusResponse = await axios.get<DataStatusResponse>(apiBaseUrl + `/${dataSourceName}/${id}/status.json`, {
+			headers: {
+				"Content-Type": "application/json"
+			}
+		});
+		console.log(dataStatusResponse);
+		if (dataStatusResponse.data.errorMessages.length > 0) {
+			return { status: null, errorMessages: dataStatusResponse.data.errorMessages };
 		}
 
-		const status = dataStatusResponse.status as DataStatus;
+		const status = dataStatusResponse.data.status as DataStatus;
 		return { status: status, errorMessages: [] };
 	}
 	catch (error) {
@@ -86,15 +88,13 @@ export async function getDataSourceExecutorResultStatusAPI(dataSourceName: strin
 export async function getDataSourceExecutorResultAPI(dataSourceName: string, id: string)
 	: Promise<{ results: Result[], errorMessages: string[] }> {
 	try {
-		// const response = await axios.get<DataSourceExecutorResult>(apiBaseUrl + `/${dataSourceName}/${id}`, {
-		// 	headers: {
-		// 		"Content-Type": "application/json"
-		// 	}
-		// });
-
-		// return { data: response.data, errorMessages: [] };
-		const rawObject = JSON.parse(resultTmp);
-		const results: Result[] = camelcaseKeys(rawObject, { deep: true });
+		const response = await axios.get<object>(apiBaseUrl + `/${dataSourceName}/${id}/${id}_result.json`, {
+			headers: {
+				"Content-Type": "application/json"
+			}
+		});
+		console.log(response.data);
+		const results: Result[] = camelcaseKeys(JSON.parse(JSON.stringify(response.data)), { deep: true });
 		return { results, errorMessages: [] };
 	}
 	catch (error) {

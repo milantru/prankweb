@@ -24,7 +24,7 @@ export function MolStarWrapper() {
     async function init() {
         window.molstar = await createPluginUI(
             {
-                target: parent as HTMLElement,
+                target: parent as unknown as HTMLElement,
                 render: renderReact18,
                 spec: {
                     ...DefaultPluginUISpec(),

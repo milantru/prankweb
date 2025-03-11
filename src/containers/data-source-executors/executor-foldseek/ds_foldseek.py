@@ -26,7 +26,7 @@ os.makedirs(RESULTS_FOLDER, exist_ok=True)
 def update_status(status_file_path, id, status, message=""):
     try:
         with open(status_file_path, "w") as f:
-            json.dump({"status": status, "message": message}, f)
+            json.dump({"status": status, "errorMessages": message}, f)
     except Exception as e:
         print(f"Error updating status for {id}: {e}")
 
