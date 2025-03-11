@@ -5,6 +5,7 @@ import tempfile
 import json
 import base64
 import requests
+from enum import Enum
 
 import post_processor
 
@@ -13,19 +14,19 @@ celery = Celery('tasks', broker='amqp://guest:guest@message-broker:5672//', back
 
 RESULTS_FOLDER = "results"
 FOLDSEEK_DB = "foldseek_db/pdb"
-STATUS_MAPPING = {
-    "started": 0,
-    "completed": 1,
-    "failed": 2
-}
 INPUTS_URL = "http://apache:80/inputs/"
+
+class StatusType(Enum):
+    STARTED = 0
+    COMPLETED = 1
+    FAILED = 2
 
 os.makedirs(RESULTS_FOLDER, exist_ok=True)
 
 def update_status(status_file_path, id, status, message=""):
     try:
         with open(status_file_path, "w") as f:
-            json.dump({"status": STATUS_MAPPING[status], "message": message}, f)
+            json.dump({"status": status, "message": message}, f)
     except Exception as e:
         print(f"Error updating status for {id}: {e}")
 
@@ -39,7 +40,7 @@ def ds_foldseek(id):
     eval_folder = os.path.join(RESULTS_FOLDER, f"{id}")
     os.makedirs(eval_folder, exist_ok=True)
     status_file_path = os.path.join(eval_folder, "status.json")
-    update_status(status_file_path, id, "started")
+    update_status(status_file_path, id, StatusType.STARTED.value)
 
     try:
         pdb_url = INPUTS_URL + str(id) + "/structure.pdb"
@@ -65,16 +66,16 @@ def ds_foldseek(id):
 
         post_processor.process_foldseek_output(eval_folder, foldseek_result_file, id, query_structure_file)
 
-        update_status(status_file_path, id, "completed")
+        update_status(status_file_path, id, StatusType.COMPLETED.value)
 
     except requests.RequestException as e:
-        update_status(status_file_path, id, "failed", f"Failed to download PDB file: {str(e)}")
+        update_status(status_file_path, id, StatusType.FAILED.value, f"Failed to download PDB file: {str(e)}")
         print(f"Failed to download PDB file for {id}: {e}")
     except subprocess.CalledProcessError as e:
-        update_status(status_file_path, id, "failed", f"Foldseek crashed: {e.stderr.decode()}")
+        update_status(status_file_path, id, StatusType.FAILED.value, f"Foldseek crashed: {e.stderr.decode()}")
         print(f"Foldseek crashed for {id}: {e.stderr.decode()}")
     except Exception as e:
-        update_status(status_file_path, id, "failed", f"An unexpected error occurred: {e}")
+        update_status(status_file_path, id, StatusType.FAILED.value, f"An unexpected error occurred: {e}")
         print(f"An unexpected error occurred: {e}")
     finally:
         if query_structure_file and isinstance(query_structure_file, str) and os.path.exists(query_structure_file):

@@ -4,6 +4,7 @@ from celery import Celery
 import requests
 import json
 from time import sleep
+from enum import Enum
 
 celery = Celery('tasks', broker='amqp://guest:guest@message-broker:5672//', backend='rpc://')
 celery.conf.update({
@@ -11,9 +12,18 @@ celery.conf.update({
         "ds_foldseek": "ds_foldseek",
     }
 })
-def download_pdb_file(pdb_id, output_file):
-    url = f"https://files.rcsb.org/download/2src.pdb"
+
+FOLDSEEK_URL = "http://apache:80/foldseek/"
+
+class StatusType(Enum):
+    STARTED = 0
+    COMPLETED = 1
+    FAILED = 2
+
+def download_pdb_file(protein, output_file):
+    url = f"https://files.rcsb.org/download/{protein}.pdb"
     response = requests.get(url)
+    print(response.status_code)
     if response.status_code == 200:
         with open(output_file, 'w') as file:
             file.write(response.text)
@@ -21,36 +31,35 @@ def download_pdb_file(pdb_id, output_file):
     else:
         print(f"Download failed. HTTP status: {response.status_code}")
 
-def encode_pdb_file(filepath):
-    with open(filepath, "rb") as f:
-        encoded_string = base64.b64encode(f.read()).decode("utf-8")
-    return encoded_string
-
 @celery.task(name='metatask')
-def run_metatask(input_method, input_data, id, existed):
+def run_metatask(input_method, protein, id, existed):
 
     print("METATASK")
     
     pdb_filepath = ""
     
-    if input_method == "0":
+    if input_method == 0:
         if not os.path.exists(f"inputs/{id}"):
             os.makedirs(f"inputs/{id}")
         pdb_filepath = f"inputs/{id}/structure.pdb"
-        download_pdb_file(input_data, pdb_filepath)
+        if not os.path.exists(pdb_filepath):
+            download_pdb_file(protein, pdb_filepath)
     else:
-        print("Maybe will be supported, maybe not")
+        print("Maybe will be supported, maybe yes") # TODO
 
     if not os.path.exists(pdb_filepath):
         print(f"Error: PDB file '{pdb_filepath}' not found.")
         exit(1)
 
-    # encoded_struct = encode_pdb_file(pdb_filepath)
-
     try:
-        result = celery.send_task('ds_foldseek', args=[id], queue="ds_foldseek")
-        print(f"Task submitted successfully. Task ID: {result.id}")
-        print(f"Status: {result.status}")
+        status = requests.get(FOLDSEEK_URL + str(id) + "/status.json").json()
+        if status["status"] == StatusType.STARTED.value:
+            print("Task already running.")
+        elif status["status"] == StatusType.COMPLETED.value:
+            print("Task already completed.")
+        else:
+            result = celery.send_task('ds_foldseek', args=[id], queue="ds_foldseek")
+            print(f"Task submitted successfully. Task ID: {result.id}")
 
     except Exception as e:
         print(f"Error submitting task: {e}")

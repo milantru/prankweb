@@ -13,15 +13,22 @@ def check(key):
 def get_or_generate():
 
     input_type = request.json.get('input_type')
-    input_string = request.json.get('input_string')
+    input_protein = request.json.get('input_protein')
+    print(input_type)
+    print(input_protein)
 
-    if not input_type or not input_string:
-        return jsonify({"error": "input type or input string in missing"}), 400
+    if input_type is None or input_protein is None:
+        return jsonify({"error": "input type or input string is missing"}), 400
 
-    key = input_type + ':' + input_string
+    if input_type == 1:
+        key = "custom" + str(redis_client.get('id_counter').decode('utf-8'))
+    else:
+        key = str(input_type) + ':' + input_protein
+        
     existing_id = check(key)
 
     if existing_id:
+        print(f"Already existed: {key}")
         return jsonify({"id": existing_id.decode('utf-8'), "stored_value": key, "existed" : True}) 
 
     # Increment the ID in Redis. The key is 'id_counter'.
@@ -29,11 +36,12 @@ def get_or_generate():
     generated_id = redis_client.incr('id_counter')
 
     # Convert the ID to hexadecimal (without the '0x' prefix)
-    existing_id = hex(generated_id)[2:]
+    generated_id = hex(generated_id)[2:]
 
-    redis_client.set(key, existing_id)
+    redis_client.set(key, generated_id)
 
-    return jsonify({"id": existing_id, "stored_value": key, "existed" : False})
+    print(f"Generated ID: {generated_id} for {key}")
+    return jsonify({"id": generated_id, "stored_value": key, "existed" : False})
 
 # @app('/get', methods=['POST'])
 # def get():

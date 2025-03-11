@@ -1,6 +1,8 @@
 from celery import Celery
 from flask import Flask, request, jsonify
 import requests
+import json
+import time
 
 from Bio import SeqIO, PDB
 from io import StringIO, BytesIO
@@ -12,6 +14,9 @@ celery.conf.update({
         "metatask": "metatask",
     }
 })
+
+ID_PROVIDER_URL = "http://id-provider:5000/generate"
+
 
 def file_exists_at_url(url):
     try:
@@ -51,31 +56,55 @@ def is_input_valid(input_method, input_data):
 
 @app.route('/upload-data', methods=['POST'])
 def upload_data():
-    input_method = request.json.get('input_type')
-    input_data = request.json.get('input_string')
 
-    if not is_input_valid(input_method, input_data):
-        return jsonify({"error" : "Invalid input"})
+    input_type = int(request.form.get('input_type'))
+    print("INPUT TYPE:", input_type)
+    protein = ""
 
-    id_provider_url = "http://id-provider:5000/generate"
+    if input_type == 0:
+        input_data = json.loads(request.form.get('input_data'))
+        protein = input_data['pdbCode']
+        print("PDB Code:", protein)
+
+    elif input_type == 1:
+        input_file = request.files.get('input_file')
+        if input_file:
+            filename = str(time.time())[-5:] + "_" + input_file.filename # TODO ...
+            temp_file = f"/tmp/{filename}"
+            input_file.save(temp_file)
+            print("Saved file as:", temp_file)
+
+    elif input_type == 2:
+        input_data = json.loads(request.form.get('input_data'))
+        protein = input_data['uniprotCode']
+        print("PDB Code:", protein)
+
+    elif input_type == 3:
+        input_data = json.loads(request.form.get('input_data'))
+        protein = input_data['sequence']
+        print("Sequence:", protein)
+
+    # if not is_input_valid(input_method, input_data): # TODO...
+    #     return jsonify({"error" : "Invalid input"})
+
     payload = {
-        "input_type": input_method,
-        "input_string": input_data
+        "input_type": input_type,
+        "input_protein": protein
     }
 
-    response = requests.post(id_provider_url, json=payload)
+    response = requests.post(ID_PROVIDER_URL, json=payload)
 
     if response.status_code == 200:
         try:
             response_data = response.json()
-            result = celery.send_task('metatask', args=[input_method, input_data, response_data["id"], response_data["existed"]], queue="metatask")
+            result = celery.send_task('metatask', args=[input_type, protein, response_data["id"], response_data["existed"]], queue="metatask")
             print(f"Metatask submitted successfully. Task ID: {result.id}")
             print(f"Status: {result.status}")
 
         except Exception as e:
             print(f"Error submitting task: {e}")
         
-        return jsonify(response.json())
+        return jsonify(response_data["id"])
     else:
         return jsonify({"error": "Failed to fetch data from id-provider"}), 500
 

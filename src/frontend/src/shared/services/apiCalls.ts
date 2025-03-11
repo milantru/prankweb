@@ -2,6 +2,7 @@ import axios from "axios";
 import { FormState } from "../../pages/home/components/QueryProteinForm";
 import { apiBaseUrl } from "../constants";
 import { getErrorMessages } from "../helperFunctions/errorHandling";
+import { InputUserFileBlockData } from "../../pages/home/components/InputUserFileBlock";
 
 /**
  * Uploads data to the server and returns a unique identifier for the input.
@@ -20,12 +21,19 @@ import { getErrorMessages } from "../helperFunctions/errorHandling";
 export async function uploadData(formState: FormState): Promise<{ id: number, errorMessages: string[] }> {
 	const formData = new FormData();
 	formData.append("input_type", formState.inputMethod.toString());
-	formData.append("input_string", JSON.stringify(formState.inputBlockData));
-
+	if (formState.inputMethod === 0 || formState.inputMethod === 2 || formState.inputMethod === 3) { 
+        formData.append("input_data", JSON.stringify(formState.inputBlockData));
+    } else if (formState.inputMethod === 1) { 
+        formData.append("input_file", (formState.inputBlockData as InputUserFileBlockData).userFile as File);
+    }
+	console.log("Sending FormData:");
+	for (let pair of formData.entries()) {
+		console.log(pair[0] + ": " + pair[1]);
+	}
 	try {
 		const response = await axios.post<number>(apiBaseUrl + "/upload-data", formData, {
 			headers: {
-				"Content-Type": "application/json"
+				"Content-Type": "multipart/form-data"
 			}
 		});
 
