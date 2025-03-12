@@ -52,14 +52,21 @@ def run_metatask(input_method, protein, id, existed):
         exit(1)
 
     try:
-        status = requests.get(FOLDSEEK_URL + str(id) + "/status.json").json()
-        if status["status"] == StatusType.STARTED.value:
+        response = requests.get(FOLDSEEK_URL + str(id) + "/status.json")
+        response.raise_for_status()
+        status = response.json()
+        
+        if status.get("status") == StatusType.STARTED.value:
             print("Task already running.")
-        elif status["status"] == StatusType.COMPLETED.value:
+        elif status.get("status") == StatusType.COMPLETED.value:
             print("Task already completed.")
         else:
-            result = celery.send_task('ds_foldseek', args=[id], queue="ds_foldseek")
-            print(f"Task submitted successfully. Task ID: {result.id}")
+            raise KeyError
+
+    except (requests.exceptions.HTTPError, KeyError):  
+        # If file is missing (404), or missing "status" key → Submit task
+        result = celery.send_task('ds_foldseek', args=[id], queue="ds_foldseek")
+        print(f"Task submitted successfully. Task ID: {result.id}")
 
     except Exception as e:
         print(f"Error submitting task: {e}")
