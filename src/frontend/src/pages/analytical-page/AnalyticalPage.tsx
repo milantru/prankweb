@@ -87,6 +87,7 @@ function AnalyticalPage() {
 
 	useInterval(() => {
 		async function fetchDataFromDataSource(dataSourceIndex: number) {
+			console.log("Polling data source executor: " + dataSourceExecutors[dataSourceIndex].name);
 			isFetching[dataSourceIndex] = true;
 			const {
 				status,
@@ -99,6 +100,7 @@ function AnalyticalPage() {
 				isFetching[dataSourceIndex] = false;
 				return;
 			}
+			console.log("Status:" + status)
 			if (status !== DataStatus.Completed) {
 				isFetching[dataSourceIndex] = false;
 				return;
@@ -117,7 +119,7 @@ function AnalyticalPage() {
 				isFetching[dataSourceIndex] = false;
 				return;
 			}
-
+			console.log("Results:" + results)
 			dataSourceExecutors[dataSourceIndex].results = results;
 			// Data was received, its state won't change, so polling is not required anymore
 			isPollingFinished[dataSourceIndex] = true;

@@ -1,0 +1,4 @@
+celery
+flask
+requests
+biopython

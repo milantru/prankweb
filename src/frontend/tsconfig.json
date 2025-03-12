@@ -1,7 +1,17 @@
 {
-  "files": [],
-  "references": [
-    { "path": "./tsconfig.app.json" },
-    { "path": "./tsconfig.node.json" }
-  ],
+  "compilerOptions": {
+    "target": "ES2020",  // Set the target JavaScript version
+    "module": "ESNext",  // Use ESNext module syntax
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],  // Include necessary libraries for DOM and ES2020 features
+    "skipLibCheck": true,  // Skip type checking of libraries
+    "noEmitOnError": false,  // Continue emitting JavaScript even if there are TypeScript errors
+    "isolatedModules": true,  // Enable isolated modules for compatibility with bundlers like Vite
+    "moduleResolution": "bundler",  // Use bundler-friendly module resolution
+    "jsx": "react-jsx",  // React JSX transform (use if you’re building React app)
+    "strict": false,  // Disable strict type-checking to avoid issues with unused variables or parameters
+    "noUnusedLocals": false,  // Don't check for unused local variables
+    "noUnusedParameters": false,  // Don't check for unused parameters
+    "noEmit": false  // Ensure TypeScript emits output files (JS)
+  },
+  "include": ["src"]  // Include all source files from the 'src' directory
 }

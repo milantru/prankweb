@@ -1,13 +1,11 @@
 services:
   message-broker:
     build:
-      context: ./
-      dockerfile: ./containers/message-broker/Dockerfile
+      context: ./containers/message-broker/
+      #dockerfile: ./containers/message-broker/Dockerfile
+    hostname: "message-broker"
     container_name: message-broker
     restart: always
-    ports:
-      - "5672:5672"
-      - "15672:15672"
     volumes:
       - rabbitmq:/var/lib/rabbitmq
 
@@ -26,18 +24,21 @@ services:
       - "80:80"
     volumes:
       - foldseek:/usr/local/apache2/htdocs/foldseek
+      - inputs:/usr/local/apache2/htdocs/inputs
+    command: httpd -D FOREGROUND
 
   id-provider:
     build:
-      context: ./
-      dockerfile: ./containers/id-provider/Dockerfile
+      context: ./containers/id-provider/
+      #dockerfile: ./containers/id-provider/Dockerfile
     container_name: id-provider
     depends_on:
       - id-database
-    command: python id-provider.py
+    volumes:
+      - ./containers/id-provider/id-provider.py:/app/id-provider.py
+    command: python -u id-provider.py
 
   gateway:
-    image: gateway
     build:
       context: ./
       dockerfile: ./containers/gateway/Dockerfile
@@ -45,42 +46,50 @@ services:
     depends_on:
       - http-server
     ports:
-      - "8000:8000"
+      - "8081:8081"
 
   http-server:
     build:
-      context: ./
-      dockerfile: ./containers/http-server/Dockerfile
+      context: ./containers/http-server/
+      #dockerfile: ./containers/http-server/Dockerfile
     container_name: http-server
     depends_on:
       - id-provider
       - message-broker
-    command: python http-server.py
+    volumes:
+      - ./containers/http-server/http-server.py:/app/http-server.py
+    command: python -u http-server.py
 
   ds-foldseek:
     build:
-      context: ./
-      dockerfile: ./containers/data-source-executors/executor-foldseek
-    container_name: data-source
+      context: ./containers/data-source-executors/executor-foldseek/
+      #dockerfile: ./containers/data-source-executors/executor-foldseek/Dockerfile
+    container_name: ds-foldseek
     restart: always
     depends_on:
       - message-broker
     volumes:
-      - foldseek:/app/
-    command: 
+      - foldseek:/app/results
+      - ./containers/data-source-executors/executor-foldseek/ds_foldseek.py:/app/ds_foldseek.py
+      - ./containers/data-source-executors/executor-foldseek/post_processor.py:/app/post_processor.py
+    command: celery --app=ds_foldseek worker --queues=ds_foldseek --loglevel=debug
 
-  provider:
-    image: provider
+  metatask:
     build:
-      context: ./provider
-    container_name: provider
-    restart: "no"
+      context: ./containers/metatask/
+      #dockerfile: ./containers/metatask/Dockerfile
+    container_name: metatask
+    restart: "always"
     depends_on:
       - message-broker
-      - data-source
-      - web-server
+      - ds-foldseek
+    volumes:
+      - inputs:/app/inputs
+      - ./containers/metatask/metatask.py:/app/metatask.py
+    command: celery --app=metatask worker --queues=metatask --loglevel=debug
 
 volumes:
   rabbitmq:
   redis:
   foldseek:
+  inputs:
