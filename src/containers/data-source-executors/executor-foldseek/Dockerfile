@@ -18,5 +18,5 @@ ENV PATH="/app/foldseek/bin/:$PATH"
 
 RUN mkdir -p /app/uploads /app/results /app/foldseek_db
 
-# RUN foldseek databases PDB /app/foldseek_db/pdb /app/foldseek_db/tmp && \
-#     foldseek createindex /app/foldseek_db/pdb /app/foldseek_db/tmp
+RUN foldseek databases PDB /app/foldseek_db/pdb /app/foldseek_db/tmp && \
+    foldseek createindex /app/foldseek_db/pdb /app/foldseek_db/tmp
