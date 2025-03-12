@@ -23,7 +23,7 @@ import { InputUserFileBlockData } from "../../pages/home/components/InputUserFil
  */
 export async function uploadDataAPI(formState: FormState): Promise<{ id: number, errorMessages: string[] }> {
 	const formData = new FormData();
-	// formData.append("input_method", formState.inputMethod.toString());
+	// formData.append("inputMethod", formState.inputMethod.toString());
 	// // Add input block data to form data
 	// Object.entries(formState.inputBlockData).forEach(([key, value]) => {
 	// 	formData.append(key, value instanceof File ? value : value.toString());
