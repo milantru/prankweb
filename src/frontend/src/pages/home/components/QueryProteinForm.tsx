@@ -20,14 +20,19 @@ type InputBlockData = InputPdbBlockData
 
 export type FormState = {
     inputMethod: InputMethods;
-    inputBlockData: InputBlockData
+    inputBlockData: Record<InputMethods, InputBlockData>
 };
 
 function QueryProteinForm() {
     const [formState, setFormState] = useState<FormState>({
         inputMethod: InputMethods.InputPdbBlock,
-        inputBlockData: getInputBlockInitialData(InputMethods.InputPdbBlock)
+        inputBlockData: Object.fromEntries(
+            Object.values(InputMethods)
+                .filter(im => typeof im === "number") // Filter out non-numeric values (in case of reverse mapping)
+                .map(im => [im, getInputBlockInitialData(im)])
+        ) as Record<InputMethods, InputBlockData>
     });
+    const [errorMessage, setErrorMessage] = useState<string>("");
     const navigate = useNavigate();
 
     return (
@@ -74,13 +79,14 @@ function QueryProteinForm() {
                     <hr />
                     {getInputBlock(formState.inputMethod)}
                 </div>
-                <div className="card-footer" id="message" style={{ display: "none" }}>
-                    {/* TODO Q What is this? */}
-                    {/* Messages are here. */}
-                </div>
+                {errorMessage.length > 0 && (
+                    <div className="card-footer" id="message">
+                        {errorMessage}
+                    </div>
+                )}
             </div>
             <div>
-                <button type="submit" className="btn btn-primary float-right" id="submit-button">
+                <button type="submit" className="btn btn-primary float-right" id="submit-button" disabled={errorMessage.length > 0}>
                     Submit
                 </button>
             </div>
@@ -92,14 +98,14 @@ function QueryProteinForm() {
             case InputMethods.InputPdbBlock:
                 const inputPdbBlockData: InputPdbBlockData = {
                     pdbCode: "",
-                    useOriginalStructure: true,
+                    chains: "",
                     useConservation: true
                 };
                 return inputPdbBlockData;
             case InputMethods.InputUserFileBlock:
                 const inputUserFileBlockData: InputUserFileBlockData = {
                     userFile: null,
-                    userFileChains: "",
+                    chains: "",
                     userInputModel: UserInputModel.ConservationHmm
                 };
                 return inputUserFileBlockData;
@@ -121,19 +127,34 @@ function QueryProteinForm() {
     }
 
     function getInputBlock(inputMethod: InputMethods) {
+        const setData = (data: InputBlockData) => {
+            const inputBlockData = formState.inputBlockData;
+            inputBlockData[inputMethod] = data;
+
+            setFormState({ ...formState, inputBlockData: inputBlockData });
+        };
+
         switch (inputMethod) {
             case InputMethods.InputPdbBlock:
-                return <InputPdbBlock data={formState.inputBlockData as InputPdbBlockData}
-                    setData={data => setFormState({ ...formState, inputBlockData: data })} />;
+                return <InputPdbBlock
+                    data={formState.inputBlockData[inputMethod] as InputPdbBlockData}
+                    setData={setData}
+                    setErrorMessage={setErrorMessage} />;
             case InputMethods.InputUserFileBlock:
-                return <InputUserFileBlock data={formState.inputBlockData as InputUserFileBlockData}
-                    setData={data => setFormState({ ...formState, inputBlockData: data })} />;
+                return <InputUserFileBlock
+                    data={formState.inputBlockData[inputMethod] as InputUserFileBlockData}
+                    setData={setData}
+                    setErrorMessage={setErrorMessage} />;
             case InputMethods.InputUniprotBlock:
-                return <InputUniprotBlock data={formState.inputBlockData as InputUniprotBlockData}
-                    setData={data => setFormState({ ...formState, inputBlockData: data })} />;
+                return <InputUniprotBlock
+                    data={formState.inputBlockData[inputMethod] as InputUniprotBlockData}
+                    setData={setData}
+                    setErrorMessage={setErrorMessage} />;
             case InputMethods.InputSequenceBlock:
-                return <InputSequenceBlock data={formState.inputBlockData as InputSequenceBlockData}
-                    setData={data => setFormState({ ...formState, inputBlockData: data })} />;
+                return <InputSequenceBlock
+                    data={formState.inputBlockData[inputMethod] as InputSequenceBlockData}
+                    setData={setData}
+                    setErrorMessage={setErrorMessage} />;
             default:
                 throw new Error("Unknown input method.");
         }
@@ -144,10 +165,7 @@ function QueryProteinForm() {
 
         setFormState(prevState => ({
             ...prevState,
-            inputMethod: newInputMethod,
-            /* Changing input method will change input block in form, 
-             * so let's also initialize the inout block state */
-            inputBlockData: getInputBlockInitialData(newInputMethod)
+            inputMethod: newInputMethod
         }));
     }
 

@@ -1,8 +1,9 @@
-import { ChangeEvent } from "react";
+import { ChangeEvent, useState } from "react";
+import { sanitizeChains } from "../../../shared/helperFunctions/validation";
 
 export type InputUserFileBlockData = {
     userFile: File | null;
-    userFileChains: string;
+    chains: string;
     userInputModel: UserInputModel;
 };
 
@@ -16,9 +17,12 @@ export enum UserInputModel {
 type Props = {
     data: InputUserFileBlockData;
     setData: (data: InputUserFileBlockData) => void;
+    setErrorMessage: (errorMessage: string) => void;
 };
 
-function InputUserFileBlock({ data, setData }: Props) {
+function InputUserFileBlock({ data, setData, setErrorMessage }: Props) {
+    const [useSpaceAsComma, setUseSpaceAsComma] = useState<boolean>(false);
+
     return (
         <div id="input-user-file-block">
             <div className="mb-3">
@@ -29,26 +33,31 @@ function InputUserFileBlock({ data, setData }: Props) {
             </div>
             <div className="mb-3">
                 <label htmlFor="user-file-chains" className="form-label">Restrict to chains</label>
-                <input type="text" className="form-control" id="user-file-chains" name="userFileChains"
-                    placeholder="A,B" title="Optional. Comma separated list of chains to analyze."
-                    value={data.userFileChains}
-                    onChange={e => setData({ ...data, userFileChains: e.target.value })} />
+                <input type="text"
+                    className="form-control"
+                    style={useSpaceAsComma ? { border: "2px solid #0d6efd", boxShadow: "0 0 10px #0d6efd" } : {}}
+                    id="user-file-chains"
+                    name="userFileChains"
+                    placeholder="A,B"
+                    title="Optional. Comma separated list of chains to analyze."
+                    value={data.chains}
+                    onChange={e => setData({ ...data, chains: sanitizeChainsWrapper(e.target.value) })} />
             </div>
             <div>
-                <input type="radio" name="user-input-model" id="user-input-model-1" 
+                <input type="radio" name="user-input-model" id="user-input-model-1"
                     value={UserInputModel.Default} onChange={selectUserInputModel}
                     checked={data.userInputModel === UserInputModel.Default}
                     title="If selected, a default prediction model will be used." />
                 <label htmlFor="user-input-model-1" className="form-label">Default prediction model</label><br />
 
-                <input type="radio" name="user-input-model" id="user-input-model-2" 
+                <input type="radio" name="user-input-model" id="user-input-model-2"
                     value={UserInputModel.ConservationHmm} onChange={selectUserInputModel}
                     checked={data.userInputModel === UserInputModel.ConservationHmm}
                     title="If selected, a default prediction model with conservation will be used." />
                 <label htmlFor="user-input-model-2" className="form-label">
                     Default model with <a href="./help#conservation" target="_blank">conservation</a></label><br />
 
-                <input type="radio" name="user-input-model" id="user-input-model-3" 
+                <input type="radio" name="user-input-model" id="user-input-model-3"
                     value={UserInputModel.Alphafold} onChange={selectUserInputModel}
                     checked={data.userInputModel === UserInputModel.Alphafold}
                     title="If selected, an AlphaFold prediction model will be used." />
@@ -75,6 +84,19 @@ function InputUserFileBlock({ data, setData }: Props) {
             ...data,
             userInputModel: Number(event.target.value) as UserInputModel
         });
+    }
+
+    function sanitizeChainsWrapper(input: string): string {
+        console.log(input);
+        let chains = input;
+        let useSpaceAsCommaTmp = useSpaceAsComma;
+        if (input.toLowerCase().includes("space")) {
+            chains = input.replace(/space/gi, ""); // remove space (due to gi, it replaces regardless of capitalization, e.g. "Space", "sPaCe"...)
+            useSpaceAsCommaTmp = !useSpaceAsComma;
+            setUseSpaceAsComma(useSpaceAsCommaTmp);
+        }
+
+        return sanitizeChains(chains, useSpaceAsCommaTmp);
     }
 }
 

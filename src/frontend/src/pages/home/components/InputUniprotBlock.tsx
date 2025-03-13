@@ -1,3 +1,5 @@
+import { sanitizeCode } from "../../../shared/helperFunctions/validation";
+
 export type InputUniprotBlockData = {
     uniprotCode: string;
     useConservation: boolean;
@@ -6,9 +8,10 @@ export type InputUniprotBlockData = {
 type Props = {
     data: InputUniprotBlockData;
     setData: (data: InputUniprotBlockData) => void;
+    setErrorMessage: (errorMessage: string) => void;
 };
 
-function InputUniprotBlock({ data, setData }: Props) {
+function InputUniprotBlock({ data, setData, setErrorMessage }: Props) {
     return (
         <div id="input-uniprot-block">
             <div className="mb-3">
@@ -16,13 +19,13 @@ function InputUniprotBlock({ data, setData }: Props) {
                 <input type="text" className="form-control" id="uniprot-code" name="uniprotCode"
                     placeholder="Q5VSL9" title="PrankWeb will use AlphaFold predicted structure."
                     value={data.uniprotCode}
-                    onChange={e => setData({...data, uniprotCode: e.target.value})} />
+                    onChange={e => setData({ ...data, uniprotCode: sanitizeCode(e.target.value) })} />
             </div>
             <div className="form-check">
                 <input className="form-check-input" type="checkbox" id="conservation-uniprot"
                     title="If checked, a model that exploits conservation will be used to classify protein binding sites."
                     checked={data.useConservation}
-                    onChange={e => setData({...data, useConservation: e.target.checked})} />
+                    onChange={e => setData({ ...data, useConservation: e.target.checked })} />
                 <label className="form-check-label" htmlFor="conservation-uniprot">
                     Use <a href="./help#conservation" target="_blank">conservation</a>
                 </label>
