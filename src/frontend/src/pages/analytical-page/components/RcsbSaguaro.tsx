@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { RcsbFv } from "@rcsb/rcsb-saguaro";
 import { ProcessedResult } from "../AnalyticalPage";
+import chroma from "chroma-js";
 
 type Props = {
     processedResult: ProcessedResult;
@@ -26,15 +27,18 @@ function RcsbSaguaro({ processedResult }: Props) {
 
     const rowConfigData = [];
     rowConfigData.push(createQuerySequenceRow(processedResult.querySequence));
-    processedResult.dataSourceExecutorsData.forEach(dseData => {
-        dseData.similarSequences.forEach((simSeq, resIdx) => {
+    for (let dseIdx = 0; dseIdx < processedResult.dataSourceExecutorsData.length; dseIdx++) {
+        const dseData = processedResult.dataSourceExecutorsData[dseIdx];
+        for (let resIdx = 0; resIdx < dseData.similarSequences.length; resIdx++) {
+            const similarSequence = dseData.similarSequences[resIdx];
             const bindingSites = dseData.bindingSites[resIdx];
 
-            rowConfigData.push(createSequenceRow(resIdx.toString(), `Similar sequence #${resIdx}`, simSeq));
+            rowConfigData.push(createSequenceRow(resIdx.toString(), `Similar sequence #${resIdx}`, similarSequence));
+
             bindingSites.forEach(bindingSite =>
-                rowConfigData.push(createBlockRow(`${resIdx}-${bindingSite.id}`, bindingSite.id, bindingSite.residues)));
-        });
-    });
+                rowConfigData.push(createBlockRow(`${resIdx}-${bindingSite.id}`, bindingSite.id, bindingSite.residues, bindingSite.confidence)));
+        }
+    }
 
     useEffect(() => {
         const pfv = new RcsbFv({
@@ -157,10 +161,38 @@ function RcsbSaguaro({ processedResult }: Props) {
         };
     }
 
-    function createBlockRow(id: string, title: string, residues: Record<string, number[]>) {
+    function stringToColor(str: string) {
+        let hash = 0;
+        for (let i = 0; i < str.length; i++) {
+            hash = (hash << 5) - hash + str.charCodeAt(i);
+        }
+
+        const color = chroma.scale("Spectral")
+                        .mode("lab")
+                        .colors(100)[Math.abs(hash) % 100];
+
+        return color;
+    }
+
+    function getResidueColor(residueName: string, confidence: number) {
+        let baseColor = stringToColor(residueName);
+
+        return chroma(baseColor).alpha(confidence).hex();
+    }
+
+    function createBlockRow(
+        id: string,
+        title: string,
+        residues: Record<string, number[]>,
+        confidence: number
+    ) {
         const trackData = [];
-        Object.entries(residues).forEach(([id, indices]) =>
-            trackData.push(...indices.map(idx => ({ begin: idx, end: idx })))
+        Object.entries(residues).forEach(([residueName, indices]) =>
+            trackData.push(...indices.map(idx => ({
+                begin: idx,
+                end: idx,
+                color: getResidueColor(residueName, confidence)
+            })))
         );
 
         return {

@@ -66,7 +66,7 @@ def extract_binding_sites(pdb_id, query_structure_file):
             if nearby_residue_index in residue_dict:
                 residue_name, seq_index = residue_dict[nearby_residue_index]
                 binding_site_residues.append({
-                    "residue": residue_name,
+                    "name": residue_name,
                     "seq_index": seq_index
                 })
         binding_site = {

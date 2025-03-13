@@ -107,3 +107,27 @@ export async function getDataSourceExecutorResultAPI(dataSourceName: string, id:
 		return { results: [], errorMessages: getErrorMessages(error) };
 	}
 }
+
+export async function getChainsForPdbCodeAPI(pdbCode: string): Promise<{ chains: string[], errorMessage: string }> {
+	const url = `https://www.ebi.ac.uk/pdbe/api/pdb/entry/molecules/${pdbCode}`;
+	const errorMessage = `Failed to fetch chains for pdb code '${pdbCode}'`;
+
+	try {
+		const response = await axios.get(url);
+		const data = response.data;
+		if (!data[pdbCode.toLowerCase()]) { // if no data is found for this pdbCode
+			return { chains: [], errorMessage: errorMessage };
+		}
+
+		const chainsSet = new Set<string>(); // set is used to avoid duplicates
+		data[pdbCode.toLowerCase()]
+			.filter(entity => entity["sequence"])
+			.forEach(entity =>
+				entity["in_chains"].forEach(chain => chainsSet.add(chain))
+			);
+
+		return { chains: Array.from(chainsSet), errorMessage: "" };
+	} catch (error) {
+		return { chains: [], errorMessage: errorMessage };
+	}
+}
