@@ -23,12 +23,18 @@ import { InputUserFileBlockData } from "../../pages/home/components/InputUserFil
  */
 export async function uploadDataAPI(formState: FormState): Promise<{ id: number, errorMessages: string[] }> {
 	const formData = new FormData();
+	// formData.append("input_method", formState.inputMethod.toString());
+	// // Add input block data to form data
+	// Object.entries(formState.inputBlockData).forEach(([key, value]) => {
+	// 	formData.append(key, value instanceof File ? value : value.toString());
+	// });
 	formData.append("input_type", formState.inputMethod.toString());
 	if (formState.inputMethod === 0 || formState.inputMethod === 2 || formState.inputMethod === 3) { 
         formData.append("input_data", JSON.stringify(formState.inputBlockData));
     } else if (formState.inputMethod === 1) { 
         formData.append("input_file", (formState.inputBlockData as InputUserFileBlockData).userFile as File);
     }
+	
 	console.log("Sending FormData:");
 	for (let pair of formData.entries()) {
 		console.log(pair[0] + ": " + pair[1]);
