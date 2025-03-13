@@ -1,6 +1,7 @@
 export type InputPdbBlockData = {
     pdbCode: string;
     useOriginalStructure: boolean;
+    chains: string
     useConservation: boolean;
 };
 

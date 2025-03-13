@@ -25,10 +25,10 @@ celery.conf.update({
 ################################## Constants ###################################
 
 class InputMethods(Enum):
-    PDB = 0
-    CUSTOM_STR = 1
-    UNIPROT = 2
-    SEQUENCE = 3
+    PDB = "0"
+    CUSTOM_STR = "1"
+    UNIPROT = "2"
+    SEQUENCE = "3"
 
 class UserInputModels(Enum):
     DEFAULT = "0"
@@ -36,7 +36,7 @@ class UserInputModels(Enum):
     ALPHAFOLD = "2"
     ALPHAFOLD_CONSERVATION_HMM = "3",
 
-PDB_FORM_FIELDS = { "pdbCode", "chains", "useConservation" }
+PDB_FORM_FIELDS = { "pdbCode", "useOriginalStructure", "chains", "useConservation" }
 CUSTOM_STR_FORM_FIELDS = { "userFileChains", "userInputModel" }
 UNIPROT_FORM_FIELDS = { "uniprotCode", "useConservation" }
 SEQUENCE_FORM_FIELDS = { "sequence", "useConservation" }
@@ -97,15 +97,15 @@ def validate_pdb(input_data):
             return f"{field} not found", None
         
     try:
-        pdb_id = input_data['pdbCode'] 
+        pdb_id = input_data['pdbCode'].lower()
         
         url = PDB_ID_URL.format(pdb_id)
         response = requests.get(url, allow_redirects=True, timeout=(3,5))
         if response.status_code != 200:
             return f"Given PDB ID({pdb_id}) not found in database", None
-        
+
         response_data = response.json()[pdb_id][0]
-        
+
         # check chains, empty list means no chain restriction
         selected_chains = set(json.loads(input_data['chains']))
         pdb_chains = set(response_data['in_chains'])
@@ -120,7 +120,8 @@ def validate_pdb(input_data):
         # append sequence to the dict
         input_data['sequence'] = response_data['sequence']
 
-    except Exception:
+    except Exception as e:
+        print(e)
         return "Unknown exception occured", None
 
     return None, pdb_id

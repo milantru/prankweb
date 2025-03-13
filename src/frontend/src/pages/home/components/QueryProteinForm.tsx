@@ -93,6 +93,7 @@ function QueryProteinForm() {
                 const inputPdbBlockData: InputPdbBlockData = {
                     pdbCode: "",
                     useOriginalStructure: true,
+                    chains: "[]",
                     useConservation: true
                 };
                 return inputPdbBlockData;
