@@ -6,9 +6,10 @@ export type InputSequenceBlockData = {
 type Props = {
     data: InputSequenceBlockData;
     setData: (data: InputSequenceBlockData) => void;
+    setErrorMessage: (errorMessage: string) => void;
 };
 
-function InputSequenceBlock({ data, setData }: Props) {
+function InputSequenceBlock({ data, setData, setErrorMessage }: Props) {
     const placeholderSequence = "XMTEYKLVVVGAGGVGKSALTIQLIQNHFVDEYDPTIEDSYRKQVVIDGETCLLDILDTAGQ" +
         "EEYSAMRDQYMRTGEGFLCVFAINNTKSFEDIHQYREQIKRVKDSDDVPMVLVGNKCDLAA" +
         "RTVESRQAQDLARSYGIPYIETSAKTRQGVEDAFYTLVREIRQHKLRKLNPPDESGPGCMSCKCVLSABC";

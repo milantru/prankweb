@@ -3,14 +3,14 @@ function Navigation() {
         <nav role="navigation" aria-label="main" className="navbar navbar-expand-md navbar-light bg-light">
             <div className="container" id="navigation">
                 <a className="navbar-brand" href="./">
-                    <img src="assets/images/logo-p2rank.svg" style={{ height: "1.4em" }} />
+                    <img src="assets/images/logo-p2rank.svg" style={{ height: "1.4em" }} alt="Logo" />
                 </a>
-                <button className="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavBar"
+                <button className="navbar-toggler" type="button" data-toggle="collapse" data-target="#mainNavBar"
                     aria-controls="mainNavBar" aria-expanded="false" aria-label="Toggle navigation">
                     <span className="navbar-toggler-icon"></span>
                 </button>
                 <div className="collapse navbar-collapse" id="mainNavBar">
-                    <ul className="navbar-nav ms-auto mb-2 mb-md-0">
+                    <ul className="navbar-nav ml-auto mb-2 mb-md-0">
                         <li className="nav-item">
                             <a className="nav-link" href="./about" target="_blank" rel="nofollow noopener noreferrer">
                                 About
@@ -31,7 +31,7 @@ function Navigation() {
                 </div>
             </div>
         </nav>
-    )
+    );
 }
 
 export default Navigation;

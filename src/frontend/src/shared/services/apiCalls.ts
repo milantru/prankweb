@@ -29,12 +29,12 @@ export async function uploadDataAPI(formState: FormState): Promise<{ id: number,
 	// 	formData.append(key, value instanceof File ? value : value.toString());
 	// });
 	formData.append("input_type", formState.inputMethod.toString());
-	if (formState.inputMethod === 0 || formState.inputMethod === 2 || formState.inputMethod === 3) { 
-        formData.append("input_data", JSON.stringify(formState.inputBlockData));
-    } else if (formState.inputMethod === 1) { 
-        formData.append("input_file", (formState.inputBlockData as InputUserFileBlockData).userFile as File);
-    }
-	
+	if (formState.inputMethod === 0 || formState.inputMethod === 2 || formState.inputMethod === 3) {
+		formData.append("input_data", JSON.stringify(formState.inputBlockData));
+	} else if (formState.inputMethod === 1) {
+		formData.append("input_file", (formState.inputBlockData as InputUserFileBlockData).userFile as File);
+	}
+
 	console.log("Sending FormData:");
 	for (let pair of formData.entries()) {
 		console.log(pair[0] + ": " + pair[1]);
@@ -105,5 +105,29 @@ export async function getDataSourceExecutorResultAPI(dataSourceName: string, id:
 	}
 	catch (error) {
 		return { results: [], errorMessages: getErrorMessages(error) };
+	}
+}
+
+export async function getChainsForPdbCodeAPI(pdbCode: string): Promise<{ chains: string[], errorMessage: string }> {
+	const url = `https://www.ebi.ac.uk/pdbe/api/pdb/entry/molecules/${pdbCode}`;
+	const errorMessage = `Failed to fetch chains for pdb code '${pdbCode}'`;
+
+	try {
+		const response = await axios.get(url);
+		const data = response.data;
+		if (!data[pdbCode.toLowerCase()]) { // if no data is found for this pdbCode
+			return { chains: [], errorMessage: errorMessage };
+		}
+
+		const chainsSet = new Set<string>(); // set is used to avoid duplicates
+		data[pdbCode.toLowerCase()]
+			.filter(entity => entity["sequence"])
+			.forEach(entity =>
+				entity["in_chains"].forEach(chain => chainsSet.add(chain))
+			);
+
+		return { chains: Array.from(chainsSet), errorMessage: "" };
+	} catch (error) {
+		return { chains: [], errorMessage: errorMessage };
 	}
 }
