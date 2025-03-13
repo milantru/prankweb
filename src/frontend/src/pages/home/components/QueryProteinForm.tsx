@@ -80,7 +80,7 @@ function QueryProteinForm() {
                 </div>
             </div>
             <div>
-                <button type="submit" className="btn btn-primary float-md-end" id="submit-button">
+                <button type="submit" className="btn btn-primary float-right" id="submit-button">
                     Submit
                 </button>
             </div>
