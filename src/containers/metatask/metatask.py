@@ -19,6 +19,7 @@ celery.conf.update({
 
 FOLDSEEK_URL = "http://apache:80/foldseek/"
 PDB_FILE_URL = "https://files.rcsb.org/download/{}.pdb"
+UNIPROT_FILE_URL = "https://alphafold.ebi.ac.uk/files/AF-{}-F1-model_v4.pdb"
 
 
 class StatusType(Enum):
@@ -26,8 +27,8 @@ class StatusType(Enum):
     COMPLETED = 1
     FAILED = 2
 
-def download_pdb_file(pdb_id, output_file):
-    url = PDB_FILE_URL.format(pdb_id)
+def download_pdb_file(protein_id, output_file, input_method):
+    url = PDB_FILE_URL.format(protein_id) if input_method == '0' else UNIPROT_FILE_URL.format(protein_id)
     response = requests.get(url)
     print(response.status_code)
     if response.status_code == 200:
@@ -47,13 +48,14 @@ def save_sequence_to_fasta(sequence, pdb_id, output_file):
     except Exception as e:
         print(f"Saving fsequence to fasta format failed: {e}")
 
-@celery.task(name='metatask_PDB')
+@celery.task(name='metatask_PDB/UNIPROT')
 def run_metatask_pdb(input_data):
 
-    print("METATASK PDB")
+    print("METATASK PDB/UNIPROT")
 
+    input_method = input_data['input_method']
     task_id = input_data["id"]
-    pdb_id  = input_data["pdb_code"]
+    protein_id  = input_data["pdb_code"] if 'pdb_code' in input_data else input_data["uniprot_code"] 
     
     if not os.path.exists(f"inputs/{task_id}"):
         os.makedirs(f"inputs/{task_id}")
@@ -61,7 +63,7 @@ def run_metatask_pdb(input_data):
     # download pdb file
     filepath = f"inputs/{str(task_id)}/structure.pdb"
     if not os.path.exists(filepath):
-        download_pdb_file(pdb_id, filepath)
+        download_pdb_file(protein_id, filepath, input_method)
 
     if not os.path.exists(filepath):
         print(f"Error: PDB file '{filepath}' not found.")
@@ -70,7 +72,7 @@ def run_metatask_pdb(input_data):
     # save sequence
     filepath = f"inputs/{task_id}/sequence.fasta"
     if not os.path.exists(filepath):
-        save_sequence_to_fasta(input_data['sequence'], pdb_id, filepath)
+        save_sequence_to_fasta(input_data['sequence'], protein_id, filepath)
 
     if not os.path.exists(filepath):
         print(f"Error: FASTA file '{filepath}' not saved.")

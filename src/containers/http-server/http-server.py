@@ -3,6 +3,7 @@ from flask import Flask, request, jsonify
 import requests
 import json
 import humps
+import time
 
 from Bio import SeqIO, PDB
 from io import StringIO, BytesIO
@@ -32,12 +33,12 @@ class InputMethods(Enum):
 
 class UserInputModels(Enum):
     DEFAULT = "0"
-    CONSERVATION_HMM = "1",
+    CONSERVATION_HMM = "1"
     ALPHAFOLD = "2"
-    ALPHAFOLD_CONSERVATION_HMM = "3",
+    ALPHAFOLD_CONSERVATION_HMM = "3"
 
 PDB_FORM_FIELDS = { "pdbCode", "chains", "useConservation" }
-CUSTOM_STR_FORM_FIELDS = { "userFileChains", "userInputModel" }
+CUSTOM_STR_FORM_FIELDS = { "chains", "userInputModel" }
 UNIPROT_FORM_FIELDS = { "uniprotCode", "useConservation" }
 SEQUENCE_FORM_FIELDS = { "sequence", "useConservation" }
 
@@ -73,9 +74,7 @@ def _try_parse_pdb(pdb_file, user_chains):
     
     try:
         parser = PDB.PDBParser(PERMISSIVE=False)
-        pdb_data = pdb_file.read()  # Get the file's raw byte content
-        pdb_fh = BytesIO(pdb_data)  # Convert bytes to a file-like object
-        structure = parser.get_structure("Custom structure", pdb_fh)  
+        structure = parser.get_structure("Custom structure", pdb_file)  
 
         file_chains = set()  # To avoid duplicates
         for model in structure:
@@ -85,7 +84,8 @@ def _try_parse_pdb(pdb_file, user_chains):
         if not user_chains <= file_chains:
             return "Wrong chains selected"
     
-    except:
+    except Exception as e:
+        print(e)
         return "Wrong file format"
     
     return None
@@ -106,7 +106,7 @@ def validate_pdb(input_data):
 
         response_data = response.json()[pdb_id][0]
 
-        # check chains, empty list means no chain restriction
+        # check chains, empty string means no chain restriction
         chains_str = input_data['chains']
         selected_chains = set((chains_str.split(',') if chains_str else []))
         pdb_chains = set(response_data['in_chains'])
@@ -141,19 +141,26 @@ def validate_custom_str(input_data, input_file):
     if not any(model.value == user_input_model for model in UserInputModels):
         return "Selected input model not supported", None
 
+    # save file to tmp folder
+    tmp_file = f"/tmp/{str(time.time())[-5:] + '_' + input_file.filename}"
+    input_file.save(tmp_file)
+
     # try to parse pdb and check selected chains
-    user_chains = set(json.loads(input_data['userFileChains']))
-    err = _try_parse_pdb(input_file, user_chains)
+    chains_str = input_data['chains']
+    selected_chains = set((chains_str.split(',') if chains_str else []))
+    err = _try_parse_pdb(tmp_file, selected_chains)
     return err, None
+    
+    
 
 def validate_uniprot(input_data):
     
-    for field in SEQUENCE_FORM_FIELDS:
+    for field in UNIPROT_FORM_FIELDS:
         if field not in input_data:
             return f"{field} not found", None
         
     try:
-        uniprot_id = input_data['uniprotCode'] 
+        uniprot_id = input_data['uniprotCode']
         
         url = UNIPROT_ID_URL.format(uniprot_id)
         response = requests.get(url, allow_redirects=True, timeout=(3,5))
@@ -236,7 +243,7 @@ def upload_data():
     try:
         # send task
         result = celery.send_task(
-            f'metatask_{InputMethods(input_method).name}',
+            'metatask_PDB/UNIPROT',
             args=[metatask_payload],
             queue="metatask"
         )
