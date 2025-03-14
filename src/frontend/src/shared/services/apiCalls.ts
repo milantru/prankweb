@@ -1,10 +1,9 @@
 import axios from "axios";
-import { FormState } from "../../pages/home/components/QueryProteinForm";
+import { InputBlockData, InputMethods } from "../../pages/home/components/QueryProteinForm";
 import { apiBaseUrl } from "../constants";
 import { getErrorMessages } from "../helperFunctions/errorHandling";
 import { Result } from "../../pages/analytical-page/AnalyticalPage";
 import camelcaseKeys from "camelcase-keys";
-
 import { InputUserFileBlockData } from "../../pages/home/components/InputUserFileBlock";
 
 /**
@@ -13,26 +12,22 @@ import { InputUserFileBlockData } from "../../pages/home/components/InputUserFil
  * Each unique input receives a corresponding unique ID. If the same input is uploaded multiple times, 
  * it will receive the same ID. However, in case of the "custom structure input method," each upload 
  * is treated as a new input, and a new ID is provided regardless of the input content.
- *
- * @param {FormState} formState - The state containing input data and the selected input method.
- * @returns {Promise<{ id: number, errorMessages: string[] }>} 
- *          - `id`: A unique identifier assigned to the input by the server.
- *          - `errorMessages`: An array of error messages if the upload fails; otherwise, an empty array.
- *
- * @throws This function does not throw errors directly; instead, errors are captured and returned in `errorMessages`.
  */
-export async function uploadDataAPI(formState: FormState): Promise<{ id: number, errorMessages: string[] }> {
+export async function uploadDataAPI(
+	inputMethod: InputMethods,
+	inputBlockData: InputBlockData
+): Promise<{ id: number, errorMessage: string }> {
 	const formData = new FormData();
-	// formData.append("inputMethod", formState.inputMethod.toString());
+	// formData.append("inputMethod", inputMethod.toString());
 	// // Add input block data to form data
-	// Object.entries(formState.inputBlockData).forEach(([key, value]) => {
+	// Object.entries(inputBlockData).forEach(([key, value]) => {
 	// 	formData.append(key, value instanceof File ? value : value.toString());
 	// });
-	formData.append("input_type", formState.inputMethod.toString());
-	if (formState.inputMethod === 0 || formState.inputMethod === 2 || formState.inputMethod === 3) {
-		formData.append("input_data", JSON.stringify(formState.inputBlockData));
-	} else if (formState.inputMethod === 1) {
-		formData.append("input_file", (formState.inputBlockData as InputUserFileBlockData).userFile as File);
+	formData.append("input_type", inputMethod.toString());
+	if (inputMethod === 1) {
+		formData.append("input_file", (inputBlockData as InputUserFileBlockData).userFile as File);
+	} else {
+		formData.append("input_data", JSON.stringify(inputBlockData));
 	}
 
 	console.log("Sending FormData:");
@@ -47,12 +42,17 @@ export async function uploadDataAPI(formState: FormState): Promise<{ id: number,
 		});
 		console.log("GOT data: " + response.data);
 		const id = response.data as number;
-		return { id: id, errorMessages: [] };
+		return { id: id, errorMessage: "" };
 	}
 	catch (error) {
 		console.log("ERROR");
 		console.log(error);
-		return { id: 0, errorMessages: getErrorMessages(error) };
+		const errorMessages = getErrorMessages(error);
+		for (const errorMessage of errorMessages) {
+			console.error(errorMessage);
+		}
+		const userFriendylErrorMessage = "Failed to upload data to the server.";
+		return { id: 0, errorMessage: userFriendylErrorMessage };
 	}
 }
 

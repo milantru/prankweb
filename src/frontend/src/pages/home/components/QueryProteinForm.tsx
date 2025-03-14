@@ -5,20 +5,21 @@ import InputUserFileBlock, { InputUserFileBlockData, UserInputModel } from "./In
 import InputSequenceBlock, { InputSequenceBlockData } from "./InputSequenceBlock";
 import { uploadDataAPI } from "../../../shared/services/apiCalls";
 import { useNavigate } from "react-router-dom";
+import { validatePdbCode } from "../../../shared/helperFunctions/validation";
 
-enum InputMethods {
+export enum InputMethods {
     InputPdbBlock,
     InputUserFileBlock,
     InputUniprotBlock,
     InputSequenceBlock
 }
 
-type InputBlockData = InputPdbBlockData
+export type InputBlockData = InputPdbBlockData
     | InputUserFileBlockData
     | InputUniprotBlockData
     | InputSequenceBlockData;
 
-export type FormState = {
+type FormState = {
     inputMethod: InputMethods;
     inputBlockData: Record<InputMethods, InputBlockData>
 };
@@ -41,7 +42,8 @@ function QueryProteinForm() {
                 <div className="card-header">
                     Please select input method
                 </div>
-                <div className="card-body">
+                {/* minHeight is here to avoid UI "jumping" when clicking between input methods */}
+                <div className="card-body" style={{ minHeight: "230px" }}>
                     <div>
                         <div className="form-check form-check-inline">
                             <input className="form-check-input" type="radio" id="input-pdb" name="input-type"
@@ -86,7 +88,10 @@ function QueryProteinForm() {
                 )}
             </div>
             <div>
-                <button type="submit" className="btn btn-primary float-right" id="submit-button" disabled={errorMessage.length > 0}>
+                <button id="submit-button"
+                    type="submit"
+                    className="btn btn-primary float-right"
+                    disabled={!validateSelectedInputBlockData()}>
                     Submit
                 </button>
             </div>
@@ -172,14 +177,56 @@ function QueryProteinForm() {
     async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
         event.preventDefault();
 
-        // TODO Maybe handle error messages?
-        const { id, errorMessages } = await uploadDataAPI(formState);
-        if (errorMessages.length > 0) {
-            console.error(errorMessages);
+        const selectedInputBlockData = formState.inputBlockData[formState.inputMethod];
+        const { id, errorMessage: errMsg } = await uploadDataAPI(formState.inputMethod, selectedInputBlockData);
+        if (errMsg.length > 0) {
+            setErrorMessage(errMsg);
             return;
         }
 
         navigate(`/analytical-page?id=${id}`);
+    }
+
+    function validateChains(chains: string) {
+        return chains === "" || (chains.split(",").length > 0)
+    }
+
+    function validateSelectedInputBlockData() {
+        if (errorMessage.length > 0) {
+            return false;
+        }
+
+        const selectedInputMethod = formState.inputMethod as InputMethods;
+        switch (selectedInputMethod) {
+            case InputMethods.InputPdbBlock:
+                const inputPdbBlockData = formState.inputBlockData[formState.inputMethod] as InputPdbBlockData;
+
+                const isPdbCodeValid = inputPdbBlockData.pdbCode.length > 0 && validatePdbCode(inputPdbBlockData.pdbCode);
+                const arePdbChainsValid = validateChains(inputPdbBlockData.chains);
+
+                return isPdbCodeValid && arePdbChainsValid;
+            case InputMethods.InputUserFileBlock:
+                const inputUserFileBlockData = formState.inputBlockData[formState.inputMethod] as InputUserFileBlockData;
+
+                const isUserFileValid = inputUserFileBlockData.userFile !== null && inputUserFileBlockData.userFile.size > 0;
+                const areUserFileChainsValid = validateChains(inputUserFileBlockData.chains);
+
+                return isUserFileValid && areUserFileChainsValid;
+            case InputMethods.InputUniprotBlock:
+                const inputUniprotBlockData = formState.inputBlockData[formState.inputMethod] as InputUniprotBlockData;
+
+                const isUniprotCodeValid = inputUniprotBlockData.uniprotCode.length > 0;
+
+                return isUniprotCodeValid;
+            case InputMethods.InputSequenceBlock:
+                const inputSequenceBlockData = formState.inputBlockData[formState.inputMethod] as InputSequenceBlockData;
+
+                const isSequenceValid = inputSequenceBlockData.sequence.length > 0;
+
+                return isSequenceValid;
+            default:
+                throw new Error("Unknown input method.");
+        }
     }
 }
 
