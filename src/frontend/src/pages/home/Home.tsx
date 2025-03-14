@@ -9,7 +9,7 @@ function Home() {
 					PlankWeb: Ligand Binding Site Analysis
 				</h1>
 				<p className="text-center description">
-					PlankWeb builds upon P2Rank and pLM ‐ a machine and deep learning-based methods for prediction of 
+					PlankWeb builds upon P2Rank and pLM&nbsp;‐ a machine and deep learning-based methods for prediction of
 					ligand binding sites from protein structure.
 				</p>
 
