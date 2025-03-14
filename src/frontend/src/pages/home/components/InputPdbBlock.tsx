@@ -107,6 +107,7 @@ function InputPdbBlock({ data, setData, setErrorMessage }: Props) {
     };
 
     async function loadPdbChains() {
+        setErrorMessage("");
         const pdbCode = data.pdbCode;
         if (!validatePdbCode(pdbCode)) {
             /* This function should be called only when we know the pdb code is valid, 
