@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { RcsbFv } from "@rcsb/rcsb-saguaro";
-import { ProcessedResult } from "../AnalyticalPage";
+import { BindingSite, ProcessedResult } from "../AnalyticalPage";
 import chroma from "chroma-js";
 
 type Props = {
@@ -24,7 +24,8 @@ function RcsbSaguaro({ processedResult }: Props) {
         // trackWidth: 940,
         includeAxis: true
     };
-
+    
+    const colors = getUniqueColorForEachBindingSite(getAllBindingSites(processedResult));
     const rowConfigData = [];
     rowConfigData.push(createQuerySequenceRow(processedResult.querySequence));
     for (let dseIdx = 0; dseIdx < processedResult.dataSourceExecutorsData.length; dseIdx++) {
@@ -36,7 +37,7 @@ function RcsbSaguaro({ processedResult }: Props) {
             rowConfigData.push(createSequenceRow(resIdx.toString(), `Similar sequence #${resIdx}`, similarSequence));
 
             bindingSites.forEach(bindingSite =>
-                rowConfigData.push(createBlockRow(`${resIdx}-${bindingSite.id}`, bindingSite.id, bindingSite.residues, bindingSite.confidence)));
+                rowConfigData.push(createBlockRow(`${resIdx}-${bindingSite.id}`, bindingSite.id, bindingSite.residues, colors[bindingSite.id])));
         }
     }
 
@@ -162,36 +163,56 @@ function RcsbSaguaro({ processedResult }: Props) {
     }
 
     function stringToColor(str: string) {
-        let hash = 0;
+        let hash1 = 0;
+        let hash2 = 0;
         for (let i = 0; i < str.length; i++) {
-            hash = (hash << 5) - hash + str.charCodeAt(i);
+            hash1 = (hash1 << 5) - hash1 + str.charCodeAt(i);
+            hash2 = (hash2 << 9) - hash2 + str.charCodeAt(i);
         }
+        const hash = (hash1 ^ hash2) >>> 0;
 
         const color = chroma.scale("Spectral")
-                        .mode("lab")
-                        .colors(100)[Math.abs(hash) % 100];
+            .mode("lab")
+            .colors(100)[Math.abs(hash) % 100];
 
         return color;
     }
 
-    function getResidueColor(residueName: string, confidence: number) {
-        let baseColor = stringToColor(residueName);
+    function getUniqueColorForEachBindingSite(bindingSites: BindingSite[]) {
+        const colors: Record<string, string> = {};  // key is binding site id, value is color in hex (with #)
 
-        return chroma(baseColor).alpha(confidence).hex();
+        for (const bindingSite of bindingSites) {
+            const id = bindingSite.id;
+            if (id in colors) {
+                continue;
+            }
+            const confidence = bindingSite.confidence;
+
+            let color: string;
+            do {
+                let baseColor = stringToColor(id);
+                color = chroma(baseColor).alpha(confidence).hex()
+
+            } while (Object.values(colors).some(existingColor => existingColor === color));
+
+            colors[id] = color;
+        }
+
+        return colors;
     }
 
     function createBlockRow(
         id: string,
         title: string,
         residues: Record<string, number[]>,
-        confidence: number
+        color: string
     ) {
         const trackData = [];
         Object.entries(residues).forEach(([residueName, indices]) =>
             trackData.push(...indices.map(idx => ({
                 begin: idx,
                 end: idx,
-                color: getResidueColor(residueName, confidence)
+                color: color
             })))
         );
 
@@ -204,6 +225,10 @@ function RcsbSaguaro({ processedResult }: Props) {
             rowTitle: title,
             trackData: trackData
         };
+    }
+
+    function getAllBindingSites(processedResult: ProcessedResult) {
+        return processedResult.dataSourceExecutorsData.flatMap(dseData => dseData.bindingSites.flat());
     }
 }
 

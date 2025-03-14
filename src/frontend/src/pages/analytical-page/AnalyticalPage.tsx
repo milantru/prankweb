@@ -29,7 +29,7 @@ type UnprocessedBindingSite = {
 	residues: Residue[];
 };
 
-type BindingSite = {
+export type BindingSite = {
 	id: string;
 	confidence: number;
 	residues: Record<string, number[]>; // key is id of the residue, value is index of the residue
