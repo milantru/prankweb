@@ -25,7 +25,7 @@ export async function uploadDataAPI(formState: FormState): Promise<{ id: number,
 	const formData = new FormData();
 	formData.append("inputMethod", formState.inputMethod.toString());
 	// Add input block data to form data
-	Object.entries(formState.inputBlockData).forEach(([key, value]) => {
+	Object.entries(formState.inputBlockData[formState.inputMethod]).forEach(([key, value]) => {
 		formData.append(key, value instanceof File ? value : value.toString());
 	});
 	// formData.append("input_type", formState.inputMethod.toString());

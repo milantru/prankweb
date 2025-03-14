@@ -36,7 +36,7 @@ class UserInputModels(Enum):
     ALPHAFOLD = "2"
     ALPHAFOLD_CONSERVATION_HMM = "3",
 
-PDB_FORM_FIELDS = { "pdbCode", "useOriginalStructure", "chains", "useConservation" }
+PDB_FORM_FIELDS = { "pdbCode", "chains", "useConservation" }
 CUSTOM_STR_FORM_FIELDS = { "userFileChains", "userInputModel" }
 UNIPROT_FORM_FIELDS = { "uniprotCode", "useConservation" }
 SEQUENCE_FORM_FIELDS = { "sequence", "useConservation" }
@@ -107,7 +107,8 @@ def validate_pdb(input_data):
         response_data = response.json()[pdb_id][0]
 
         # check chains, empty list means no chain restriction
-        selected_chains = set(json.loads(input_data['chains']))
+        chains_str = input_data['chains']
+        selected_chains = set((chains_str.split(',') if chains_str else []))
         pdb_chains = set(response_data['in_chains'])
         if not (selected_chains <= pdb_chains):
             return "Wrong chains selected", None
