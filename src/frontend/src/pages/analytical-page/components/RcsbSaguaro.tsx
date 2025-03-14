@@ -14,122 +14,28 @@ function RcsbSaguaro({ processedResult }: Props) {
      * be in negative numbers on board. */
     const shouldQuerySeqStartAtZero = false;
 
-    const boardConfigData = {
-        // range: {
-        //     min: boardRange.from,
-        //     max: boardRange.to
-        // },
-        // length: boardRange.to - boardRange.from,
-        length: processedResult.querySequence.length,
-        // trackWidth: 940,
-        includeAxis: true
-    };
-
-    const bindingSiteColors = getUniqueColorForEachBindingSite(getAllBindingSites(processedResult));
-    const dataSourceColors = getUniqueColorForEachDataSource(
-        processedResult.dataSourceExecutorsData.map(x => x.dataSourceName), Object.values(bindingSiteColors));
-    const rowConfigData = [];
-    rowConfigData.push(createQuerySequenceRow(processedResult.querySequence));
-    for (let dseIdx = 0; dseIdx < processedResult.dataSourceExecutorsData.length; dseIdx++) {
-        const dseData = processedResult.dataSourceExecutorsData[dseIdx];
-        const dataSourceColor = dataSourceColors[dseData.dataSourceName];
-
-        for (let resIdx = 0; resIdx < dseData.similarSequences.length; resIdx++) {
-            const similarSequence = dseData.similarSequences[resIdx];
-            const bindingSites = dseData.bindingSites[resIdx];
-
-            rowConfigData.push(createSequenceRow(resIdx.toString(), `Similar sequence #${resIdx}`, similarSequence, dataSourceColor));
-
-            bindingSites.forEach(bindingSite =>
-                rowConfigData.push(createBlockRow(`${resIdx}-${bindingSite.id}`, bindingSite.id, bindingSite.residues, bindingSiteColors[bindingSite.id], dataSourceColor)));
-        }
-    }
-
     useEffect(() => {
+        const boardConfigData = createBoardConfigData();
+        const rowConfigData = createRowConfigData(processedResult);
+
         const pfv = new RcsbFv({
             boardConfigData,
             rowConfigData,
             elementId
         });
-    }, []);
+    }, [processedResult]);
 
     return (
         <div id={elementId} style={{ marginTop: "50px" }}></div>
     )
 
-    // Update sequences to use common similar parts (with -)
-    function createSequencesWithSubstitutedCommonSimilarParts(sequences: string[], similar_sequences: string[], start_indices: number[]) {
-        for (let i = 1; i < sequences.length; i++) { // we skip i = 0 because it is a query sequence (no common similar part TODO?)
-            const sequence = sequences[i];
-
-            const firstPart = sequence.substring(0, start_indices[i]);
-            const secondPart = similar_sequences[i];
-            const end_index = start_indices[i] + similar_sequences[i].length;
-            const thirdPart = (sequence.length - 1) >= (end_index + 1)
-                ? sequence.substring(end_index + 1)
-                : "";
-
-            sequences[i] = firstPart + secondPart + thirdPart;
-        }
-
-        return sequences;
-    }
-
-    // Calculate alignment
-    function calculateStartIndicesAfterAligning(start_indices: number[]) {
-        if (start_indices.length == 0) {
-            return start_indices;
-        }
-
-        let max = start_indices[0];
-        let negative_indices = [];
-
-        for (let i = 0; i < start_indices.length; i++) {
-            let idx = start_indices[i];
-            if (idx > max) {
-                max = idx;
-            }
-            negative_indices.push(-idx);
-        }
-
-        /* It is expected that start_indices[0] corresponds to query seq.
-         * If query seq should start at 0, we move it so it starts at 0 and other sequences 
-         * are moved by the same amount/distance as well. Otherwise, if we use only 
-         * non negative nums on board (!shouldQuerySeqStartAtZero case), we move 
-         * every sequence by max (so the sequence with leftmost starting index, starts at 0). */
-        const offset = shouldQuerySeqStartAtZero ? start_indices[0] : max;
-        for (let i = 0; i < start_indices.length; i++) {
-            start_indices[i] = negative_indices[i] + offset;
-        }
-
-        return start_indices;
-    }
-
-    // Calculate board range (from, to)
-    function calculateBoardRange(sequences: string[], start_indices: number[]) {
-        if (sequences.length !== start_indices.length || start_indices.length == 0) {
-            throw new Error("No sequences or their start indices provided, or count of sequences and indices does not match.");
-        }
-        let min = start_indices[0];
-        let max = start_indices[0] + sequences[0].length - 1;
-
-        // we start from i = 1 because 0. iteration is basically done by variables init phase before the for cycle
-        for (let i = 1; i < sequences.length; i++) {
-            if (start_indices[i] < min) {
-                min = start_indices[i];
-            }
-
-            let end_idx = start_indices[i] + sequences[i].length - 1;
-            if (end_idx > max) {
-                max = end_idx;
-            }
-        }
-
-        const range = {
-            "from": min,
-            "to": max
+    function createBoardConfigData() {
+        const boardConfigData = {
+            length: processedResult.querySequence.length,
+            includeAxis: true
         };
-        return range;
+
+        return boardConfigData;
     }
 
     function getAllBindingSites(processedResult: ProcessedResult) {
@@ -196,11 +102,6 @@ function RcsbSaguaro({ processedResult }: Props) {
         return colors;
     }
 
-    function getUniqueColorForEachDataSource(dataSourceNames: string[], forbiddenColors: string[]) {
-        const opacities = new Array(dataSourceNames.length).fill(0.1);
-        return getUniqueColorForEachString(dataSourceNames, opacities, forbiddenColors);
-    }
-
     function getUniqueColorForEachBindingSite(bindingSites: BindingSite[]) {
         const ids = [];
         const confidences = [];
@@ -211,6 +112,11 @@ function RcsbSaguaro({ processedResult }: Props) {
         });
 
         return getUniqueColorForEachString(ids, confidences);
+    }
+
+    function getUniqueColorForEachDataSource(dataSourceNames: string[], forbiddenColors: string[]) {
+        const opacities = new Array(dataSourceNames.length).fill(0.1);
+        return getUniqueColorForEachString(dataSourceNames, opacities, forbiddenColors);
     }
 
     function createQuerySequenceRow(querySequence: string) {
@@ -272,6 +178,118 @@ function RcsbSaguaro({ processedResult }: Props) {
             rowTitle: title,
             trackData: trackData
         };
+    }
+
+    function createRowConfigData(processedResult: ProcessedResult) {
+        const bindingSiteColors = getUniqueColorForEachBindingSite(getAllBindingSites(processedResult));
+        const dataSourceColors = getUniqueColorForEachDataSource(
+            processedResult.dataSourceExecutorsData.map(x => x.dataSourceName), Object.values(bindingSiteColors));
+
+        const rowConfigData = [];
+
+        rowConfigData.push(createQuerySequenceRow(processedResult.querySequence));
+
+        for (let dseIdx = 0; dseIdx < processedResult.dataSourceExecutorsData.length; dseIdx++) {
+            const dseData = processedResult.dataSourceExecutorsData[dseIdx];
+            const dataSourceColor = dataSourceColors[dseData.dataSourceName];
+
+            for (let resIdx = 0; resIdx < dseData.similarSequences.length; resIdx++) {
+                const similarSequence = dseData.similarSequences[resIdx];
+                const bindingSites = dseData.bindingSites[resIdx];
+
+                const simSeqRowId = `${dseIdx}-${resIdx}`;
+                const simSeqRowTitle = similarSequence.label.toUpperCase();
+                const simSeqRow = createSequenceRow(simSeqRowId, simSeqRowTitle, similarSequence.sequence, dataSourceColor);
+                rowConfigData.push(simSeqRow);
+
+                bindingSites.forEach(bindingSite => {
+                    const id = `${dseIdx}-${resIdx}-${bindingSite.id}`;
+                    const title = bindingSite.id;
+                    const bindingSiteRow = createBlockRow(id, title, bindingSite.residues, bindingSiteColors[bindingSite.id], dataSourceColor);
+                    rowConfigData.push(bindingSiteRow)
+                });
+            }
+        }
+
+        return rowConfigData;
+    }
+
+    // TODO maybe delete
+    // Update sequences to use common similar parts (with -)
+    function createSequencesWithSubstitutedCommonSimilarParts(sequences: string[], similar_sequences: string[], start_indices: number[]) {
+        for (let i = 1; i < sequences.length; i++) { // we skip i = 0 because it is a query sequence (no common similar part TODO?)
+            const sequence = sequences[i];
+
+            const firstPart = sequence.substring(0, start_indices[i]);
+            const secondPart = similar_sequences[i];
+            const end_index = start_indices[i] + similar_sequences[i].length;
+            const thirdPart = (sequence.length - 1) >= (end_index + 1)
+                ? sequence.substring(end_index + 1)
+                : "";
+
+            sequences[i] = firstPart + secondPart + thirdPart;
+        }
+
+        return sequences;
+    }
+
+    // TODO maybe delete
+    // Calculate alignment
+    function calculateStartIndicesAfterAligning(start_indices: number[]) {
+        if (start_indices.length == 0) {
+            return start_indices;
+        }
+
+        let max = start_indices[0];
+        let negative_indices = [];
+
+        for (let i = 0; i < start_indices.length; i++) {
+            let idx = start_indices[i];
+            if (idx > max) {
+                max = idx;
+            }
+            negative_indices.push(-idx);
+        }
+
+        /* It is expected that start_indices[0] corresponds to query seq.
+        * If query seq should start at 0, we move it so it starts at 0 and other sequences 
+        * are moved by the same amount/distance as well. Otherwise, if we use only 
+        * non negative nums on board (!shouldQuerySeqStartAtZero case), we move 
+         * every sequence by max (so the sequence with leftmost starting index, starts at 0). */
+        const offset = shouldQuerySeqStartAtZero ? start_indices[0] : max;
+        for (let i = 0; i < start_indices.length; i++) {
+            start_indices[i] = negative_indices[i] + offset;
+        }
+
+        return start_indices;
+    }
+
+    // TODO maybe delete
+    // Calculate board range (from, to)
+    function calculateBoardRange(sequences: string[], start_indices: number[]) {
+        if (sequences.length !== start_indices.length || start_indices.length == 0) {
+            throw new Error("No sequences or their start indices provided, or count of sequences and indices does not match.");
+        }
+        let min = start_indices[0];
+        let max = start_indices[0] + sequences[0].length - 1;
+
+        // we start from i = 1 because 0. iteration is basically done by variables init phase before the for cycle
+        for (let i = 1; i < sequences.length; i++) {
+            if (start_indices[i] < min) {
+                min = start_indices[i];
+            }
+
+            let end_idx = start_indices[i] + sequences[i].length - 1;
+            if (end_idx > max) {
+                max = end_idx;
+            }
+        }
+
+        const range = {
+            "from": min,
+            "to": max
+        };
+        return range;
     }
 }
 

@@ -47,10 +47,15 @@ type DataSourceExecutor = { // data source executor can output multiple results
 	results: Result[];
 };
 
+type SimilarSequence = {
+	label: string;
+	sequence: string;
+};
+
 type DataSourceExecutorData = {
 	dataSourceName: string;
 	bindingSites: BindingSite[][];
-	similarSequences: string[];
+	similarSequences: SimilarSequence[];
 };
 
 export type ProcessedResult = {
@@ -102,7 +107,6 @@ function AnalyticalPage() {
 			fetchDataFromDataSource(dataSourceExecutorIdx);
 		}
 	}, pollingInterval);
-
 
 	return (
 		<div id="analyze" className="display-none row">
@@ -291,12 +295,15 @@ function AnalyticalPage() {
 		/* "Merge phase": Create master query sequence and align other sequences and binding sites to it.
 		 * Master query sequence is query sequence on which every similar sequence and binding site can be aligned with/mapped to. */
 		let masterQuerySeq = "";
-		const similarSeqResults: string[][] = Array.from(
+		const similarSeqResults: SimilarSequence[][] = Array.from(
 			{ length: dataSourceExecutors.length },
 			() => []
 		);
 		dataSourceExecutors.forEach((dse, dseIdx) => {
-			similarSeqResults[dseIdx] = Array(dse.results.length).fill("");
+			similarSeqResults[dseIdx] = Array.from(
+				{ length: dse.results.length },
+				(): SimilarSequence => ({ label: "", sequence: "" })
+			);
 		});
 
 		// Length of the query sequence (sequence with no gaps)
@@ -343,15 +350,18 @@ function AnalyticalPage() {
 							return;
 						}
 						const offset = offsets[dataSourceExecutorIdx][resultIdx];
+						/* In the first iteration we set the label and in the following iterations we overwrite it with the same value.
+						 * It might seem odd, but it is correct. And to avoid further program branching, it will remain like this. */
+						similarSeqResults[dataSourceExecutorIdx][resultIdx].label = result.similarSequenceAlignmentData.pdbId;
 
 						const aminoAcidOrGapOfQuerySeq = result.querySequence[aminoAcidIdx + offset];
 						if (isGapMode) {
 							if (aminoAcidOrGapOfQuerySeq === '-') {
-								similarSeqResults[dataSourceExecutorIdx][resultIdx] += result.similarSequenceAlignmentData.similarSequence[aminoAcidIdx + offset];
+								similarSeqResults[dataSourceExecutorIdx][resultIdx].sequence += result.similarSequenceAlignmentData.similarSequence[aminoAcidIdx + offset];
 								mapping[dataSourceExecutorIdx][resultIdx][aminoAcidIdx + offset] = aminoAcidOrGapOfMasterQuerySeqCurrIdx;
 								offsets[dataSourceExecutorIdx][resultIdx] = offset + 1;
 							} else {
-								similarSeqResults[dataSourceExecutorIdx][resultIdx] += '-';
+								similarSeqResults[dataSourceExecutorIdx][resultIdx].sequence += '-';
 							}
 						} else {
 							/* All of the results have the same query sequence (if we ignore gaps). On the (aminoAcidIdx + offset) index
@@ -359,7 +369,7 @@ function AnalyticalPage() {
 							* always assigned the same amino acid. Which might seem odd (that we keep reassigning the same value),
 							* but it is correct and to avoid further program branching it will be left like this. */
 							aminoAcidOfQuerySeq = aminoAcidOrGapOfQuerySeq;
-							similarSeqResults[dataSourceExecutorIdx][resultIdx] += result.similarSequenceAlignmentData.similarSequence[aminoAcidIdx + offset];
+							similarSeqResults[dataSourceExecutorIdx][resultIdx].sequence += result.similarSequenceAlignmentData.similarSequence[aminoAcidIdx + offset];
 							mapping[dataSourceExecutorIdx][resultIdx][aminoAcidIdx + offset] = aminoAcidOrGapOfMasterQuerySeqCurrIdx;
 						}
 
