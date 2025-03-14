@@ -24,20 +24,24 @@ function RcsbSaguaro({ processedResult }: Props) {
         // trackWidth: 940,
         includeAxis: true
     };
-    
-    const colors = getUniqueColorForEachBindingSite(getAllBindingSites(processedResult));
+
+    const bindingSiteColors = getUniqueColorForEachBindingSite(getAllBindingSites(processedResult));
+    const dataSourceColors = getUniqueColorForEachDataSource(
+        processedResult.dataSourceExecutorsData.map(x => x.dataSourceName), Object.values(bindingSiteColors));
     const rowConfigData = [];
     rowConfigData.push(createQuerySequenceRow(processedResult.querySequence));
     for (let dseIdx = 0; dseIdx < processedResult.dataSourceExecutorsData.length; dseIdx++) {
         const dseData = processedResult.dataSourceExecutorsData[dseIdx];
+        const dataSourceColor = dataSourceColors[dseData.dataSourceName];
+
         for (let resIdx = 0; resIdx < dseData.similarSequences.length; resIdx++) {
             const similarSequence = dseData.similarSequences[resIdx];
             const bindingSites = dseData.bindingSites[resIdx];
 
-            rowConfigData.push(createSequenceRow(resIdx.toString(), `Similar sequence #${resIdx}`, similarSequence));
+            rowConfigData.push(createSequenceRow(resIdx.toString(), `Similar sequence #${resIdx}`, similarSequence, dataSourceColor));
 
             bindingSites.forEach(bindingSite =>
-                rowConfigData.push(createBlockRow(`${resIdx}-${bindingSite.id}`, bindingSite.id, bindingSite.residues, colors[bindingSite.id])));
+                rowConfigData.push(createBlockRow(`${resIdx}-${bindingSite.id}`, bindingSite.id, bindingSite.residues, bindingSiteColors[bindingSite.id], dataSourceColor)));
         }
     }
 
@@ -128,38 +132,8 @@ function RcsbSaguaro({ processedResult }: Props) {
         return range;
     }
 
-    function createQuerySequenceRow(querySequence: string) {
-        return {
-            trackId: "query-seq",
-            trackHeight: 20,
-            trackColor: "#F9F9F9",
-            displayType: "sequence",
-            nonEmptyDisplay: true,
-            rowTitle: "Query sequence",
-            trackData: [
-                {
-                    begin: 0,
-                    label: querySequence
-                }
-            ]
-        };
-    }
-
-    function createSequenceRow(id: string, title: string, sequence: string) {
-        return {
-            trackId: id,
-            trackHeight: 20,
-            trackColor: "#F9F9F9",
-            displayType: "sequence",
-            nonEmptyDisplay: true,
-            rowTitle: title,
-            trackData: [
-                {
-                    begin: 0,
-                    label: sequence
-                }
-            ]
-        };
+    function getAllBindingSites(processedResult: ProcessedResult) {
+        return processedResult.dataSourceExecutorsData.flatMap(dseData => dseData.bindingSites.flat());
     }
 
     function stringToColor(str: string) {
@@ -178,34 +152,107 @@ function RcsbSaguaro({ processedResult }: Props) {
         return color;
     }
 
-    function getUniqueColorForEachBindingSite(bindingSites: BindingSite[]) {
-        const colors: Record<string, string> = {};  // key is binding site id, value is color in hex (with #)
+    /**
+     * Generates a unique color for each string in the given array.
+     *
+     * @param {string[]} strings - An array of strings for which unique colors should be generated.
+     * @param {number[]} [opacities=[]] - An optional array of opacities (from [0;1], e.g. [0.4, 0.2, ...])
+     *                                    corresponding to each string. If provided, it must have the same length as `strings`.
+     * @param {string[]} [forbiddenColors=[]] - An optional list of colors that should be avoided.
+     * 
+     * @returns {Record<string, string>} - An object mapping each string to a unique color in hex format (starting with #).
+     * 
+     * @throws {Error} - If `opacities` is provided but does not match the length of `strings`.
+     */
+    function getUniqueColorForEachString(
+        strings: string[],
+        opacities: number[] = [],
+        forbiddenColors: string[] = []
+    ) {
+        if (opacities.length > 0 && strings.length !== opacities.length) {
+            throw Error("If opacities are present, they must have the same length as the strings.");
+        }
+        const colors: Record<string, string> = {};  // key is string (value from params), value is color in hex (with #)
 
-        for (const bindingSite of bindingSites) {
-            const id = bindingSite.id;
-            if (id in colors) {
+        for (let i = 0; i < strings.length; i++) {
+            const str = strings[i];
+            if (str in colors) {
                 continue;
             }
-            const confidence = bindingSite.confidence;
+            const opacity = opacities !== null ? opacities[i] : null;
 
             let color: string;
             do {
-                let baseColor = stringToColor(id);
-                color = chroma(baseColor).alpha(confidence).hex()
+                let baseColor = stringToColor(str);
+                color = opacities !== null
+                    ? chroma(baseColor).alpha(opacity).hex()
+                    : chroma(baseColor).hex();
 
-            } while (Object.values(colors).some(existingColor => existingColor === color));
+            } while (Object.values(colors).some(existingColor => existingColor === color) || color in forbiddenColors);
 
-            colors[id] = color;
+            colors[str] = color;
         }
 
         return colors;
+    }
+
+    function getUniqueColorForEachDataSource(dataSourceNames: string[], forbiddenColors: string[]) {
+        const opacities = new Array(dataSourceNames.length).fill(0.1);
+        return getUniqueColorForEachString(dataSourceNames, opacities, forbiddenColors);
+    }
+
+    function getUniqueColorForEachBindingSite(bindingSites: BindingSite[]) {
+        const ids = [];
+        const confidences = [];
+
+        bindingSites.forEach(bindingSite => {
+            ids.push(bindingSite.id);
+            confidences.push(bindingSite.confidence);
+        });
+
+        return getUniqueColorForEachString(ids, confidences);
+    }
+
+    function createQuerySequenceRow(querySequence: string) {
+        return {
+            trackId: "query-seq",
+            trackHeight: 20,
+            trackColor: "#F9F9F9",
+            displayType: "sequence",
+            nonEmptyDisplay: true,
+            rowTitle: "Query sequence",
+            trackData: [
+                {
+                    begin: 0,
+                    label: querySequence
+                }
+            ]
+        };
+    }
+
+    function createSequenceRow(id: string, title: string, sequence: string, trackColor: string) {
+        return {
+            trackId: id,
+            trackHeight: 20,
+            trackColor: trackColor,
+            displayType: "sequence",
+            nonEmptyDisplay: true,
+            rowTitle: title,
+            trackData: [
+                {
+                    begin: 0,
+                    label: sequence
+                }
+            ]
+        };
     }
 
     function createBlockRow(
         id: string,
         title: string,
         residues: Record<string, number[]>,
-        color: string
+        color: string,
+        trackColor: string
     ) {
         const trackData = [];
         Object.entries(residues).forEach(([residueName, indices]) =>
@@ -219,16 +266,12 @@ function RcsbSaguaro({ processedResult }: Props) {
         return {
             trackId: id,
             trackHeight: 20,
-            trackColor: "#F9F9F9",
+            trackColor: trackColor,
             displayType: "block",
             displayColor: "#FF0000",
             rowTitle: title,
             trackData: trackData
         };
-    }
-
-    function getAllBindingSites(processedResult: ProcessedResult) {
-        return processedResult.dataSourceExecutorsData.flatMap(dseData => dseData.bindingSites.flat());
     }
 }
 
