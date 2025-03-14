@@ -197,10 +197,13 @@ function RcsbSaguaro({ processedResult }: Props) {
                 const similarSequence = dseData.similarSequences[resIdx];
                 const bindingSites = dseData.bindingSites[resIdx];
 
-                const simSeqRowId = `${dseIdx}-${resIdx}`;
-                const simSeqRowTitle = similarSequence.label.toUpperCase();
-                const simSeqRow = createSequenceRow(simSeqRowId, simSeqRowTitle, similarSequence.sequence, dataSourceColor);
-                rowConfigData.push(simSeqRow);
+                if (similarSequence.sequence.length > 0) {
+                    // We don't have to have a similar sequence, maybe only binding sites are present
+                    const simSeqRowId = `${dseIdx}-${resIdx}`;
+                    const simSeqRowTitle = similarSequence.label.toUpperCase();
+                    const simSeqRow = createSequenceRow(simSeqRowId, simSeqRowTitle, similarSequence.sequence, dataSourceColor);
+                    rowConfigData.push(simSeqRow);
+                }
 
                 bindingSites.forEach(bindingSite => {
                     const id = `${dseIdx}-${resIdx}-${bindingSite.id}`;
