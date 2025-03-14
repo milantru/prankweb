@@ -85,53 +85,16 @@ function AnalyticalPage() {
 		setPollingInterval(isPageVisible ? POLLING_INTERVAL : null);
 	}, [isPageVisible]);
 
-	useInterval(() => {
-		async function fetchDataFromDataSource(dataSourceIndex: number) {
-			console.log("Polling data source executor: " + dataSourceExecutors[dataSourceIndex].name);
-			isFetching[dataSourceIndex] = true;
-			const {
-				status,
-				errorMessages: statusFetchingErrorMessages
-			} = await getDataSourceExecutorResultStatusAPI(dataSourceExecutors[dataSourceIndex].name, id!);
-			if (statusFetchingErrorMessages.length > 0) {
-				// TODO stop polling for this data source?
-				// TODO display error messages
-				// TODO what about DataStatus.Failed? Maybe handle here as well as some other error?
-				isFetching[dataSourceIndex] = false;
-				return;
-			}
-			console.log("Status:" + status)
-			if (status !== DataStatus.Completed) {
-				isFetching[dataSourceIndex] = false;
-				return;
-			}
-
-			const {
-				results,
-				errorMessages: dataFetchingErrorMessages
-			} = await getDataSourceExecutorResultAPI(dataSourceExecutors[dataSourceIndex].name, id!);
-			if (dataFetchingErrorMessages.length > 0) {
-				// TODO Maybe handle/display error messages somehow?
-				isPollingFinished[dataSourceIndex] = true;
-				if (isPollingFinished.every(x => x)) {
-					setPollingInterval(null);
-				}
-				isFetching[dataSourceIndex] = false;
-				return;
-			}
-			console.log("Results:" + results)
-			dataSourceExecutors[dataSourceIndex].results = results;
-			// Data was received, its state won't change, so polling is not required anymore
-			isPollingFinished[dataSourceIndex] = true;
-			if (isPollingFinished.every(x => x)) {
-				setPollingInterval(null);
-
-				setProcessedResult(alignSequences(dataSourceExecutors));
-				dataSourceExecutors.forEach(dse => dse.results = []); // Free space (data has been processed and stored, we don't need this anymore)
-			}
-			isFetching[dataSourceIndex] = false;
+	useEffect(() => {
+		/* There is a polling implemented in useInterval but it starts after POLLING_INTERVAL. If we want to try to
+		 * fetch data immediatelly after loading page (and not wait POLLING_INTERVAL). We use this useEffect.
+		 * If all of the data is not fetched yet, no problem, there is polling in useInterval which will poll for the rest. */
+		for (let dataSourceExecutorIdx = 0; dataSourceExecutorIdx < dataSourceExecutors.length; dataSourceExecutorIdx++) {
+			fetchDataFromDataSource(dataSourceExecutorIdx);
 		}
+	}, []);
 
+	useInterval(() => {
 		for (let dataSourceExecutorIdx = 0; dataSourceExecutorIdx < dataSourceExecutors.length; dataSourceExecutorIdx++) {
 			if (isFetching[dataSourceExecutorIdx]) {
 				continue;
@@ -160,6 +123,52 @@ function AnalyticalPage() {
 			</div>
 		</div>
 	);
+
+	async function fetchDataFromDataSource(dataSourceIndex: number) {
+		console.log("Polling data source executor: " + dataSourceExecutors[dataSourceIndex].name);
+		isFetching[dataSourceIndex] = true;
+		const {
+			status,
+			errorMessages: statusFetchingErrorMessages
+		} = await getDataSourceExecutorResultStatusAPI(dataSourceExecutors[dataSourceIndex].name, id!);
+		if (statusFetchingErrorMessages.length > 0) {
+			// TODO stop polling for this data source?
+			// TODO display error messages
+			// TODO what about DataStatus.Failed? Maybe handle here as well as some other error?
+			isFetching[dataSourceIndex] = false;
+			return;
+		}
+		console.log("Status:" + status)
+		if (status !== DataStatus.Completed) {
+			isFetching[dataSourceIndex] = false;
+			return;
+		}
+
+		const {
+			results,
+			errorMessages: dataFetchingErrorMessages
+		} = await getDataSourceExecutorResultAPI(dataSourceExecutors[dataSourceIndex].name, id!);
+		if (dataFetchingErrorMessages.length > 0) {
+			// TODO Maybe handle/display error messages somehow?
+			isPollingFinished[dataSourceIndex] = true;
+			if (isPollingFinished.every(x => x)) {
+				setPollingInterval(null);
+			}
+			isFetching[dataSourceIndex] = false;
+			return;
+		}
+		console.log("Results:" + results)
+		dataSourceExecutors[dataSourceIndex].results = results;
+		// Data was received, its state won't change, so polling is not required anymore
+		isPollingFinished[dataSourceIndex] = true;
+		if (isPollingFinished.every(x => x)) {
+			setPollingInterval(null);
+
+			setProcessedResult(await alignSequences(dataSourceExecutors));
+			dataSourceExecutors.forEach(dse => dse.results = []); // Free space (data has been processed and stored, we don't need this anymore)
+		}
+		isFetching[dataSourceIndex] = false;
+	}
 
 	function replaceWithAlignedPart(
 		sequence: string,
@@ -263,15 +272,21 @@ function AnalyticalPage() {
 		return counter;
 	}
 
-	function alignSequences(dataSourceExecutors: DataSourceExecutor[]): ProcessedResult {
+	async function alignSequences(dataSourceExecutors: DataSourceExecutor[]): Promise<ProcessedResult> {
 		if (dataSourceExecutors.length == 0 || dataSourceExecutors[0].results.length == 0) {
 			return { querySequence: "", dataSourceExecutorsData: [] };
 		}
 
 		/* "Preprocessing phase": Align query and similar sequences while also updating binding site indices.
 		 * Results without similar sequences are skipped (unchanged). */
-		dataSourceExecutors.forEach(dse =>
-			dse.results = dse.results.map(res => alignQueryAndSimilarSequence(res)));
+		await Promise.all(
+			dataSourceExecutors.map(dse =>
+				new Promise<void>(resolve => {
+					dse.results = dse.results.map(res => alignQueryAndSimilarSequence(res));
+					resolve();
+				})
+			)
+		);
 
 		/* "Merge phase": Create master query sequence and align other sequences and binding sites to it.
 		 * Master query sequence is query sequence on which every similar sequence and binding site can be aligned with/mapped to. */
@@ -283,8 +298,6 @@ function AnalyticalPage() {
 		dataSourceExecutors.forEach((dse, dseIdx) => {
 			similarSeqResults[dseIdx] = Array(dse.results.length).fill("");
 		});
-		// const bindingSiteResults: BindingSite[][][] = new Array(dataSourceExecutors.length);
-		// dataSourceExecutors.forEach((dse, dseIdx) => similarSeqResults[dseIdx] = new Array(dse.results.length).fill([]));
 
 		// Length of the query sequence (sequence with no gaps)
 		const querySeqLength = getQuerySeqLength(dataSourceExecutors[0].results[0].querySequence);
@@ -312,41 +325,52 @@ function AnalyticalPage() {
 			const isGapMode = dataSourceExecutors.some((dse, dseIdx) =>
 				dse.results.some((res, resIdx) => res.querySequence[aminoAcidIdx + offsets[dseIdx][resIdx]] === '-'));
 
+			const tasks = [];
 			let aminoAcidOfQuerySeq: string = null!;
 			for (let dataSourceExecutorIdx = 0; dataSourceExecutorIdx < dataSourceExecutors.length; dataSourceExecutorIdx++) {
 				const dataSourceExecutor = dataSourceExecutors[dataSourceExecutorIdx];
 				for (let resultIdx = 0; resultIdx < dataSourceExecutor.results.length; resultIdx++) {
-					const result = dataSourceExecutor.results[resultIdx];
-					/* Master query sequence is being built iteratively character by character, that is why we can use masterQuerySeq.length 
-					 * to point to the newest character. This variable holds index of the current character (amino acid or gap) of
-					 * master query sequence that will be outputted/added later in code. */
-					const aminoAcidOrGapOfMasterQuerySeqCurrIdx = masterQuerySeq.length;
-					if (result.similarSequenceAlignmentData === null) {
-						mapping[dataSourceExecutorIdx][resultIdx][aminoAcidIdx] = aminoAcidOrGapOfMasterQuerySeqCurrIdx;
-						continue;
-					}
-					const offset = offsets[dataSourceExecutorIdx][resultIdx];
+					const task = new Promise<void>(resolve => {
+						const result = dataSourceExecutor.results[resultIdx];
+						/* Master query sequence is being built iteratively character by character,
+						 * that is why we can use masterQuerySeq.length to point to the newest character.
+						 * This variable holds index of the current character (amino acid or gap) of
+						 * master query sequence that will be outputted/added later in code. */
+						const aminoAcidOrGapOfMasterQuerySeqCurrIdx = masterQuerySeq.length;
+						if (result.similarSequenceAlignmentData === null) {
+							mapping[dataSourceExecutorIdx][resultIdx][aminoAcidIdx] = aminoAcidOrGapOfMasterQuerySeqCurrIdx;
+							resolve();
+							return;
+						}
+						const offset = offsets[dataSourceExecutorIdx][resultIdx];
 
-					const aminoAcidOrGapOfQuerySeq = result.querySequence[aminoAcidIdx + offset];
-					if (isGapMode) {
-						if (aminoAcidOrGapOfQuerySeq === '-') {
+						const aminoAcidOrGapOfQuerySeq = result.querySequence[aminoAcidIdx + offset];
+						if (isGapMode) {
+							if (aminoAcidOrGapOfQuerySeq === '-') {
+								similarSeqResults[dataSourceExecutorIdx][resultIdx] += result.similarSequenceAlignmentData.similarSequence[aminoAcidIdx + offset];
+								mapping[dataSourceExecutorIdx][resultIdx][aminoAcidIdx + offset] = aminoAcidOrGapOfMasterQuerySeqCurrIdx;
+								offsets[dataSourceExecutorIdx][resultIdx] = offset + 1;
+							} else {
+								similarSeqResults[dataSourceExecutorIdx][resultIdx] += '-';
+							}
+						} else {
+							/* All of the results have the same query sequence (if we ignore gaps). On the (aminoAcidIdx + offset) index
+							* is the same amino acid for all the results, which means that here is (for all of the results)
+							* always assigned the same amino acid. Which might seem odd (that we keep reassigning the same value),
+							* but it is correct and to avoid further program branching it will be left like this. */
+							aminoAcidOfQuerySeq = aminoAcidOrGapOfQuerySeq;
 							similarSeqResults[dataSourceExecutorIdx][resultIdx] += result.similarSequenceAlignmentData.similarSequence[aminoAcidIdx + offset];
 							mapping[dataSourceExecutorIdx][resultIdx][aminoAcidIdx + offset] = aminoAcidOrGapOfMasterQuerySeqCurrIdx;
-							offsets[dataSourceExecutorIdx][resultIdx] = offset + 1;
-						} else {
-							similarSeqResults[dataSourceExecutorIdx][resultIdx] += '-';
 						}
-					} else {
-						/* All of the results have the same query sequence (if we ignore gaps). On the (aminoAcidIdx + offset) index
-						* is the same amino acid for all the results, which means that here is (for all of the results)
-						* always assigned the same amino acid. Which might seem odd (that we keep reassigning the same value),
-						* but it is correct and to avoid further program branching it will be left like this. */
-						aminoAcidOfQuerySeq = aminoAcidOrGapOfQuerySeq;
-						similarSeqResults[dataSourceExecutorIdx][resultIdx] += result.similarSequenceAlignmentData.similarSequence[aminoAcidIdx + offset];
-						mapping[dataSourceExecutorIdx][resultIdx][aminoAcidIdx + offset] = aminoAcidOrGapOfMasterQuerySeqCurrIdx;
-					}
+
+						resolve();
+					});
+
+					tasks.push(task);
 				}
 			}
+
+			await Promise.all(tasks);
 
 			if (isGapMode) {
 				masterQuerySeq += '-';
@@ -367,28 +391,35 @@ function AnalyticalPage() {
 			);
 		});
 		// Update all residue indices of each binding site, map binding sites to proper type and store them to return them later
+		const tasks = [];
 		dataSourceExecutors.forEach((dse, dseIdx) =>
 			dse.results.forEach((res, resIdx) => {
-				res.bindingSites.forEach(bindingSite => updateBindingSiteResiduesIndices(bindingSite, mapping[dseIdx][resIdx]));
+				const task = new Promise<void>(resolve => {
+					res.bindingSites.forEach(bindingSite => updateBindingSiteResiduesIndices(bindingSite, mapping[dseIdx][resIdx]));
 
-				const bindingSites: BindingSite[] = res.bindingSites.map<BindingSite>(bindingSite => {
-					const residues: Record<string, number[]> = {};
-					bindingSite.residues.forEach(r => {
-						if (!(r.name in residues)) {
-							residues[r.name] = [];
-						}
-						residues[r.name].push(r.seqIndex);
+					const bindingSites: BindingSite[] = res.bindingSites.map<BindingSite>(bindingSite => {
+						const residues: Record<string, number[]> = {};
+						bindingSite.residues.forEach(r => {
+							if (!(r.name in residues)) {
+								residues[r.name] = [];
+							}
+							residues[r.name].push(r.seqIndex);
+						});
+						// Sort residues by indices, ascending
+						Object.values(residues).forEach(indices => indices.sort((a, b) => a - b));
+						return { id: bindingSite.id, confidence: bindingSite.confidence, residues: residues };
 					});
-					// Sort residues by indices, ascending
-					Object.values(residues).forEach(indices => indices.sort((a, b) => a - b));
-					return { id: bindingSite.id, confidence: bindingSite.confidence, residues: residues };
+
+					bindingSiteResults[dseIdx][resIdx] = bindingSites;
+					resolve();
 				});
 
-				bindingSiteResults[dseIdx][resIdx] = bindingSites;
+				tasks.push(task);
 			})
 		);
+		await Promise.all(tasks);
 
-		const dataSourceExecutorsData: DataSourceExecutorData[] = dataSourceExecutors.map<DataSourceExecutorData>((dse, dseIdx) => ({
+		const dataSourceExecutorsData = dataSourceExecutors.map<DataSourceExecutorData>((dse, dseIdx) => ({
 			dataSourceName: dse.name,
 			bindingSites: bindingSiteResults[dseIdx],
 			similarSequences: similarSeqResults[dseIdx]
