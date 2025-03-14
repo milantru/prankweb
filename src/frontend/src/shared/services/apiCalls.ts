@@ -4,7 +4,6 @@ import { apiBaseUrl } from "../constants";
 import { getErrorMessages } from "../helperFunctions/errorHandling";
 import { Result } from "../../pages/analytical-page/AnalyticalPage";
 import camelcaseKeys from "camelcase-keys";
-import { InputUserFileBlockData } from "../../pages/home/components/InputUserFileBlock";
 
 /**
  * Uploads data to the server and returns a unique identifier for the input.
@@ -39,8 +38,6 @@ export async function uploadDataAPI(
 		return { id: id, errorMessage: "" };
 	}
 	catch (error) {
-		console.log("ERROR");
-		console.log(error);
 		const errorMessages = getErrorMessages(error);
 		for (const errorMessage of errorMessages) {
 			console.error(errorMessage);
@@ -62,8 +59,10 @@ type DataStatusResponse = {
 	lastUpdated: Date;
 };
 
-export async function getDataSourceExecutorResultStatusAPI(dataSourceName: string, id: string)
-	: Promise<{ status: DataStatus | null, errorMessages: string[] }> {
+export async function getDataSourceExecutorResultStatusAPI(
+	dataSourceName: string,
+	id: string
+): Promise<{ status: DataStatus | null, errorMessages: string[] }> {
 	try {
 		console.log("STATUS")
 		console.log(apiBaseUrl + `/${dataSourceName}/${id}/status.json`);
@@ -85,8 +84,10 @@ export async function getDataSourceExecutorResultStatusAPI(dataSourceName: strin
 	}
 }
 
-export async function getDataSourceExecutorResultAPI(dataSourceName: string, id: string)
-	: Promise<{ results: Result[], errorMessages: string[] }> {
+export async function getDataSourceExecutorResultAPI(
+	dataSourceName: string,
+	id: string
+): Promise<{ results: Result[], errorMessages: string[] }> {
 	try {
 		const response = await axios.get<object>(apiBaseUrl + `/${dataSourceName}/${id}/${id}_result.json`, {
 			headers: {
