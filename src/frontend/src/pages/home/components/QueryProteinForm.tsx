@@ -34,6 +34,7 @@ function QueryProteinForm() {
         ) as Record<InputMethods, InputBlockData>
     });
     const [errorMessage, setErrorMessage] = useState<string>("");
+    const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
     const navigate = useNavigate();
 
     return (
@@ -91,7 +92,7 @@ function QueryProteinForm() {
                 <button id="submit-button"
                     type="submit"
                     className="btn btn-primary float-right"
-                    disabled={!validateSelectedInputBlockData()}>
+                    disabled={isSubmitting || !validateSelectedInputBlockData()}>
                     Submit
                 </button>
             </div>
@@ -176,15 +177,18 @@ function QueryProteinForm() {
 
     async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
         event.preventDefault();
-
+        setIsSubmitting(true);
+        
         const selectedInputBlockData = formState.inputBlockData[formState.inputMethod];
         const { id, errorMessage: errMsg } = await uploadDataAPI(formState.inputMethod, selectedInputBlockData);
         if (errMsg.length > 0) {
             setErrorMessage(errMsg);
+            setIsSubmitting(false);
             return;
         }
-
+        
         navigate(`/analytical-page?id=${id}`);
+        setIsSubmitting(false);
     }
 
     function validateChains(chains: string) {
