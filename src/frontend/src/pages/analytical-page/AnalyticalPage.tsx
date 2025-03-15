@@ -4,6 +4,7 @@ import { useInterval } from "../../shared/hooks/useInterval";
 import { useVisibilityChange } from "../../shared/hooks/useVisibilityChange";
 import { DataStatus, getDataSourceExecutorResultAPI, getDataSourceExecutorResultStatusAPI } from "../../shared/services/apiCalls";
 import RcsbSaguaro from "./components/RcsbSaguaro";
+import { FadeLoader } from "react-spinners";
 
 const POLLING_INTERVAL = 1000 * 5; // every 5 seconds
 
@@ -112,8 +113,12 @@ function AnalyticalPage() {
 		<div id="analyze" className="display-none row">
 			<div id="visualization" className="col-xs-12 col-md-6 col-xl-6">
 				<div id="application-rcsb">
-					{processedResult && (
+					{processedResult !== null ? (
 						<RcsbSaguaro processedResult={processedResult} />
+					) : (
+						<div className="d-flex py-2 justify-content-center align-items-center">
+							<FadeLoader color="#c3c3c3" />
+						</div>
 					)}
 				</div>
 			</div>

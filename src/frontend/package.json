@@ -17,7 +17,8 @@
     "molstar": "^4.12.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-router-dom": "^7.2.0"
+    "react-router-dom": "^7.2.0",
+    "react-spinners": "^0.15.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.21.0",
