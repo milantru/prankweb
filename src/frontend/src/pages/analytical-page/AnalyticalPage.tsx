@@ -72,8 +72,8 @@ function AnalyticalPage() {
 	if (!id) {
 		return <>No id provided.</>
 	}
-	// When pollingInterval is set to null, it is turned off
-	const [pollingInterval, setPollingInterval] = useState<number | null>(POLLING_INTERVAL);
+	// When pollingInterval is set to null, it is turned off (initially turned off, will be turned on after component loading)
+	const [pollingInterval, setPollingInterval] = useState<number | null>(null);
 	const isPageVisible = useVisibilityChange();
 	const dataSourceExecutors: DataSourceExecutor[] = [
 		{ name: "foldseek", results: [] }
@@ -95,12 +95,14 @@ function AnalyticalPage() {
 	}, [isPageVisible]);
 
 	useEffect(() => {
-		/* There is a polling implemented in useInterval but it starts after POLLING_INTERVAL. If we want to try to
-		 * fetch data immediatelly after loading page (and not wait POLLING_INTERVAL). We use this useEffect.
+		/* There is a polling implemented in useInterval but it would start after POLLING_INTERVAL. If we want to try to
+		 * fetch data immediatelly after loading page (and not wait POLLING_INTERVAL), we use this useEffect.
 		 * If all of the data is not fetched yet, no problem, there is polling in useInterval which will poll for the rest. */
 		for (let dataSourceExecutorIdx = 0; dataSourceExecutorIdx < dataSourceExecutors.length; dataSourceExecutorIdx++) {
 			fetchDataFromDataSource(dataSourceExecutorIdx);
 		}
+
+		setPollingInterval(POLLING_INTERVAL); // turn on the polling
 	}, []);
 
 	useInterval(() => {
