@@ -5,6 +5,7 @@ import { useVisibilityChange } from "../../shared/hooks/useVisibilityChange";
 import { DataStatus, getDataSourceExecutorResultAPI, getDataSourceExecutorResultStatusAPI } from "../../shared/services/apiCalls";
 import RcsbSaguaro from "./components/RcsbSaguaro";
 import { FadeLoader } from "react-spinners";
+import { MolStarWrapper } from "./components/MolstarWrapper";
 import { toastWarning } from "../../shared/helperFunctions/toasts";
 import ErrorMessageBox from "./components/ErrorMessageBox";
 
@@ -120,9 +121,8 @@ function AnalyticalPage() {
 				<ErrorMessageBox errorMessages={errorMessages} onClose={clearErrorMessages} />
 			)}
 
-			<div id="analyze" className="row">
-			<div id="visualization" className="col-xs-12 col-md-6 col-xl-6">
-				<div id="application-rcsb">
+			<div id="visualizations" className="row">
+				<div id="application-rcsb" className="col-xs-12 col-md-6 col-xl-6">
 					{processedResult !== null ? (
 						<RcsbSaguaro processedResult={processedResult} />
 					) : (
@@ -131,13 +131,9 @@ function AnalyticalPage() {
 						</div>
 					)}
 				</div>
-			</div>
-			<div id="information" className="col-xs-12 col-md-6 col-xl-6">
-				<div id="pocket-list-aside">
-					<div id="application-molstar">
-						Mol*
-					</div>
-					<div id="visualization-toolbox">asda</div>
+				<div id="application-molstar" className="col-xs-12 col-md-6 col-xl-6">
+					<MolStarWrapper />
+					<div id="visualization-toolbox">TODO Toolbox</div>
 				</div>
 			</div>
 		</div>
@@ -165,18 +161,18 @@ function AnalyticalPage() {
 			const errMsg = `Failed to fetch data from ${dataSourceExecutors[dataSourceIndex].name}, so they won't be displayed.`;
 			updateErrorMessages(dataSourceIndex, errMsg);
 		} else if (status === DataStatus.Completed) {
-		const {
-			results,
+			const {
+				results,
 				userFriendlyErrorMessage: dataFetchingErrorMessage
 			} = await getDataSourceExecutorResultAPI(dataSourceExecutors[dataSourceIndex].name, id);
 			if (dataFetchingErrorMessage.length > 0) {
 				toastWarning(dataFetchingErrorMessage + "\nRetrying...");
-			isFetching[dataSourceIndex] = false;
-			return;
-		}
+				isFetching[dataSourceIndex] = false;
+				return;
+			}
 
-		console.log("Results:" + results)
-		dataSourceExecutors[dataSourceIndex].results = results;
+			console.log("Results:" + results)
+			dataSourceExecutors[dataSourceIndex].results = results;
 		} else {
 			throw new Error("Unknown status."); // This should never happen.
 		}
@@ -254,7 +250,7 @@ function AnalyticalPage() {
 		const targetSeqAlignedPartStartIdx = result.similarSequenceAlignmentData.similarSeqAlignedPartStartIdx;
 
 		/* Pad the beginning of the sequence with the smaller start index  
-		* to align the start indices of both sequences. */
+		 * to align the start indices of both sequences. */
 		if (querySeqAlignedPartStartIdx < targetSeqAlignedPartStartIdx) {
 			const gapCount = targetSeqAlignedPartStartIdx - querySeqAlignedPartStartIdx;
 			querySeq = querySeq.padStart(querySeq.length + gapCount, "-");
@@ -385,9 +381,9 @@ function AnalyticalPage() {
 							}
 						} else {
 							/* All of the results have the same query sequence (if we ignore gaps). On the (aminoAcidIdx + offset) index
-							* is the same amino acid for all the results, which means that here is (for all of the results)
-							* always assigned the same amino acid. Which might seem odd (that we keep reassigning the same value),
-							* but it is correct and to avoid further program branching it will be left like this. */
+							 * is the same amino acid for all the results, which means that here is (for all of the results)
+							 * always assigned the same amino acid. Which might seem odd (that we keep reassigning the same value),
+							 * but it is correct and to avoid further program branching it will be left like this. */
 							aminoAcidOfQuerySeq = aminoAcidOrGapOfQuerySeq;
 							similarSeqResults[dataSourceExecutorIdx][resultIdx].sequence += result.similarSequenceAlignmentData.similarSequence[aminoAcidIdx + offset];
 							mapping[dataSourceExecutorIdx][resultIdx][aminoAcidIdx + offset] = aminoAcidOrGapOfMasterQuerySeqCurrIdx;
