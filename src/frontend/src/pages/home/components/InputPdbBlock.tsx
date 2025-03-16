@@ -116,13 +116,13 @@ function InputPdbBlock({ data, setData, setErrorMessage }: Props) {
             return;
         }
 
-        const { chains, errorMessage } = await getChainsForPdbCodeAPI(pdbCode);
+        const { chains, userFriendlyErrorMessage } = await getChainsForPdbCodeAPI(pdbCode);
         if (pdbCode !== data.pdbCode) {
             // User changed the code in a meanwhile (let "other code" handle it, we don't do anything anymore)
             return;
         }
-        if (errorMessage.length > 0) {
-            setErrorMessage(errorMessage);
+        if (userFriendlyErrorMessage.length > 0) {
+            setErrorMessage(userFriendlyErrorMessage);
             setLoadedChains([]);
             setData({ ...data, chains: "" });
             return;

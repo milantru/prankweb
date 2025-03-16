@@ -1,0 +1,4 @@
+.Toastify__progress-bar--warning {
+    /* This overwrites progress bar color of react-toastify warning toast. */
+    background-color: #c3c3c3;
+}

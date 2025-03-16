@@ -5,6 +5,8 @@ import { useVisibilityChange } from "../../shared/hooks/useVisibilityChange";
 import { DataStatus, getDataSourceExecutorResultAPI, getDataSourceExecutorResultStatusAPI } from "../../shared/services/apiCalls";
 import RcsbSaguaro from "./components/RcsbSaguaro";
 import { FadeLoader } from "react-spinners";
+import { toastWarning } from "../../shared/helperFunctions/toasts";
+import ErrorMessageBox from "./components/ErrorMessageBox";
 
 const POLLING_INTERVAL = 1000 * 5; // every 5 seconds
 
@@ -78,6 +80,7 @@ function AnalyticalPage() {
 	]
 	const isFetching: boolean[] = new Array(dataSourceExecutors.length).fill(false);
 	const isPollingFinished: boolean[] = new Array(dataSourceExecutors.length).fill(true);
+	const [errorMessages, setErrorMessages] = useState<string[]>(new Array(dataSourceExecutors.length).fill(""));
 	const [processedResult, setProcessedResult] = useState<ProcessedResult | null>(null);
 
 	useEffect(() => {
@@ -110,7 +113,12 @@ function AnalyticalPage() {
 	}, pollingInterval);
 
 	return (
-		<div id="analyze" className="display-none row">
+		<div>
+			{errorMessages.some(errMsg => errMsg.length > 0) && (
+				<ErrorMessageBox errorMessages={errorMessages} onClose={clearErrorMessages} />
+			)}
+
+			<div id="analyze" className="row">
 			<div id="visualization" className="col-xs-12 col-md-6 col-xl-6">
 				<div id="application-rcsb">
 					{processedResult !== null ? (
@@ -138,40 +146,45 @@ function AnalyticalPage() {
 		isFetching[dataSourceIndex] = true;
 		const {
 			status,
-			errorMessages: statusFetchingErrorMessages
-		} = await getDataSourceExecutorResultStatusAPI(dataSourceExecutors[dataSourceIndex].name, id!);
-		if (statusFetchingErrorMessages.length > 0) {
-			// TODO stop polling for this data source?
-			// TODO display error messages
-			// TODO what about DataStatus.Failed? Maybe handle here as well as some other error?
+			userFriendlyErrorMessage: statusFetchingErrorMessage
+		} = await getDataSourceExecutorResultStatusAPI(dataSourceExecutors[dataSourceIndex].name, id);
+		if (statusFetchingErrorMessage.length > 0) {
+			toastWarning(statusFetchingErrorMessage + "\nRetrying...");
 			isFetching[dataSourceIndex] = false;
 			return;
 		}
 		console.log("Status:" + status)
-		if (status !== DataStatus.Completed) {
+		if (status === DataStatus.Processing) {
 			isFetching[dataSourceIndex] = false;
 			return;
 		}
 
+		if (status === DataStatus.Failed) {
+			const errMsg = `Failed to fetch data from ${dataSourceExecutors[dataSourceIndex].name}, so they won't be displayed.`;
+			updateErrorMessages(dataSourceIndex, errMsg);
+		} else if (status === DataStatus.Completed) {
 		const {
 			results,
-			errorMessages: dataFetchingErrorMessages
-		} = await getDataSourceExecutorResultAPI(dataSourceExecutors[dataSourceIndex].name, id!);
-		if (dataFetchingErrorMessages.length > 0) {
-			// TODO Maybe handle/display error messages somehow?
-			isPollingFinished[dataSourceIndex] = true;
-			if (isPollingFinished.every(x => x)) {
-				setPollingInterval(null);
-			}
+				userFriendlyErrorMessage: dataFetchingErrorMessage
+			} = await getDataSourceExecutorResultAPI(dataSourceExecutors[dataSourceIndex].name, id);
+			if (dataFetchingErrorMessage.length > 0) {
+				toastWarning(dataFetchingErrorMessage + "\nRetrying...");
 			isFetching[dataSourceIndex] = false;
 			return;
 		}
+
 		console.log("Results:" + results)
 		dataSourceExecutors[dataSourceIndex].results = results;
-		// Data was received, its state won't change, so polling is not required anymore
+		} else {
+			throw new Error("Unknown status."); // This should never happen.
+		}
+
+		/* Either was processing successful and we got the result (Status.Completed),
+		 * or it failed and we won't get result ever (Status.Failed). This means polling for this
+		 * data source result is not required anymore, and we can stop it. */
 		isPollingFinished[dataSourceIndex] = true;
 		if (isPollingFinished.every(x => x)) {
-			setPollingInterval(null);
+			setPollingInterval(null); // turn off polling entirely (for all data sources)
 
 			setProcessedResult(await alignSequences(dataSourceExecutors));
 			dataSourceExecutors.forEach(dse => dse.results = []); // Free space (data has been processed and stored, we don't need this anymore)
@@ -440,6 +453,16 @@ function AnalyticalPage() {
 			similarSequences: similarSeqResults[dseIdx]
 		}));
 		return { querySequence: masterQuerySeq, dataSourceExecutorsData };
+	}
+
+	function updateErrorMessages(dataSourceIndex: number, errorMessage: string) {
+		const updatedErrorMessages = [...errorMessages];
+		updatedErrorMessages[dataSourceIndex] = errorMessage;
+		setErrorMessages(updatedErrorMessages);
+	};
+
+	function clearErrorMessages() {
+		setErrorMessages(new Array(dataSourceExecutors.length).fill(""));
 	}
 }
 
