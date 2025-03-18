@@ -1,16 +1,10 @@
 import os
 import subprocess
-from celery import Celery
 import tempfile
 import json
-import base64
 import requests
 from enum import Enum
-
 import post_processor
-
-# Celery configuration
-celery = Celery('tasks', broker='amqp://guest:guest@message-broker:5672//', backend='rpc://')
 
 RESULTS_FOLDER = "results"
 FOLDSEEK_DB = "foldseek_db/pdb"
@@ -30,13 +24,10 @@ def update_status(status_file_path, id, status, message=""):
     except Exception as e:
         print(f"Error updating status for {id}: {e}")
 
-
-@celery.task(name='ds_foldseek')
-def ds_foldseek(id):
-
+def run_foldseek(id):
     print("FOLDSEEK")
     print(id)
-    
+
     eval_folder = os.path.join(RESULTS_FOLDER, f"{id}")
     os.makedirs(eval_folder, exist_ok=True)
     status_file_path = os.path.join(eval_folder, "status.json")
@@ -53,7 +44,7 @@ def ds_foldseek(id):
             for chunk in response.iter_content(chunk_size=8192):
                 struct_file.write(chunk)
             query_structure_file = struct_file.name
-    
+
         foldseek_result_file = os.path.join(eval_folder, f"aln_res_{id}")
 
         command = [
