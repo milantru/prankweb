@@ -70,9 +70,9 @@ services:
       - message-broker
     volumes:
       - foldseek:/app/results
-      - ./containers/data-source-executors/executor-foldseek/ds_foldseek.py:/app/ds_foldseek.py
+      - ./containers/data-source-executors/executor-foldseek/foldseek_executor.py:/app/foldseek_executor.py
       - ./containers/data-source-executors/executor-foldseek/post_processor.py:/app/post_processor.py
-    command: celery --app=ds_foldseek worker --queues=ds_foldseek --loglevel=debug
+    command: celery --app=celery_worker worker --queues=ds_foldseek --loglevel=debug
 
   metatask:
     build:
