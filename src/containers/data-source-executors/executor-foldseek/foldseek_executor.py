@@ -35,15 +35,14 @@ def run_foldseek(id):
 
     try:
         pdb_url = INPUTS_URL + str(id) + "/structure.pdb"
-        query_structure_file = ""
+        query_structure_file = os.path.join(eval_folder, "input.pdb")
 
         response = requests.get(pdb_url, stream=True)
         response.raise_for_status()
 
-        with tempfile.NamedTemporaryFile(mode="wb", suffix=".pdb", delete=False) as struct_file:
+        with open(query_structure_file, "wb") as struct_file:
             for chunk in response.iter_content(chunk_size=8192):
                 struct_file.write(chunk)
-            query_structure_file = struct_file.name
 
         foldseek_result_file = os.path.join(eval_folder, f"aln_res_{id}")
 
@@ -68,7 +67,4 @@ def run_foldseek(id):
     except Exception as e:
         update_status(status_file_path, id, StatusType.FAILED.value, f"An unexpected error occurred: {e}")
         print(f"An unexpected error occurred: {e}")
-    finally:
-        if query_structure_file and isinstance(query_structure_file, str) and os.path.exists(query_structure_file):
-            os.remove(query_structure_file)
-            print(f"Temporary PDB file deleted: {query_structure_file}")
+
