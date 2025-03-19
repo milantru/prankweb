@@ -25,6 +25,7 @@ services:
     volumes:
       - foldseek:/usr/local/apache2/htdocs/foldseek
       - inputs:/usr/local/apache2/htdocs/inputs
+      - tmp:/usr/local/apache2/htdocs/tmp
     command: httpd -D FOREGROUND
 
   id-provider:
@@ -57,6 +58,7 @@ services:
       - id-provider
       - message-broker
     volumes:
+      - tmp:/app/tmp
       - ./containers/http-server/http-server.py:/app/http-server.py
     command: python -u http-server.py
 
@@ -93,3 +95,4 @@ volumes:
   redis:
   foldseek:
   inputs:
+  tmp:
