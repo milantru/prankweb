@@ -1,6 +1,7 @@
 from celery import Celery
 from flask import Flask, request, jsonify
 import requests
+from subprocess import Popen
 import time
 
 from Bio import SeqIO, PDB
@@ -30,19 +31,20 @@ class InputMethods(Enum):
     UNIPROT = '2'
     SEQUENCE = '3'
 
-class UserInputModels(Enum):
+class InputModels(Enum):
     DEFAULT = '0'
     CONSERVATION_HMM = '1'
     ALPHAFOLD = '2'
     ALPHAFOLD_CONSERVATION_HMM = '3'
 
-PDB_FORM_FIELDS = { 'pdbCode', 'chains', 'useConservation' }
-CUSTOM_STR_FORM_FIELDS = { 'chains', 'userInputModel' }
-UNIPROT_FORM_FIELDS = { 'uniprotCode', 'useConservation' }
-SEQUENCE_FORM_FIELDS = { 'sequence', 'useConservation' }  
+PDB_FORM_FIELDS = [ 'pdbCode', 'chains', 'useConservation' ]
+CUSTOM_STR_FORM_FIELDS = [ 'chains', 'userInputModel' ]
+UNIPROT_FORM_FIELDS = [ 'uniprotCode', 'useConservation' ]
+SEQUENCE_FORM_FIELDS = [ 'sequence', 'useConservation' ]  
 
 
 ID_PROVIDER_URL = 'http://id-provider:5000/generate'
+APACHE_URL = 'http://apache:80'
 
 PDB_ID_URL = 'https://www.ebi.ac.uk/pdbe/api/pdb/entry/molecules/{}'
 PDB_FILE_URL = 'https://files.rcsb.org/download/{}.pdb'
@@ -51,6 +53,13 @@ UNIPROT_ID_URL = 'https://rest.uniprot.org/uniprotkb/{}'
 UNIPROT_FILE_URL = 'https://alphafold.ebi.ac.uk/files/AF-{}-F1-model_v4.pdb'
 
 ############################### Helper methods #################################
+
+def _check_form_fields(input_data, form_fields):
+    for field in form_fields:
+        if field not in input_data:
+            return f'{field} not found'
+        
+    return None
 
 def _file_exists_at_url(url):
     try:
@@ -67,13 +76,6 @@ def _text_is_fasta_format(text):
     except Exception:
         return False
     
-def _check_form_fields(input_data, form_fields):
-    for field in form_fields:
-        if field not in input_data:
-            return f'{field} not found'
-        
-    return None
-    
 def _try_parse_pdb(pdb_file, user_chains):
     
     structure = None
@@ -87,11 +89,10 @@ def _try_parse_pdb(pdb_file, user_chains):
             for chain in model:
                 file_chains.add(chain.get_id())
 
-        if not user_chains <= file_chains:
+        if not (user_chains <= file_chains):
             return 'Wrong chains selected'
     
     except Exception as e:
-        print(e)
         return 'Wrong file format'
     
     return None
@@ -100,7 +101,7 @@ def validate_pdb(input_data):
 
     err = _check_form_fields(input_data, PDB_FORM_FIELDS)    
     if err:
-        return err
+        return err, None
         
     try:
         pdb_id = input_data['pdbCode'].lower()
@@ -108,7 +109,7 @@ def validate_pdb(input_data):
         url = PDB_ID_URL.format(pdb_id)
         response = requests.get(url, allow_redirects=True, timeout=(3,5))
         if response.status_code != 200:
-            return f'PDB ID {pdb_id} not found in database'
+            return f'PDB ID {pdb_id} not found in database', None
 
         response_data = response.json()[pdb_id][0]
 
@@ -117,37 +118,46 @@ def validate_pdb(input_data):
         selected_chains = set((chains_str.split(',') if chains_str else []))
         pdb_chains = set(response_data['in_chains'])
         if not (selected_chains <= pdb_chains):
-            return 'Wrong chains selected'
+            return 'Wrong chains selected', None
 
         # check whether pdb file exists
         url = PDB_FILE_URL.format(pdb_id)
         if not _file_exists_at_url(url):
-            return 'PDB ID found, but corresponding .pdb file not found'
+            return 'PDB ID found, but corresponding .pdb file not found', None
 
         # append sequence to the dict
-        input_data['input_url'] = url
+        input_data['inputUrl'] = url
 
     except Exception as e:
         print(e)
-        return 'Unknown exception occured'
+        return 'Unknown exception occured', None
 
-    return None
+    return None, pdb_id
 
 def validate_custom_str(input_data, input_file):
 
-    for field in CUSTOM_STR_FORM_FIELDS:
-        if field not in input_data:
-            return f'{field} not found', None
+    err = _check_form_fields(input_data, CUSTOM_STR_FORM_FIELDS)    
+    if err:
+        return err, None
         
     if not input_file:
         return 'userFile not found', None
 
     # just check whether input model is fine
-    user_input_model = input_data['userInputModel']
-    if not any(model.value == user_input_model for model in UserInputModels):
+    model = input_data['userInputModel']
+    if not any(model.value == model for model in InputModels):
         return 'Selected input model not supported', None
+    
+    # extract input model and conservation
+    input_data['useConservation'] = (
+        'true' if 'CONSERVATION' in InputModels(model).name else 'false'
+    )
+    input_data['inputModel'] = (
+        'alphafold' if 'ALPHAFOLD' in InputModels(model).name else 'default'
+    )
+    del input_data['userInputModel']
 
-    # save file to tmp folder -> tmp_folder
+    # save file to tmp folder
     tmp_file = f'/tmp/{str(time.time())[-5:] + '_' + input_file.filename}'
     input_file.save(tmp_file)
 
@@ -155,15 +165,20 @@ def validate_custom_str(input_data, input_file):
     chains_str = input_data['chains']
     selected_chains = set((chains_str.split(',') if chains_str else []))
     err = _try_parse_pdb(tmp_file, selected_chains)
-    input_data['input_url'] = 'http://apache:80/' + tmp_file
+    
+    # tmp_folder is mounted to volume tmp which is shared with apache
+    input_data['inputUrl'] = APACHE_URL + tmp_file
+
+    # Delete tmp file after 15 minutes
+    Popen(f'sleep 900 && rm -f {tmp_file}', shell=True)
+    
     return err, None
-    
-    
+
 def validate_uniprot(input_data):
     
-    for field in UNIPROT_FORM_FIELDS:
-        if field not in input_data:
-            return f'{field} not found', None
+    err = _check_form_fields(input_data, UNIPROT_FORM_FIELDS)    
+    if err:
+        return err, None
         
     try:
         uniprot_id = input_data['uniprotCode']
@@ -173,15 +188,13 @@ def validate_uniprot(input_data):
         if response.status_code != 200:
             return f'Given Uniprot ID({uniprot_id}) not found in database', None
         
-        response_data = response.json()
-
         # check whether alphafold file exists
         url = UNIPROT_FILE_URL.format(uniprot_id)
         if not _file_exists_at_url(url):
             return 'Uniprot ID found, but corresponding .pdb file not', None
 
         # append sequence to the dict
-        input_data['input_url'] = url
+        input_data['inputUrl'] = url
 
     except Exception:
         return 'Unknown exception occured', None
@@ -190,14 +203,25 @@ def validate_uniprot(input_data):
 
 def validate_seq(input_data):
     
-    for field in SEQUENCE_FORM_FIELDS:
-        if field not in input_data:
-            return f'{field} is missing', None
+    err = _check_form_fields(input_data, SEQUENCE_FORM_FIELDS)    
+    if err:
+        return err
         
     # check sequence
-    sequence = input_data['sequence']
+    sequence:str = input_data['sequence']
+    if not sequence.startswith('>'): sequence = '>' + sequence
     if not _text_is_fasta_format(sequence):
         return 'Sequence not in FASTA format', None
+    
+    # save sequence to tmp folder
+    tmp_file = f'/tmp/{str(time.time())[-5:]}' + '_' + 'seq'
+    with open(tmp_file, 'w') as f: f.write(sequence)
+
+    # tmp_folder is mounted to volume tmp which is shared with apache
+    input_data['inputUrl'] = APACHE_URL + tmp_file
+
+    # Delete tmp file after 15 minutes
+    Popen(f'sleep 900 && rm -f {tmp_file}', shell=True)
     
     return None, sequence
 
@@ -229,11 +253,12 @@ def upload_data():
         print(err)
         return jsonify({'error': err}), 400
 
+    # convert useConservation to Python friendly format
+    use_conservation = input_data['useConservation'].lower() == 'true'
+    input_data['useConservation'] = use_conservation
+
     # convert keys to snake_case
-    metatask_payload = { 
-        decamelize(k) if k not in ('pdbCode','uniprotCode') else 'protein_id': v 
-        for k,v in input_data.items() 
-    }
+    metatask_payload = { decamelize(k):v for k,v in input_data.items() }
 
     id_payload = {
         'input_type': input_method,
@@ -252,7 +277,7 @@ def upload_data():
     try:
         # send task
         result = celery.send_task(
-            f'metatask',
+            'metatask',
             args=[metatask_payload],
             queue='metatask'
         )

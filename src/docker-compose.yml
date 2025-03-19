@@ -58,7 +58,7 @@ services:
       - id-provider
       - message-broker
     volumes:
-      - tmp:/app/tmp
+      - tmp:/tmp
       - ./containers/http-server/http-server.py:/app/http-server.py
     command: python -u http-server.py
 
