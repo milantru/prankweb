@@ -93,7 +93,7 @@ function RcsbSaguaro({ processedResult }: Props) {
                 color = opacities !== null
                     ? chroma(baseColor).alpha(opacity).hex()
                     : chroma(baseColor).hex();
-                console.log(`${str} : ${color}`)
+
                 str += "salt"; // This will fix potential hash collisions
             } while (Object.values(colors).some(existingColor => existingColor === color) || color in forbiddenColors);
 
