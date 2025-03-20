@@ -102,6 +102,16 @@ services:
       - ./containers/metatask/metatask.py:/app/metatask.py
     command: celery --app=metatask worker --queues=metatask --loglevel=debug
 
+  flower:
+    build: https://github.com/mher/flower.git
+    environment:
+      CELERY_BROKER_URL: "amqp://guest:guest@message-broker:5672"
+    depends_on:
+      - message-broker
+    ports:
+      - "5555:5555"
+    command: "celery flower --url_prefix=service/flower"
+
 volumes:
   rabbitmq:
   redis:
