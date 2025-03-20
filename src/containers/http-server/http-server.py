@@ -145,7 +145,7 @@ def validate_custom_str(input_data, input_file):
 
     # just check whether input model is fine
     model = input_data['userInputModel']
-    if not any(model.value == model for model in InputModels):
+    if not any(model == m.value for m in InputModels):
         return 'Selected input model not supported', None
     
     # extract input model and conservation
@@ -262,17 +262,20 @@ def upload_data():
         'input_protein': protein
     }
 
+    print('ID PROVIDER REQUEST')
     response = requests.post(ID_PROVIDER_URL, json=id_payload)
 
     if response.status_code != 200:
         return jsonify({'error': 'Failed to fetch data from id-provider'}), 500
     
-    response_data = response.json()
+    print('ID PROVIDER RESPONDED POSITIVELY')
 
     # change input method to 'STR' or 'SEQ'
     input_data['inputMethod'] = (
         'SEQ' if input_method == InputMethods.SEQUENCE.value else 'STR'
     )
+
+    response_data = response.json()
 
     # convert keys to snake_case
     metatask_payload = { decamelize(k):v for k,v in input_data.items() }
