@@ -178,15 +178,15 @@ function QueryProteinForm() {
     async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
         event.preventDefault();
         setIsSubmitting(true);
-        
+
         const selectedInputBlockData = formState.inputBlockData[formState.inputMethod];
-        const { id, errorMessage: errMsg } = await uploadDataAPI(formState.inputMethod, selectedInputBlockData);
-        if (errMsg.length > 0) {
-            setErrorMessage(errMsg);
+        const { id, userFriendlyErrorMessage } = await uploadDataAPI(formState.inputMethod, selectedInputBlockData);
+        if (userFriendlyErrorMessage.length > 0) {
+            setErrorMessage(userFriendlyErrorMessage);
             setIsSubmitting(false);
             return;
         }
-        
+
         navigate(`/analytical-page?id=${id}`);
         setIsSubmitting(false);
     }

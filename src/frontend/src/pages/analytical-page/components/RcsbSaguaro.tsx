@@ -174,7 +174,6 @@ function RcsbSaguaro({ processedResult }: Props) {
             trackHeight: 20,
             trackColor: trackColor,
             displayType: "block",
-            displayColor: "#FF0000",
             rowTitle: title,
             trackData: trackData
         };
