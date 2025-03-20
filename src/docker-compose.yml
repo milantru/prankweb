@@ -60,7 +60,8 @@ services:
     volumes:
       - tmp:/tmp
       - ./containers/http-server/http-server.py:/app/http-server.py
-    command: python -u http-server.py
+    #command: python -u http-server.py
+    command: gunicorn -w 4 -b :3000 http-server:app
 
   ds-foldseek:
     build:
@@ -104,6 +105,7 @@ services:
 
   flower:
     build: https://github.com/mher/flower.git
+    container_name: flower
     environment:
       CELERY_BROKER_URL: "amqp://guest:guest@message-broker:5672"
     depends_on:
