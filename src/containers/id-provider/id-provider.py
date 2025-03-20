@@ -12,12 +12,12 @@ def check(key):
 @app.route('/generate', methods=['POST'])
 def get_or_generate():
 
-    input_type = request.json.get('input_type')
+    input_type = int(request.json.get('input_type'))
     input_protein = request.json.get('input_protein')
     print(input_type)
     print(input_protein)
 
-    if input_type is None or input_protein is None:
+    if input_type is None or (input_protein is None and input_type != 1):
         return jsonify({"error": "input type or input string is missing"}), 400
 
     if input_type == 1:
@@ -38,7 +38,8 @@ def get_or_generate():
     # Convert the ID to hexadecimal (without the '0x' prefix)
     generated_id = hex(generated_id)[2:]
 
-    redis_client.set(key, generated_id)
+    if input_type != 1:
+        redis_client.set(key, generated_id)
 
     print(f"Generated ID: {generated_id} for {key}")
     return jsonify({"id": generated_id, "stored_value": key, "existed" : False})

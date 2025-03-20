@@ -4,12 +4,11 @@
   - restart
   - healthcheck
   - hostname
-  - treba porty ?
-  - treba network ?
+  - users, passwords, etc
 
 - id-provider:
   - endpointy, jeden verejny, jeden neverejny
 
-- netoworks
+- networks
 - restarts
 - healthchecky zajacovi, redis a apachovi

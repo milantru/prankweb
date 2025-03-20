@@ -264,7 +264,7 @@ function AnalyticalPage() {
 		// Pad the shorter sequence to match the length of the longer one.
 		if (querySeq.length < similarSeq.length) {
 			const gapCount = similarSeq.length - querySeq.length;
-			similarSeq = querySeq.padEnd(querySeq.length + gapCount, "-");
+			querySeq = querySeq.padEnd(querySeq.length + gapCount, "-");
 		} else {
 			const gapCount = querySeq.length - similarSeq.length;
 			similarSeq = similarSeq.padEnd(similarSeq.length + gapCount, "-");
