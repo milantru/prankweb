@@ -76,6 +76,18 @@ services:
       - ./containers/data-source-executors/executor-foldseek/post_processor.py:/app/post_processor.py
     command: celery --app=ds_foldseek worker --queues=ds_foldseek --loglevel=debug
 
+  converter:
+    build:
+      context: ./containers/converter/
+      #dockerfile: ./containers/data-source-executors/executor-foldseek/Dockerfile
+    container_name: converter
+    restart: always
+    depends_on:
+      - message-broker
+    volumes:
+      - ./containers/converter/converter.py:/app/converter.py
+    command: celery --app=converter worker --queues=converter --loglevel=debug
+
   metatask:
     build:
       context: ./containers/metatask/

@@ -6,6 +6,7 @@ from Bio.SeqRecord import SeqRecord
 from Bio import SeqIO
 from celery import Celery
 import requests
+import time
 
 ################################ Celery setup ##################################
 
@@ -31,13 +32,13 @@ class StatusType(Enum):
     COMPLETED = 1
     FAILED = 2
 
-TASKS_WITH_SEQ_INPUT = [ """'plm'""" ]
-TASKS_WITH_STR_INPUT = [ 'foldseek' """, 'p2rank'""" ]
+TASKS_WITH_SEQ_INPUT = [] # [ 'plm'' ]
+TASKS_WITH_STR_INPUT = [ 'foldseek' ] # [ 'ds_foldseek', 'p2rank' ]
 
 router = { 
     'SEQ': {
         'input_file': 'sequence.fasta',
-        'coverter_file': 'structure.pdb',
+        'converter_file': 'structure.pdb',
         'converter': 'converter_seq_to_str',
         'first_tasks': TASKS_WITH_SEQ_INPUT,
         'second_tasks': TASKS_WITH_STR_INPUT
@@ -45,7 +46,7 @@ router = {
     
     'STR': {
         'input_file': 'structure.pdb',
-        'coverter_file': 'sequence.fasta',
+        'converter_file': 'sequence.fasta',
         'converter': 'converter_str_to_seq',
         'first_tasks': TASKS_WITH_STR_INPUT,
         'second_tasks': TASKS_WITH_SEQ_INPUT
@@ -100,10 +101,11 @@ def run_tasks(id, id_existed, task_list, input_data):
     for task in task_list:
         if not id_existed or not is_task_running_or_completed(task, id):
             args = extract_args(task, input_data)
+            print(f'SENDING {task.upper()}')
             celery.send_task(
-                task,
+                f'ds_{task}',
                 args=[id, args] if args else [id],
-                queue=task
+                queue=f'ds_{task}'
             )
 
 
@@ -126,8 +128,9 @@ def metatask(input_data):
     run_tasks(id, id_existed, router[input_method]['first_tasks'], input_data)
 
     # prepare second input
-    if not id_existed or not inputs_exist():
+    if not id_existed or not inputs_exist(input_folder):
         # run converter
+        print(f'SENDING CONVERTER')
         converter = celery.send_task(
             router[input_method]['converter'],
             args=[id],
@@ -135,12 +138,17 @@ def metatask(input_data):
         )
 
         # wait for converter
-        converter_result = converter.get(timeout=120)
+        while not converter.ready():
+            time.sleep(0.1)
+
+        converter_result = converter.result
 
         # store results
         converter_file = input_folder + router[input_method]['converter_file']
         with open(converter_file, 'w') as file:
             file.write(converter_result)
+
+        print(f'CONVERTER RESULT SAVED')
 
     # run second tasks
     run_tasks(id, id_existed, router[input_method]['second_tasks'], input_data)

@@ -158,7 +158,7 @@ def validate_custom_str(input_data, input_file):
     del input_data['userInputModel']
 
     # save file to tmp folder
-    tmp_file = f'/tmp/{str(time.time())[-5:] + '_' + input_file.filename}'
+    tmp_file = f'/tmp/{str(time.time())[-5:] + "_" + input_file.filename}'
     input_file.save(tmp_file)
 
     # try to parse pdb and check selected chains
