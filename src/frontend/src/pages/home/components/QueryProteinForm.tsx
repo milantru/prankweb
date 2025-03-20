@@ -1,4 +1,4 @@
-import { ChangeEvent, FormEvent, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useState } from "react";
 import InputPdbBlock, { InputPdbBlockData } from "./InputPdbBlock";
 import InputUniprotBlock, { InputUniprotBlockData } from "./InputUniprotBlock";
 import InputUserFileBlock, { InputUserFileBlockData, UserInputModel } from "./InputUserFileBlock";
@@ -36,6 +36,10 @@ function QueryProteinForm() {
     const [errorMessage, setErrorMessage] = useState<string>("");
     const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
     const navigate = useNavigate();
+
+    useEffect(() => {
+        setErrorMessage("");
+    }, [formState])
 
     return (
         <form name="input-form" onSubmit={handleSubmit}>
