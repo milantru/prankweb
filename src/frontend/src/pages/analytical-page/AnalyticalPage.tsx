@@ -147,7 +147,7 @@ function AnalyticalPage() {
 			userFriendlyErrorMessage: statusFetchingErrorMessage
 		} = await getDataSourceExecutorResultStatusAPI(dataSourceExecutors[dataSourceIndex].name, id);
 		if (statusFetchingErrorMessage.length > 0) {
-			toastWarning(statusFetchingErrorMessage + "\nRetrying...");
+			console.warn(statusFetchingErrorMessage + "\nRetrying...");
 			isFetching[dataSourceIndex] = false;
 			return;
 		}
@@ -298,7 +298,7 @@ function AnalyticalPage() {
 		}
 
 		/* "Preprocessing phase": Align query and similar sequences while also updating binding site indices.
-		 * Results without similar sequences are skipped (unchanged). */
+		* Results without similar sequences are skipped (unchanged). */
 		await Promise.all(
 			dataSourceExecutors.map(dse =>
 				new Promise<void>(resolve => {
@@ -444,7 +444,7 @@ function AnalyticalPage() {
 			})
 		);
 		await Promise.all(tasks);
-
+		
 		const dataSourceExecutorsData = dataSourceExecutors.map<DataSourceExecutorData>((dse, dseIdx) => ({
 			dataSourceName: dse.name,
 			bindingSites: bindingSiteResults[dseIdx],
