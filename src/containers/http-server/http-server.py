@@ -5,7 +5,7 @@ from subprocess import Popen
 import time
 
 from Bio import SeqIO, PDB
-from io import StringIO, BytesIO
+from io import StringIO
 from enum import Enum
 from humps import decamelize
 
@@ -257,9 +257,6 @@ def upload_data():
     use_conservation = input_data['useConservation'].lower() == 'true'
     input_data['useConservation'] = use_conservation
 
-    # convert keys to snake_case
-    metatask_payload = { decamelize(k):v for k,v in input_data.items() }
-
     id_payload = {
         'input_type': input_method,
         'input_protein': protein
@@ -271,6 +268,14 @@ def upload_data():
         return jsonify({'error': 'Failed to fetch data from id-provider'}), 500
     
     response_data = response.json()
+
+    # change input method to 'STR' or 'SEQ'
+    input_data['inputMethod'] = (
+        'SEQ' if input_method == InputMethods.SEQUENCE.value else 'STR'
+    )
+
+    # convert keys to snake_case
+    metatask_payload = { decamelize(k):v for k,v in input_data.items() }
     metatask_payload['id'] = response_data['id']
     metatask_payload['id_existed'] = response_data['existed']
 
