@@ -25,6 +25,8 @@ type FormState = {
 };
 
 function QueryProteinForm() {
+    // ESMFold has a sequence length constraint, which is why the length is restricted
+    const maxSequenceLength = 400;
     const [formState, setFormState] = useState<FormState>({
         inputMethod: InputMethods.InputPdbBlock,
         inputBlockData: Object.fromEntries(
@@ -164,7 +166,8 @@ function QueryProteinForm() {
                 return <InputSequenceBlock
                     data={formState.inputBlockData[inputMethod] as InputSequenceBlockData}
                     setData={setData}
-                    setErrorMessage={setErrorMessage} />;
+                    setErrorMessage={setErrorMessage}
+                    maxSequenceLength={maxSequenceLength} />;
             default:
                 throw new Error("Unknown input method.");
         }
@@ -229,9 +232,14 @@ function QueryProteinForm() {
             case InputMethods.InputSequenceBlock:
                 const inputSequenceBlockData = formState.inputBlockData[formState.inputMethod] as InputSequenceBlockData;
 
-                const isSequenceValid = inputSequenceBlockData.sequence.length > 0;
+                const isSequenceMissing = inputSequenceBlockData.sequence.length === 0;
 
-                return isSequenceValid;
+                const isSequenceTooLong = inputSequenceBlockData.sequence.length > maxSequenceLength;
+                if (isSequenceTooLong) {
+                    setErrorMessage(`Max allowed sequence size is ${maxSequenceLength}.`);
+                }
+
+                return !isSequenceMissing && !isSequenceTooLong;
             default:
                 throw new Error("Unknown input method.");
         }
