@@ -50,7 +50,11 @@ function InputSequenceBlock({ data, setData, setErrorMessage, maxSequenceLength 
                 <div contentEditable
                     id="editor"
                     className="form-control"
-                    style={{ minHeight: "82px" }}
+                    style={{
+                        minHeight: "82px",
+                        // If data.sequence.length > 0, then placeholder is displayed and we want to decrease opacity
+                        color: data.sequence.length > 0 ? "#495057" : "#49505780"
+                    }}
                     // TODO title is true, or...?
                     title="PlankWeb will use AlphaFold predicted structure."
                     onInput={updateHighlight}
