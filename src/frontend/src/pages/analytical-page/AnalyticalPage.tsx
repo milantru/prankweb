@@ -4,6 +4,10 @@ import { useInterval } from "../../shared/hooks/useInterval";
 import { useVisibilityChange } from "../../shared/hooks/useVisibilityChange";
 import { DataStatus, getDataSourceExecutorResultAPI, getDataSourceExecutorResultStatusAPI } from "../../shared/services/apiCalls";
 import RcsbSaguaro from "./components/RcsbSaguaro";
+import { FadeLoader } from "react-spinners";
+import { MolStarWrapper } from "./components/MolstarWrapper";
+import { toastWarning } from "../../shared/helperFunctions/toasts";
+import ErrorMessageBox from "./components/ErrorMessageBox";
 
 const POLLING_INTERVAL = 1000 * 5; // every 5 seconds
 
@@ -69,14 +73,15 @@ function AnalyticalPage() {
 	if (!id) {
 		return <>No id provided.</>
 	}
-	// When pollingInterval is set to null, it is turned off
-	const [pollingInterval, setPollingInterval] = useState<number | null>(POLLING_INTERVAL);
+	// When pollingInterval is set to null, it is turned off (initially turned off, will be turned on after component loading)
+	const [pollingInterval, setPollingInterval] = useState<number | null>(null);
 	const isPageVisible = useVisibilityChange();
 	const dataSourceExecutors: DataSourceExecutor[] = [
 		{ name: "foldseek", results: [] }
 	]
 	const isFetching: boolean[] = new Array(dataSourceExecutors.length).fill(false);
 	const isPollingFinished: boolean[] = new Array(dataSourceExecutors.length).fill(true);
+	const [errorMessages, setErrorMessages] = useState<string[]>(new Array(dataSourceExecutors.length).fill(""));
 	const [processedResult, setProcessedResult] = useState<ProcessedResult | null>(null);
 
 	useEffect(() => {
@@ -91,12 +96,14 @@ function AnalyticalPage() {
 	}, [isPageVisible]);
 
 	useEffect(() => {
-		/* There is a polling implemented in useInterval but it starts after POLLING_INTERVAL. If we want to try to
-		 * fetch data immediatelly after loading page (and not wait POLLING_INTERVAL). We use this useEffect.
+		/* There is a polling implemented in useInterval but it would start after POLLING_INTERVAL. If we want to try to
+		 * fetch data immediatelly after loading page (and not wait POLLING_INTERVAL), we use this useEffect.
 		 * If all of the data is not fetched yet, no problem, there is polling in useInterval which will poll for the rest. */
 		for (let dataSourceExecutorIdx = 0; dataSourceExecutorIdx < dataSourceExecutors.length; dataSourceExecutorIdx++) {
 			fetchDataFromDataSource(dataSourceExecutorIdx);
 		}
+
+		setPollingInterval(POLLING_INTERVAL); // turn on the polling
 	}, []);
 
 	useInterval(() => {
@@ -109,20 +116,24 @@ function AnalyticalPage() {
 	}, pollingInterval);
 
 	return (
-		<div id="analyze" className="display-none row">
-			<div id="visualization" className="col-xs-12 col-md-6 col-xl-6">
-				<div id="application-rcsb">
-					{processedResult && (
+		<div>
+			{errorMessages.some(errMsg => errMsg.length > 0) && (
+				<ErrorMessageBox errorMessages={errorMessages} onClose={clearErrorMessages} />
+			)}
+
+			<div id="visualizations" className="row">
+				<div id="application-rcsb" className="col-xs-12 col-md-6 col-xl-6">
+					{processedResult !== null ? (
 						<RcsbSaguaro processedResult={processedResult} />
+					) : (
+						<div className="d-flex py-2 justify-content-center align-items-center">
+							<FadeLoader color="#c3c3c3" />
+						</div>
 					)}
 				</div>
-			</div>
-			<div id="information" className="col-xs-12 col-md-6 col-xl-6">
-				<div id="pocket-list-aside">
-					<div id="application-molstar">
-						Mol*
-					</div>
-					<div id="visualization-toolbox">asda</div>
+				<div id="application-molstar" className="col-xs-12 col-md-6 col-xl-6">
+					<MolStarWrapper />
+					<div id="visualization-toolbox">TODO Toolbox</div>
 				</div>
 			</div>
 		</div>
@@ -133,40 +144,45 @@ function AnalyticalPage() {
 		isFetching[dataSourceIndex] = true;
 		const {
 			status,
-			errorMessages: statusFetchingErrorMessages
-		} = await getDataSourceExecutorResultStatusAPI(dataSourceExecutors[dataSourceIndex].name, id!);
-		if (statusFetchingErrorMessages.length > 0) {
-			// TODO stop polling for this data source?
-			// TODO display error messages
-			// TODO what about DataStatus.Failed? Maybe handle here as well as some other error?
+			userFriendlyErrorMessage: statusFetchingErrorMessage
+		} = await getDataSourceExecutorResultStatusAPI(dataSourceExecutors[dataSourceIndex].name, id);
+		if (statusFetchingErrorMessage.length > 0) {
+			console.warn(statusFetchingErrorMessage + "\nRetrying...");
 			isFetching[dataSourceIndex] = false;
 			return;
 		}
 		console.log("Status:" + status)
-		if (status !== DataStatus.Completed) {
+		if (status === DataStatus.Processing) {
 			isFetching[dataSourceIndex] = false;
 			return;
 		}
 
-		const {
-			results,
-			errorMessages: dataFetchingErrorMessages
-		} = await getDataSourceExecutorResultAPI(dataSourceExecutors[dataSourceIndex].name, id!);
-		if (dataFetchingErrorMessages.length > 0) {
-			// TODO Maybe handle/display error messages somehow?
-			isPollingFinished[dataSourceIndex] = true;
-			if (isPollingFinished.every(x => x)) {
-				setPollingInterval(null);
+		if (status === DataStatus.Failed) {
+			const errMsg = `Failed to fetch data from ${dataSourceExecutors[dataSourceIndex].name}, so they won't be displayed.`;
+			updateErrorMessages(dataSourceIndex, errMsg);
+		} else if (status === DataStatus.Completed) {
+			const {
+				results,
+				userFriendlyErrorMessage: dataFetchingErrorMessage
+			} = await getDataSourceExecutorResultAPI(dataSourceExecutors[dataSourceIndex].name, id);
+			if (dataFetchingErrorMessage.length > 0) {
+				toastWarning(dataFetchingErrorMessage + "\nRetrying...");
+				isFetching[dataSourceIndex] = false;
+				return;
 			}
-			isFetching[dataSourceIndex] = false;
-			return;
+
+			console.log("Results:" + results)
+			dataSourceExecutors[dataSourceIndex].results = results;
+		} else {
+			throw new Error("Unknown status."); // This should never happen.
 		}
-		console.log("Results:" + results)
-		dataSourceExecutors[dataSourceIndex].results = results;
-		// Data was received, its state won't change, so polling is not required anymore
+
+		/* Either was processing successful and we got the result (Status.Completed),
+		 * or it failed and we won't get result ever (Status.Failed). This means polling for this
+		 * data source result is not required anymore, and we can stop it. */
 		isPollingFinished[dataSourceIndex] = true;
 		if (isPollingFinished.every(x => x)) {
-			setPollingInterval(null);
+			setPollingInterval(null); // turn off polling entirely (for all data sources)
 
 			setProcessedResult(await alignSequences(dataSourceExecutors));
 			dataSourceExecutors.forEach(dse => dse.results = []); // Free space (data has been processed and stored, we don't need this anymore)
@@ -234,7 +250,7 @@ function AnalyticalPage() {
 		const targetSeqAlignedPartStartIdx = result.similarSequenceAlignmentData.similarSeqAlignedPartStartIdx;
 
 		/* Pad the beginning of the sequence with the smaller start index  
-		* to align the start indices of both sequences. */
+		 * to align the start indices of both sequences. */
 		if (querySeqAlignedPartStartIdx < targetSeqAlignedPartStartIdx) {
 			const gapCount = targetSeqAlignedPartStartIdx - querySeqAlignedPartStartIdx;
 			querySeq = querySeq.padStart(querySeq.length + gapCount, "-");
@@ -248,7 +264,7 @@ function AnalyticalPage() {
 		// Pad the shorter sequence to match the length of the longer one.
 		if (querySeq.length < similarSeq.length) {
 			const gapCount = similarSeq.length - querySeq.length;
-			similarSeq = querySeq.padEnd(querySeq.length + gapCount, "-");
+			querySeq = querySeq.padEnd(querySeq.length + gapCount, "-");
 		} else {
 			const gapCount = querySeq.length - similarSeq.length;
 			similarSeq = similarSeq.padEnd(similarSeq.length + gapCount, "-");
@@ -282,7 +298,7 @@ function AnalyticalPage() {
 		}
 
 		/* "Preprocessing phase": Align query and similar sequences while also updating binding site indices.
-		 * Results without similar sequences are skipped (unchanged). */
+		* Results without similar sequences are skipped (unchanged). */
 		await Promise.all(
 			dataSourceExecutors.map(dse =>
 				new Promise<void>(resolve => {
@@ -365,9 +381,9 @@ function AnalyticalPage() {
 							}
 						} else {
 							/* All of the results have the same query sequence (if we ignore gaps). On the (aminoAcidIdx + offset) index
-							* is the same amino acid for all the results, which means that here is (for all of the results)
-							* always assigned the same amino acid. Which might seem odd (that we keep reassigning the same value),
-							* but it is correct and to avoid further program branching it will be left like this. */
+							 * is the same amino acid for all the results, which means that here is (for all of the results)
+							 * always assigned the same amino acid. Which might seem odd (that we keep reassigning the same value),
+							 * but it is correct and to avoid further program branching it will be left like this. */
 							aminoAcidOfQuerySeq = aminoAcidOrGapOfQuerySeq;
 							similarSeqResults[dataSourceExecutorIdx][resultIdx].sequence += result.similarSequenceAlignmentData.similarSequence[aminoAcidIdx + offset];
 							mapping[dataSourceExecutorIdx][resultIdx][aminoAcidIdx + offset] = aminoAcidOrGapOfMasterQuerySeqCurrIdx;
@@ -428,13 +444,23 @@ function AnalyticalPage() {
 			})
 		);
 		await Promise.all(tasks);
-
+		
 		const dataSourceExecutorsData = dataSourceExecutors.map<DataSourceExecutorData>((dse, dseIdx) => ({
 			dataSourceName: dse.name,
 			bindingSites: bindingSiteResults[dseIdx],
 			similarSequences: similarSeqResults[dseIdx]
 		}));
 		return { querySequence: masterQuerySeq, dataSourceExecutorsData };
+	}
+
+	function updateErrorMessages(dataSourceIndex: number, errorMessage: string) {
+		const updatedErrorMessages = [...errorMessages];
+		updatedErrorMessages[dataSourceIndex] = errorMessage;
+		setErrorMessages(updatedErrorMessages);
+	};
+
+	function clearErrorMessages() {
+		setErrorMessages(new Array(dataSourceExecutors.length).fill(""));
 	}
 }
 

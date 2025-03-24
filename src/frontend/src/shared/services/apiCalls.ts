@@ -15,7 +15,10 @@ import camelcaseKeys from "camelcase-keys";
 export async function uploadDataAPI(
 	inputMethod: InputMethods,
 	inputBlockData: InputBlockData
-): Promise<{ id: number, errorMessage: string }> {
+): Promise<{ id: number, userFriendlyErrorMessage: string }> {
+	const url = `${apiBaseUrl}/upload-data`;
+	const errorMessage = "Failed to upload data to the server.";
+
 	const formData = new FormData();
 	formData.append("inputMethod", inputMethod.toString());
 	// Add input block data to form data
@@ -28,22 +31,20 @@ export async function uploadDataAPI(
 		console.log(pair[0] + ": " + pair[1]);
 	}
 	try {
-		const response = await axios.post<number>(apiBaseUrl + "/upload-data", formData, {
+		const response = await axios.post<number>(url, formData, {
 			headers: {
 				"Content-Type": "multipart/form-data"
 			}
 		});
 		console.log("GOT data: " + response.data);
 		const id = response.data as number;
-		return { id: id, errorMessage: "" };
+		return { id: id, userFriendlyErrorMessage: "" };
 	}
 	catch (error) {
-		const errorMessages = getErrorMessages(error);
-		for (const errorMessage of errorMessages) {
-			console.error(errorMessage);
-		}
-		const userFriendylErrorMessage = "Failed to upload data to the server.";
-		return { id: 0, errorMessage: userFriendylErrorMessage };
+		const errMsgs = getErrorMessages(error);
+		errMsgs.forEach(errMsg => console.error(errMsg));
+
+		return { id: 0, userFriendlyErrorMessage: errorMessage };
 	}
 }
 
@@ -62,56 +63,67 @@ type DataStatusResponse = {
 export async function getDataSourceExecutorResultStatusAPI(
 	dataSourceName: string,
 	id: string
-): Promise<{ status: DataStatus | null, errorMessages: string[] }> {
+): Promise<{ status: DataStatus | null, userFriendlyErrorMessage: string }> {
+	const url = `${apiBaseUrl}/${dataSourceName}/${id}/status.json`;
+	const errorMessage = `Failed to fetch ${dataSourceName}${dataSourceName.toLowerCase().endsWith("s") ? "'" : "'s"} status.`;
+
 	try {
 		console.log("STATUS")
-		console.log(apiBaseUrl + `/${dataSourceName}/${id}/status.json`);
-		const dataStatusResponse = await axios.get<DataStatusResponse>(apiBaseUrl + `/${dataSourceName}/${id}/status.json`, {
+		const dataStatusResponse = await axios.get<DataStatusResponse>(url, {
 			headers: {
 				"Content-Type": "application/json"
 			}
 		});
 		console.log(dataStatusResponse);
 		if (dataStatusResponse.data.errorMessages.length > 0) {
-			return { status: null, errorMessages: dataStatusResponse.data.errorMessages };
+			dataStatusResponse.data.errorMessages.forEach(errMsg => console.error(errMsg));
+			return { status: null, userFriendlyErrorMessage: errorMessage };
 		}
-
 		const status = dataStatusResponse.data.status as DataStatus;
-		return { status: status, errorMessages: [] };
+		return { status: status, userFriendlyErrorMessage: "" };
 	}
 	catch (error) {
-		return { status: null, errorMessages: getErrorMessages(error) };
+		const errMsgs = getErrorMessages(error);
+		errMsgs.forEach(errMsg => console.error(errMsg));
+
+		return { status: null, userFriendlyErrorMessage: errorMessage };
 	}
 }
 
 export async function getDataSourceExecutorResultAPI(
 	dataSourceName: string,
 	id: string
-): Promise<{ results: Result[], errorMessages: string[] }> {
+): Promise<{ results: Result[], userFriendlyErrorMessage: string }> {
+	const url = `${apiBaseUrl}/${dataSourceName}/${id}/${id}_result.json`;
+	const errorMessage = `Failed to fetch ${dataSourceName}${dataSourceName.toLowerCase().endsWith("s") ? "'" : "'s"} result.`;
+
 	try {
-		const response = await axios.get<object>(apiBaseUrl + `/${dataSourceName}/${id}/${id}_result.json`, {
+		const response = await axios.get<object>(url, {
 			headers: {
 				"Content-Type": "application/json"
 			}
 		});
 		console.log(response.data);
 		const results: Result[] = camelcaseKeys(JSON.parse(JSON.stringify(response.data)), { deep: true });
-		return { results, errorMessages: [] };
+		return { results, userFriendlyErrorMessage: "" };
 	}
 	catch (error) {
-		return { results: [], errorMessages: getErrorMessages(error) };
+		const errMsgs = getErrorMessages(error);
+		errMsgs.forEach(errMsg => console.error(errMsg));
+
+		return { results: [], userFriendlyErrorMessage: errorMessage };
 	}
 }
 
-export async function getChainsForPdbCodeAPI(pdbCode: string): Promise<{ chains: string[], errorMessage: string }> {
+export async function getChainsForPdbCodeAPI(pdbCode: string): Promise<{ chains: string[], userFriendlyErrorMessage: string }> {
 	const url = `https://www.ebi.ac.uk/pdbe/api/pdb/entry/molecules/${pdbCode}`;
-	const errorMessage = `Failed to fetch chains for pdb code '${pdbCode}'`;
+	const errorMessage = `Failed to fetch chains for ${pdbCode}`;
 
 	try {
 		const response = await axios.get(url);
 		const data = response.data;
 		if (!data[pdbCode.toLowerCase()]) { // if no data is found for this pdbCode
-			return { chains: [], errorMessage: errorMessage };
+			return { chains: [], userFriendlyErrorMessage: errorMessage };
 		}
 
 		const chainsSet = new Set<string>(); // set is used to avoid duplicates
@@ -121,8 +133,11 @@ export async function getChainsForPdbCodeAPI(pdbCode: string): Promise<{ chains:
 				entity["in_chains"].forEach(chain => chainsSet.add(chain))
 			);
 
-		return { chains: Array.from(chainsSet), errorMessage: "" };
+		return { chains: Array.from(chainsSet), userFriendlyErrorMessage: "" };
 	} catch (error) {
-		return { chains: [], errorMessage: errorMessage };
+		const errMsgs = getErrorMessages(error);
+		errMsgs.forEach(errMsg => console.error(errMsg));
+
+		return { chains: [], userFriendlyErrorMessage: errorMessage };
 	}
 }

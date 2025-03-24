@@ -1,100 +1,154 @@
-import os
-import base64
-from celery import Celery
-import requests
-import json
-from time import sleep
 from enum import Enum
+import os
 
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from Bio import SeqIO
+from celery import Celery
+import requests
+import time
 
-celery = Celery('tasks', broker='amqp://guest:guest@message-broker:5672//', backend='rpc://')
+################################ Celery setup ##################################
+
+celery = Celery(
+    'tasks',
+    broker='amqp://guest:guest@message-broker:5672//',
+    backend='rpc://'
+)
 celery.conf.update({
-    "task_routes": {
-        "ds_foldseek": "ds_foldseek",
+    'task_routes': {
+        'ds_foldseek': 'ds_foldseek',
+        'converter_seq_to_str': 'converter',
+        'converter_str_to_seq': 'converter'
     }
 })
 
-FOLDSEEK_URL = "http://apache:80/foldseek/"
-PDB_FILE_URL = "https://files.rcsb.org/download/{}.pdb"
-UNIPROT_FILE_URL = "https://alphafold.ebi.ac.uk/files/AF-{}-F1-model_v4.pdb"
+################################## Constants ###################################
 
+APACHE_URL = 'http://apache:80/'
 
 class StatusType(Enum):
     STARTED = 0
     COMPLETED = 1
     FAILED = 2
 
-def download_pdb_file(protein_id, output_file, input_method):
-    url = PDB_FILE_URL.format(protein_id) if input_method == '0' else UNIPROT_FILE_URL.format(protein_id)
+TASKS_WITH_SEQ_INPUT = [] # [ 'plm'' ]
+TASKS_WITH_STR_INPUT = [ 'foldseek' ] # [ 'ds_foldseek', 'p2rank' ]
+
+router = { 
+    'SEQ': {
+        'input_file': 'sequence.fasta',
+        'converter_file': 'structure.pdb',
+        'converter': 'converter_seq_to_str',
+        'first_tasks': TASKS_WITH_SEQ_INPUT,
+        'second_tasks': TASKS_WITH_STR_INPUT
+    }, 
+    
+    'STR': {
+        'input_file': 'structure.pdb',
+        'converter_file': 'sequence.fasta',
+        'converter': 'converter_str_to_seq',
+        'first_tasks': TASKS_WITH_STR_INPUT,
+        'second_tasks': TASKS_WITH_SEQ_INPUT
+    } 
+}
+
+def download_input(url, input_file):
+    
+    if os.path.exists(input_file):
+        return
+    
     response = requests.get(url)
     print(response.status_code)
-    if response.status_code == 200:
-        with open(output_file, 'w') as file:
-            file.write(response.text)
-        print(f"File downloaded as text: {output_file}")
-    else:
-        print(f"Download failed. HTTP status: {response.status_code}")
-
-def save_sequence_to_fasta(sequence, pdb_id, output_file):
-    try:
-        protein_seq = Seq(sequence)
-        record = SeqRecord(protein_seq, id=f"Protein-{pdb_id}", description=f"{pdb_id} protein sequence")
-
-        with open(output_file, "w") as file:
-            SeqIO.write(record, file, "fasta")
-    except Exception as e:
-        print(f"Saving fsequence to fasta format failed: {e}")
-
-@celery.task(name='metatask_PDB/UNIPROT')
-def run_metatask_pdb(input_data):
-
-    print("METATASK PDB/UNIPROT")
-
-    input_method = input_data['input_method']
-    task_id = input_data["id"]
-    protein_id  = input_data["pdb_code"] if 'pdb_code' in input_data else input_data["uniprot_code"] 
     
-    if not os.path.exists(f"inputs/{task_id}"):
-        os.makedirs(f"inputs/{task_id}")
+    if response.status_code == 200:
+        with open(input_file, 'w') as file:
+            file.write(response.text)
+        print(f'File downloaded: {input_file}')
+    else:
+        print(f'Download failed. HTTP status: {response.status_code}')
 
-    # download pdb file
-    filepath = f"inputs/{str(task_id)}/structure.pdb"
-    if not os.path.exists(filepath):
-        download_pdb_file(protein_id, filepath, input_method)
+def inputs_exist(input_folder):
+    seq_file = input_folder + 'sequence.fasta'
+    str_file = input_folder + 'structure.pdb'
+    return os.path.exists(seq_file) and os.path.exists(str_file)
 
-    if not os.path.exists(filepath):
-        print(f"Error: PDB file '{filepath}' not found.")
-        exit(1)
+def is_task_running_or_completed(task, task_id):
+    
+    response = requests.get(APACHE_URL + f'{task}/{task_id}/status.json')
+    
+    if response.status_code != 200:
+        return False
+    
+    task_status = response.json().get('status')
 
-    # save sequence
-    filepath = f"inputs/{task_id}/sequence.fasta"
-    if not os.path.exists(filepath):
-        save_sequence_to_fasta(input_data['sequence'], protein_id, filepath)
+    return (task_status == StatusType.STARTED.value or
+            task_status == StatusType.COMPLETED.value)
 
-    if not os.path.exists(filepath):
-        print(f"Error: FASTA file '{filepath}' not saved.")
-        exit(1)
+def extract_args_p2rank(input_data):
+    return {
+        'input_model': input_data['input_model'],
+        'use_conservation': input_data['use_conservation']
+    }
 
-    try:
-        response = requests.get(FOLDSEEK_URL + str(task_id) + "/status.json")
-        response.raise_for_status()
-        status = response.json()
-        
-        if status.get("status") == StatusType.STARTED.value:
-            print("Task already running.")
-        elif status.get("status") == StatusType.COMPLETED.value:
-            print("Task already completed.")
-        else:
-            raise KeyError
+def extract_args(task, input_data):
+    match task:
+        case 'foldseek': return None
+        case 'p2rank': return extract_args_p2rank(input_data)
+        case 'plm': return None
 
-    except (requests.exceptions.HTTPError, KeyError):  
-        # If file is missing (404), or missing "status" key → Submit task
-        result = celery.send_task('ds_foldseek', args=[task_id], queue="ds_foldseek")
-        print(f"Task submitted successfully. Task ID: {result.id}")
+def run_tasks(id, id_existed, task_list, input_data):
+    for task in task_list:
+        if not id_existed or not is_task_running_or_completed(task, id):
+            args = extract_args(task, input_data)
+            print(f'SENDING {task.upper()}')
+            celery.send_task(
+                f'ds_{task}',
+                args=[id, args] if args else [id],
+                queue=f'ds_{task}'
+            )
 
-    except Exception as e:
-        print(f"Error submitting task: {e}")
-        exit(1)
+
+@celery.task(name='metatask')
+def metatask(input_data):
+
+    print('METATASK')
+
+    id           = input_data['id']
+    id_existed   = bool(input_data['id_existed'])
+    input_method = input_data['input_method']      # 'STR' / 'SEQ'
+    input_url    = input_data['input_url']
+    input_folder = f'inputs/{id}/'
+
+    # prepare input
+    os.makedirs(input_folder, exist_ok=True)
+    download_input(input_url, input_folder + router[input_method]['input_file'])
+    
+    # run first tasks
+    run_tasks(id, id_existed, router[input_method]['first_tasks'], input_data)
+
+    # prepare second input
+    if not id_existed or not inputs_exist(input_folder):
+        # run converter
+        print(f'SENDING CONVERTER')
+        converter = celery.send_task(
+            router[input_method]['converter'],
+            args=[id],
+            queue='converter'
+        )
+
+        # wait for converter
+        while not converter.ready():
+            time.sleep(0.1)
+
+        converter_result = converter.result
+
+        # store results
+        converter_file = input_folder + router[input_method]['converter_file']
+        with open(converter_file, 'w') as file:
+            file.write(converter_result)
+
+        print(f'CONVERTER RESULT SAVED')
+
+    # run second tasks
+    run_tasks(id, id_existed, router[input_method]['second_tasks'], input_data)

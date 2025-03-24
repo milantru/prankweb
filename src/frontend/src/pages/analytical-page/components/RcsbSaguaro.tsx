@@ -81,7 +81,7 @@ function RcsbSaguaro({ processedResult }: Props) {
         const colors: Record<string, string> = {};  // key is string (value from params), value is color in hex (with #)
 
         for (let i = 0; i < strings.length; i++) {
-            const str = strings[i];
+            let str = strings[i];
             if (str in colors) {
                 continue;
             }
@@ -94,9 +94,10 @@ function RcsbSaguaro({ processedResult }: Props) {
                     ? chroma(baseColor).alpha(opacity).hex()
                     : chroma(baseColor).hex();
 
+                str += "salt"; // This will fix potential hash collisions
             } while (Object.values(colors).some(existingColor => existingColor === color) || color in forbiddenColors);
 
-            colors[str] = color;
+            colors[strings[i]] = color;
         }
 
         return colors;
@@ -174,7 +175,6 @@ function RcsbSaguaro({ processedResult }: Props) {
             trackHeight: 20,
             trackColor: trackColor,
             displayType: "block",
-            displayColor: "#FF0000",
             rowTitle: title,
             trackData: trackData
         };
