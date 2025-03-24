@@ -30,7 +30,7 @@ class SimilarProtein:
     chain: str
     sequence: str
     binding_sites: BindingSite
-    similar_sequence_alignment_data: SimilarSequenceAlignmentData
+    alignment_data: SimilarSequenceAlignmentData
 
 @dataclass
 class Metadata:
@@ -52,16 +52,16 @@ class SimilarProteinBuilder:
         self._pdb_id = pdb_id
         self._sequence = sequence
         self._chain = chain
-        self._binding_sites = None
-        self._similar_sequence_alignment_data = None
+        self._binding_sites = []
+        self._alignment_data = None
 
-    def set_binding_site(self, id: str, confidence: float, residues: List[int]):
-        self._binding_sites = BindingSite(id, confidence, residues)
+    def add_binding_site(self, id: str, confidence: float, residues: List[int]):
+        self._binding_sites.append(BindingSite(id, confidence, residues))
         return self
 
     def set_alignment_data(self, query_start: int, query_end: int, query_part: str, 
                            similar_seq: str, similar_start: int, similar_end: int, similar_part: str):
-        self._similar_sequence_alignment_data = SimilarSequenceAlignmentData(
+        self._alignment_data = SimilarSequenceAlignmentData(
             query_seq_aligned_part_start_idx=query_start,
             query_seq_aligned_part_end_idx=query_end,
             query_seq_aligned_part=query_part,
@@ -73,9 +73,7 @@ class SimilarProteinBuilder:
         return self
 
     def build(self) -> SimilarProtein:
-        if not self._binding_sites:
-            raise ValueError("Binding sites must be set before building SimilarProtein")
-        if not self._similar_sequence_alignment_data:
+        if not self._alignment_data:
             raise ValueError("Alignment data must be set before building SimilarProtein")
         
         return SimilarProtein(
@@ -83,7 +81,7 @@ class SimilarProteinBuilder:
             chain=self._chain,
             sequence=self._sequence,
             binding_sites=self._binding_sites,
-            similar_sequence_alignment_data=self._similar_sequence_alignment_data
+            alignment_data=self._alignment_data
         )
 
 class ProteinDataBuilder:
