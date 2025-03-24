@@ -62,8 +62,8 @@ services:
 
   ds-foldseek:
     build:
-      context: ./containers/data-source-executors/executor-foldseek/
-      #dockerfile: ./containers/data-source-executors/executor-foldseek/Dockerfile
+      context: ./containers/data-source-executors/
+      dockerfile: ./executor-foldseek/Dockerfile
     container_name: ds-foldseek
     restart: always
     depends_on:
@@ -72,6 +72,7 @@ services:
       - foldseek:/app/results
       - ./containers/data-source-executors/executor-foldseek/foldseek_executor.py:/app/foldseek_executor.py
       - ./containers/data-source-executors/executor-foldseek/post_processor.py:/app/post_processor.py
+      - ./containers/data-source-executors/data_format/builder.py:/app/data_format/builder.py
     command: celery --app=celery_worker worker --queues=ds_foldseek --loglevel=debug
 
   metatask:
