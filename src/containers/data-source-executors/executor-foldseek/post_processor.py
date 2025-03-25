@@ -25,6 +25,8 @@ from dataclasses import asdict
 
 PDB_FILE_URL = "https://files.rcsb.org/download/{}.pdb"
 
+RESULT_FILE = "{}_chain_result.json"
+
 
 def extract_binding_sites_for_chain(pdb_id, pdb_file_path, input_chain) -> List[BindingSite]:
     with open(pdb_file_path, "r") as file:
@@ -54,7 +56,6 @@ def extract_binding_sites_for_chain(pdb_id, pdb_file_path, input_chain) -> List[
             for residue in chain:
                 if residue.id[0].startswith("H_"):  # Identify ligand residues
                     ligand_id = residue.id  
-                    ligand_resname = residue.resname
                                         
                     binding_residues = set()
                     ligand_atoms = residue.get_atoms()
@@ -76,7 +77,7 @@ def extract_binding_sites_for_chain(pdb_id, pdb_file_path, input_chain) -> List[
             for ligand_id, residues in ligand_binding_sites.items():
                 binding_sites.append(
                     BindingSite(
-                        id=ligand_id,
+                        id=ligand_id[0], # Get ligand name from tuple e.g. ('H_ADP', 704, ' ')
                         confidence=1,
                         residues=sorted(residues, key=lambda x: x[1])
                     )
@@ -147,7 +148,7 @@ def process_foldseek_output(result_folder, foldseek_result_file, id, query_struc
                     )
 
             if curr_chain != chain:
-                save_results(result_folder, f"{id}_result_{curr_chain}.json", builder)
+                save_results(result_folder, RESULT_FILE.format(curr_chain), builder)
                 curr_chain = chain
                 builder = ProteinDataBuilder(id, curr_chain, query_seq, "TODO")
                 binding_sites = extract_binding_sites_for_chain(id, query_structure_file, curr_chain)
@@ -161,4 +162,4 @@ def process_foldseek_output(result_folder, foldseek_result_file, id, query_struc
             sim_builder = process_similar_protein(fields, curr_chain, id)
             builder.add_similar_protein(sim_builder.build())
 
-        save_results(result_folder, f"{id}_result_{curr_chain}.json", builder)
+        save_results(result_folder, RESULT_FILE.format(curr_chain), builder)
