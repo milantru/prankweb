@@ -23,6 +23,9 @@ from dataclasses import asdict
 #   - `tend` - 1-indexed alignment end position in target sequence
 #   - `taln` - Aligned target sequence with gaps - Only aligned part
 
+PDB_FILE_URL = "https://files.rcsb.org/download/{}.pdb"
+
+
 def extract_binding_sites_for_chain(pdb_id, pdb_file_path, input_chain) -> List[BindingSite]:
     with open(pdb_file_path, "r") as file:
         pdb = PDBParser().get_structure(pdb_id, file)
@@ -80,7 +83,44 @@ def extract_binding_sites_for_chain(pdb_id, pdb_file_path, input_chain) -> List[
                 )
     return binding_sites
 
+def save_results(result_folder: str, file_name: str, builder: ProteinDataBuilder):
 
+    builder.add_metadata("foldseek")
+    final_data = builder.build()
+
+    result_file = os.path.join(result_folder, file_name)
+    with open(result_file, "w") as f:
+        json.dump(asdict(final_data), f, indent=4)
+
+    print("saved", result_file)
+
+def process_similar_protein(fields: List[str], curr_chain: str, id: str) -> SimilarProteinBuilder:
+    sim_protein_pdb_id, sim_protein_chain = fields[1][:4], fields[1].split("_")[1]
+    sim_builder = SimilarProteinBuilder(sim_protein_pdb_id, "FULL_SEQ_TODO???", sim_protein_chain)
+    sim_builder.set_alignment_data(
+        query_start=int(fields[4]) - 1,
+        query_end=int(fields[5]) - 1,
+        query_part=fields[6],
+        similar_seq=fields[8],
+        similar_start=int(fields[9]) - 1,
+        similar_end=int(fields[10]) - 1,
+        similar_part=fields[11]
+    )
+    with tempfile.NamedTemporaryFile(delete=True, suffix=".pdb") as temp_file:
+        response = requests.get(PDB_FILE_URL.format(sim_protein_pdb_id))
+        response.raise_for_status()
+        temp_file.write(response.content)
+        temp_filename = temp_file.name
+
+        binding_sites = extract_binding_sites_for_chain(id, temp_filename, curr_chain)
+
+        for site in binding_sites:
+            sim_builder.add_binding_site(
+                id=site.id,
+                confidence=site.confidence,
+                residues=site.residues
+            )
+    return sim_builder
 
 def process_foldseek_output(result_folder, foldseek_result_file, id, query_structure_file):
 
@@ -91,11 +131,7 @@ def process_foldseek_output(result_folder, foldseek_result_file, id, query_struc
             fields = line.strip().split("\t")
             input_name = fields[0]
             query_seq = fields[3]
-            chain = ""
-            if "_" in input_name:
-                chain = input_name.split("_")[1]  # Extract chain ID
-            else:
-                chain = "A"
+            chain = input_name.split("_")[1] if "_" in input_name else "A"
 
             if curr_chain == None:
                 curr_chain = chain
@@ -111,12 +147,7 @@ def process_foldseek_output(result_folder, foldseek_result_file, id, query_struc
                     )
 
             if curr_chain != chain:
-                result_file = os.path.join(result_folder, f"{id}_result_{curr_chain}.json")
-                print("saev", result_file)
-                builder.add_metadata("foldseek")
-                final_data = builder.build()
-                with open(result_file, "w") as f:
-                    json.dump(asdict(final_data), f, indent=4)
+                save_results(result_folder, f"{id}_result_{curr_chain}.json", builder)
                 curr_chain = chain
                 builder = ProteinDataBuilder(id, curr_chain, query_seq, "TODO")
                 binding_sites = extract_binding_sites_for_chain(id, query_structure_file, curr_chain)
@@ -127,42 +158,7 @@ def process_foldseek_output(result_folder, foldseek_result_file, id, query_struc
                         residues=site.residues
                     )
             
-            sim_protein = fields[1]
-            sim_protein_pdb_id = sim_protein[:4]
-            sim_protein_chain = sim_protein.split("_")[1]
-            sim_builder = SimilarProteinBuilder(sim_protein_pdb_id,"FULL_SEQ_TODO???", sim_protein_chain)
-            sim_builder.set_alignment_data(
-                query_start=int(fields[4]) - 1,
-                query_end=int(fields[5]) - 1,
-                query_part=fields[6],
-                similar_seq=fields[8],
-                similar_start=int(fields[9]) - 1,
-                similar_end=int(fields[10]) - 1,
-                similar_part=fields[11]
-            )
+            sim_builder = process_similar_protein(fields, curr_chain, id)
+            builder.add_similar_protein(sim_builder.build())
 
-            PDB_FILE_URL = f'https://files.rcsb.org/download/{sim_protein_pdb_id}.pdb'
-
-            with tempfile.NamedTemporaryFile(delete=True, suffix=".pdb") as temp_file:
-                response = requests.get(PDB_FILE_URL)
-                response.raise_for_status()
-                temp_file.write(response.content)
-                temp_filename = temp_file.name
-
-                binding_sites = extract_binding_sites_for_chain(id, temp_filename, curr_chain)
-
-                for site in binding_sites:
-                    sim_builder.add_binding_site(
-                        id=site.id,
-                        confidence=site.confidence,
-                        residues=site.residues
-                    )
-            sim_protein = sim_builder.build()
-            builder.add_similar_protein(similar_protein=sim_protein)
-
-        result_file = os.path.join(result_folder, f"{id}_result_{curr_chain}.json")
-        print("saev", result_file)
-        builder.add_metadata("foldseek")
-        final_data = builder.build()
-        with open(result_file, "w") as f:
-            json.dump(asdict(final_data), f, indent=4)
+        save_results(result_folder, f"{id}_result_{curr_chain}.json", builder)
