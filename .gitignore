@@ -10,6 +10,7 @@ tmp
 node_modules
 
 *.pdb
+*.fasta
 
 # C extensions
 *.so

@@ -1,4 +1,6 @@
 from Bio.PDB import PDBParser, PDBIO, NeighborSearch
+from Bio.PDB.Polypeptide import three_to_index, index_to_one
+
 
 # ---HIERARCHY---
 #
@@ -12,7 +14,7 @@ pdb = PDBParser().get_structure("2src", "2src.pdb")
 atoms = list(pdb.get_atoms())
 ns = NeighborSearch(atom_list=atoms)
 
-dist_thresh = 5.00  # Distance threshold for neighbor search. TODO: OK ?
+dist_thresh = 5  # Distance threshold for neighbor search. TODO: OK ?
 
 residue_dict = {}
 sequence_index = 1 
@@ -22,7 +24,7 @@ for model in pdb:
         for residue in chain:
             if residue.id[0] == " " or residue.id[0] == "":  # Only include residues that are part of the structure
 
-                residue_name = residue.resname
+                residue_name = index_to_one(three_to_index(residue.resname))
                 residue_index = residue.id[1]  # Get residue structure index (LEU *273*)
                 
                 residue_dict[residue_index] = (residue_name, sequence_index)
@@ -34,9 +36,8 @@ ligand_binding_sites = {}
 for model in pdb:
     for chain in model:
         for residue in chain:
-            # Identify ligand residues based on insertion code (H_) - heteroatom
-            if residue.id[0].startswith("H_"):  
-                ligand_id = residue.id  # Use the residue ID tuple to identify the ligand
+            if residue.id[0].startswith("H_"):  # Identify ligand residues
+                ligand_id = residue.id  
                 ligand_resname = residue.resname
                 
                 print(f"\nFound ligand: {ligand_resname} at {ligand_id}")
@@ -48,13 +49,12 @@ for model in pdb:
                     nearby_atoms = ns.search(atom.coord, dist_thresh)
                     
                     for nearby_atom in nearby_atoms:
-                        nearby_residue = nearby_atom.get_parent()  # Get residue
-                        if nearby_residue not in binding_residues and nearby_residue.id[0] != "W":  # Exclude water. TODO: OK ?
+                        nearby_residue = nearby_atom.get_parent()
+                        if nearby_residue not in binding_residues and nearby_residue.id[0] != "W":  # Exclude water.
                             binding_residues.add(nearby_residue)
                             nearby_residue_name = nearby_residue.resname
-                            nearby_residue_index = nearby_residue.id[1]  # Get residue index in the sequence
+                            nearby_residue_index = nearby_residue.id[1]
                             
-                            # Add residue to the ligand's binding site list
                             if ligand_id not in ligand_binding_sites:
                                 ligand_binding_sites[ligand_id] = []
                             ligand_binding_sites[ligand_id].append((nearby_residue_name, nearby_residue_index))
@@ -62,32 +62,24 @@ for model in pdb:
 for ligand_id, residues in ligand_binding_sites.items():
     ligand_binding_sites[ligand_id] = sorted(residues, key=lambda x: x[1])
 
-print("\nBinding site residues by ligand (RESIDUE, SEQUENCE INDEX):")
-binding_sites = []
+print("\nBinding site residues by ligand:")
+
 for ligand_id, residues in ligand_binding_sites.items():
-    print(f"\nLigand {ligand_id}:")
-    print("Number of residues in binding site:", len(residues))
-    binding_site_residues = []
+    residue_names = []
+    residue_indices = []
+
     for residue in residues:
         nearby_residue_index = residue[1]
         if nearby_residue_index in residue_dict:
             residue_name, seq_index = residue_dict[nearby_residue_index]
-            print(f"Residue: {residue_name}, Structure Index: {nearby_residue_index}, Sequence Index: {seq_index}")
-            binding_site_residues.append({
-                "residue": residue_name,
-                "seq_index": seq_index
-            })
-        else:
-            print(f"Residue with Sequence Index: {nearby_residue_index} not found in residue_dict")
-    binding_site = {
-        "id": ligand_id,
-        "conf": 1.0, # experimantally determined binding site
-        "residues": binding_site_residues
-    }
-    binding_sites.append(binding_site)
-print(binding_sites)
+            residue_names.append(residue_name)
+            residue_indices.append(seq_index)
 
-# # Print the residue dictionary
-# print("\nResidue dictionary (STRUCTURE INDEX: (RESIDUE_NAME, SEQUENCE_INDEX)):")
-# for index, (name, struct_index) in residue_dict.items():
-#     print(f"{index}: {name}, Sequence Index: {struct_index}")
+    residue_sequence = "".join(residue_names)
+    index_sequence = "-".join(map(str, residue_indices))
+
+    print(f"\nLigand {ligand_id}:")
+    print(f"Residue sequence: {residue_sequence}")
+    print(f"Residue indices: {index_sequence}")
+for index, (name, seq_index) in sorted(residue_dict.items())[:10]:
+    print(f"{index}: ({name}, {seq_index})")
