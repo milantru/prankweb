@@ -18,6 +18,7 @@ celery = Celery(
 celery.conf.update({
     'task_routes': {
         'ds_foldseek': 'ds_foldseek',
+        'ds_p2rank': 'ds_p2rank',
         'converter_seq_to_str': 'converter',
         'converter_str_to_seq': 'converter'
     }
@@ -33,7 +34,7 @@ class StatusType(Enum):
     FAILED = 2
 
 TASKS_WITH_SEQ_INPUT = [] # [ 'plm'' ]
-TASKS_WITH_STR_INPUT = [ 'foldseek' ] # [ 'ds_foldseek', 'p2rank' ]
+TASKS_WITH_STR_INPUT = [ 'foldseek', 'p2rank' ] # [ 'ds_foldseek', 'p2rank' ]
 
 router = { 
     'SEQ': {
@@ -87,7 +88,6 @@ def is_task_running_or_completed(task, task_id):
 
 def extract_args_p2rank(input_data):
     return {
-        'input_model': input_data['input_model'],
         'use_conservation': input_data['use_conservation']
     }
 
@@ -101,6 +101,7 @@ def run_tasks(id, id_existed, task_list, input_data):
     for task in task_list:
         if not id_existed or not is_task_running_or_completed(task, id):
             args = extract_args(task, input_data)
+            print("ARGS",args)
             print(f'SENDING {task.upper()}')
             celery.send_task(
                 f'ds_{task}',
