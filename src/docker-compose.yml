@@ -78,6 +78,21 @@ services:
       - ./containers/data-source-executors/data_format/builder.py:/app/data_format/builder.py
     command: celery --app=celery_worker worker --queues=ds_foldseek --loglevel=debug
 
+  ds-p2rank:
+    build:
+      context: ./containers/data-source-executors/
+      dockerfile: ./executor-p2rank/Dockerfile
+    container_name: ds-p2rank
+    restart: always
+    depends_on:
+      - message-broker
+    volumes:
+      - p2rank:/app/results
+      - ./containers/data-source-executors/executor-p2rank/p2rank_executor.py:/app/p2rank_executor.py
+      - ./containers/data-source-executors/executor-p2rank/post_processor.py:/app/post_processor.py
+      - ./containers/data-source-executors/data_format/builder.py:/app/data_format/builder.py
+    command: celery --app=celery_worker worker --queues=ds_p2rank --loglevel=debug
+
   converter:
     build:
       context: ./containers/converter/
@@ -119,5 +134,6 @@ volumes:
   rabbitmq:
   redis:
   foldseek:
+  p2rank:
   inputs:
   tmp:
