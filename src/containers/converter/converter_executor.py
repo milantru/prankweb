@@ -1,16 +1,11 @@
 import requests
 from Bio.PDB import PDBParser, Polypeptide, is_aa
-from celery import Celery
 import tempfile
-
-# Celery configuration
-celery = Celery('tasks', broker='amqp://guest:guest@message-broker:5672//', backend='rpc://')
 
 ESMFOLD_URL = "https://api.esmatlas.com/foldSequence/v1/pdb/"
 INPUTS_URL = "http://apache:80/inputs/"
 
-@celery.task(name='converter_str_to_seq')
-def structure_to_sequence(id):
+def run_structure_to_sequence(id):
     
     pdb_url = INPUTS_URL + f"{id}/structure.pdb"
     query_structure_file = ""
@@ -37,8 +32,7 @@ def structure_to_sequence(id):
     
     return chains
 
-@celery.task(name='converter_seq_to_str')
-def sequence_to_structure(id):
+def run_sequence_to_structure(id):
 
     # get input
     fasta_url = INPUTS_URL + f"{id}/sequence.fasta"
