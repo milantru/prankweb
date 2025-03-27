@@ -7,6 +7,7 @@ from Bio import SeqIO
 from celery import Celery
 import requests
 import time
+import json
 
 ################################ Celery setup ##################################
 
@@ -34,25 +35,7 @@ class StatusType(Enum):
     FAILED = 2
 
 TASKS_WITH_SEQ_INPUT = [] # [ 'plm'' ]
-TASKS_WITH_STR_INPUT = [ 'foldseek', 'p2rank' ] # [ 'ds_foldseek', 'p2rank' ]
-
-router = { 
-    'SEQ': {
-        'input_file': 'sequence.fasta',
-        'converter_file': 'structure.pdb',
-        'converter': 'converter_seq_to_str',
-        'first_tasks': TASKS_WITH_SEQ_INPUT,
-        'second_tasks': TASKS_WITH_STR_INPUT
-    }, 
-    
-    'STR': {
-        'input_file': 'structure.pdb',
-        'converter_file': 'sequence.fasta',
-        'converter': 'converter_str_to_seq',
-        'first_tasks': TASKS_WITH_STR_INPUT,
-        'second_tasks': TASKS_WITH_SEQ_INPUT
-    } 
-}
+TASKS_WITH_STR_INPUT = [ 'foldseek', 'p2rank' ]
 
 def download_input(url, input_file):
     
@@ -101,7 +84,6 @@ def run_tasks(id, id_existed, task_list, input_data):
     for task in task_list:
         if not id_existed or not is_task_running_or_completed(task, id):
             args = extract_args(task, input_data)
-            print("ARGS",args)
             print(f'SENDING {task.upper()}')
             celery.send_task(
                 f'ds_{task}',
@@ -109,6 +91,49 @@ def run_tasks(id, id_existed, task_list, input_data):
                 queue=f'ds_{task}'
             )
 
+def save_converter_str_result(input_folder, result: str):
+    converter_result_file = input_folder + 'structure.pdb' 
+    with open(converter_result_file, 'w') as file:
+        file.write(result)
+
+def save_converter_seq_result(input_folder, result: dict):
+
+    chain_to_sequence_mapping = {}
+    file_number = 1
+
+    for sequence, chain_list in result:
+        
+        # create fasta file
+        filename = f'sequence_{file_number}.fasta'
+        with open(input_folder + filename, 'w') as file:
+            file.write(f'> Chains: {chain_list}\n{sequence}')
+
+        # create mapping filename<->chain_list
+        chain_to_sequence_mapping[filename] = chain_list
+        
+        file_number += 1
+
+    # create json
+    with open(input_folder + 'chains.json', 'w') as json_file:
+        json.dump(chain_to_sequence_mapping, json_file, indent=4)
+
+router = { 
+    'SEQ': {
+        'input_file': 'sequence.fasta',
+        'converter': 'converter_seq_to_str',
+        'converter_result_function': save_converter_str_result,
+        'first_tasks': TASKS_WITH_SEQ_INPUT,
+        'second_tasks': TASKS_WITH_STR_INPUT
+    }, 
+    
+    'STR': {
+        'input_file': 'structure.pdb',
+        'converter': 'converter_str_to_seq',
+        'converter_result_function': save_converter_seq_result,
+        'first_tasks': TASKS_WITH_STR_INPUT,
+        'second_tasks': TASKS_WITH_SEQ_INPUT
+    } 
+}
 
 @celery.task(name='metatask')
 def metatask(input_data):
@@ -145,9 +170,8 @@ def metatask(input_data):
         converter_result = converter.result
 
         # store results
-        converter_file = input_folder + router[input_method]['converter_file']
-        with open(converter_file, 'w') as file:
-            file.write(converter_result)
+        router[input_method]['converter_result_function'](converter_result)
+          
 
         print(f'CONVERTER RESULT SAVED')
 

@@ -209,7 +209,7 @@ def validate_seq(input_data):
         
     # check sequence
     sequence:str = input_data['sequence']
-    if not sequence.startswith('>'): sequence = '>' + sequence
+    if not sequence.startswith('>'): sequence = '>PLANKWEB_SEQ\n' + sequence
     if not _text_is_fasta_format(sequence):
         return 'Sequence not in FASTA format', None
     
