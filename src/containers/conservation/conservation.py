@@ -1,21 +1,42 @@
-import argparse
 import os
 import subprocess
 import random
 import typing
+import requests
+import tempfile
 
 PHMMER_DIR = "./hmmer-3.4/src/"
 ESL_DIR = "./hmmer-3.4/easel/miniapps/"
 DATABASE = "./uniprot_sprot.fasta" # TODO: DOWNLOAD uniref50.fasta AND USE IT
 TEMP = "./tmp_conservation"
-RESULT_FILE = "{id}{chain}.hom"
+RESULT_FILE = "./results/{id}/{file}.hom"
 MAX_SEQS = 100
+INPUTS_URL = "http://apache:80/inputs/"
 
 
 def compute_conservation(id):
-    files_metadata = {"file1": ["A","B"]}   
-    for file, chain in files_metadata.items():  # TODO: Fetch files
-        compute_conservation_for_chain(file, RESULT_FILE.format(id=id, chain=chain))
+    
+    json_url = INPUTS_URL + f"{id}/chains.json"
+    response = requests.get(json_url)
+    files_metadata = response.json()
+
+    for file, chains in files_metadata.items():  # TODO: Fetch files
+        
+        file_url = INPUTS_URL + f"{id}/{file}.fasta"
+        response = requests.get(file_url, stream=True)
+        response.raise_for_status()
+
+        result_file = RESULT_FILE.format(id=id, file=file)
+        
+        with tempfile.NamedTemporaryFile(mode="wb", suffix=".fasta", delete=True) as seq_file:
+            for chunk in response.iter_content(chunk_size=8192):
+                seq_file.write(chunk)
+            
+            compute_conservation_for_chain(seq_file.name, result_file)
+
+        for chain in chains:
+            os.symlink(result_file, f"./results/{id}/input{chain}.hom")
+        
 
 def _default_execute_command(command: str):
     # We do not check return code here.

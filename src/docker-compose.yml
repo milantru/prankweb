@@ -25,6 +25,7 @@ services:
     volumes:
       - foldseek:/usr/local/apache2/htdocs/foldseek
       - p2rank:/usr/local/apache2/htdocs/p2rank
+      - conservation:/usr/local/apache2/htdocs/conservation
       - inputs:/usr/local/apache2/htdocs/inputs
       - tmp:/usr/local/apache2/htdocs/tmp
     command: httpd -D FOREGROUND
@@ -94,6 +95,19 @@ services:
       - ./containers/data-source-executors/data_format/builder.py:/app/data_format/builder.py
     command: celery --app=celery_worker worker --queues=ds_p2rank --loglevel=debug
 
+  conservation:
+    build:
+      context: ./containers/conservation
+    container_name: conservation
+    restart: always
+    depends_on:
+      - message-broker
+    volumes:
+      - conservation:/app/results
+      - ./containers/conservation/celery_worker.py:/app/celery_worker.py
+      - ./containers/conservation/conservation.py:/app/conservation.py
+    command: celery --app=celery_worker worker --queues=conservation --loglevel=debug
+
   converter:
     build:
       context: ./containers/converter/
@@ -137,4 +151,5 @@ volumes:
   foldseek:
   p2rank:
   inputs:
+  conservation:
   tmp:

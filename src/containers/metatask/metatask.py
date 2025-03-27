@@ -20,6 +20,7 @@ celery.conf.update({
     'task_routes': {
         'ds_foldseek': 'ds_foldseek',
         'ds_p2rank': 'ds_p2rank',
+        'conservation': 'conservation',
         'converter_seq_to_str': 'converter',
         'converter_str_to_seq': 'converter'
     }
@@ -34,7 +35,7 @@ class StatusType(Enum):
     COMPLETED = 1
     FAILED = 2
 
-TASKS_WITH_SEQ_INPUT = [] # [ 'plm'' ]
+TASKS_WITH_SEQ_INPUT = [ 'conservation' ] # [ 'plm'' ]
 TASKS_WITH_STR_INPUT = [ 'foldseek', 'p2rank' ]
 
 def download_input(url, input_file):
@@ -87,6 +88,7 @@ def extract_args(task, input_data):
         case 'foldseek': return None
         case 'p2rank': return extract_args_p2rank(input_data)
         case 'plm': return None
+        case 'conservation': return None
 
 def run_tasks(id, id_existed, task_list, input_data):
     for task in task_list:
@@ -94,9 +96,9 @@ def run_tasks(id, id_existed, task_list, input_data):
             args = extract_args(task, input_data)
             print(f'SENDING {task.upper()}')
             celery.send_task(
-                f'ds_{task}',
+                f'ds_{task}' if task != 'conservation' else 'conservation',
                 args=[id, args] if args else [id],
-                queue=f'ds_{task}'
+                queue=f'ds_{task}' if task != 'conservation' else 'conservation'
             )
 
 def save_converter_str_result(input_folder, result: str):
@@ -112,8 +114,8 @@ def save_converter_seq_result(input_folder, result: dict):
     for sequence, chain_list in result.items():
         
         # create fasta file
-        filename = f'sequence_{file_number}.fasta'
-        with open(input_folder + filename, 'w') as file:
+        filename = f'sequence_{file_number}'
+        with open(input_folder + filename + '.fasta', 'w') as file:
             file.write(f'> Chains: {chain_list}\n{sequence}')
 
         # create mapping filename<->chain_list
@@ -159,7 +161,7 @@ def metatask(input_data):
     download_input(input_url, input_folder + router[input_method]['input_file'])
     
     # run first tasks
-    run_tasks(id, id_existed, router[input_method]['first_tasks'], input_data)
+    #run_tasks(id, id_existed, router[input_method]['first_tasks'], input_data)
 
     # prepare second input
     if not id_existed or not inputs_exist(input_folder):
@@ -185,3 +187,4 @@ def metatask(input_data):
 
     # run second tasks
     run_tasks(id, id_existed, router[input_method]['second_tasks'], input_data)
+    run_tasks(id, id_existed, router[input_method]['first_tasks'], input_data)
