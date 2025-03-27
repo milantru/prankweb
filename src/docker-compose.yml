@@ -24,6 +24,7 @@ services:
       - "80:80"
     volumes:
       - foldseek:/usr/local/apache2/htdocs/foldseek
+      - p2rank:/usr/local/apache2/htdocs/p2rank
       - inputs:/usr/local/apache2/htdocs/inputs
       - tmp:/usr/local/apache2/htdocs/tmp
     command: httpd -D FOREGROUND
@@ -103,7 +104,7 @@ services:
       - message-broker
     volumes:
       - ./containers/converter/converter.py:/app/converter.py
-    command: celery --app=converter worker --queues=converter --loglevel=debug
+    command: celery --app=celery_worker worker --queues=converter --loglevel=debug
 
   metatask:
     build:
