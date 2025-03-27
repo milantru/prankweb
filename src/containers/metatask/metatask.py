@@ -53,9 +53,17 @@ def download_input(url, input_file):
         print(f'Download failed. HTTP status: {response.status_code}')
 
 def inputs_exist(input_folder):
-    seq_file = input_folder + 'sequence.fasta'
+    
+    seq_exists = False
+    for filename in os.listdir(input_folder):
+        if filename.endswith(".fasta"):
+            seq_exists = True
+            break
+
     str_file = input_folder + 'structure.pdb'
-    return os.path.exists(seq_file) and os.path.exists(str_file)
+    str_exists = os.path.exists(str_file)
+
+    return seq_exists and str_exists
 
 def is_task_running_or_completed(task, task_id):
     
@@ -101,7 +109,7 @@ def save_converter_seq_result(input_folder, result: dict):
     chain_to_sequence_mapping = {}
     file_number = 1
 
-    for sequence, chain_list in result:
+    for sequence, chain_list in result.items():
         
         # create fasta file
         filename = f'sequence_{file_number}.fasta'
@@ -170,7 +178,7 @@ def metatask(input_data):
         converter_result = converter.result
 
         # store results
-        router[input_method]['converter_result_function'](converter_result)
+        router[input_method]['converter_result_function'](input_folder, converter_result)
           
 
         print(f'CONVERTER RESULT SAVED')

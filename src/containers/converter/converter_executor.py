@@ -28,7 +28,9 @@ def run_structure_to_sequence(id):
             for residue in chain:
                 if (residue.id[0] == " " or residue.id[0] == "") and is_aa(residue): 
                     seq += Polypeptide.index_to_one(Polypeptide.three_to_index(residue.resname))
-            chains.setdefault(seq, []).append(chain.id)
+            
+            if seq != "":
+                chains.setdefault(seq, []).append(chain.id)
     
     return chains
 

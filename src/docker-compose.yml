@@ -103,7 +103,7 @@ services:
     depends_on:
       - message-broker
     volumes:
-      - ./containers/converter/converter.py:/app/converter.py
+      - ./containers/converter/converter_executor.py:/app/converter_executor.py
     command: celery --app=celery_worker worker --queues=converter --loglevel=debug
 
   metatask:
