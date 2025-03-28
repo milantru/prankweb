@@ -23,8 +23,8 @@ services:
     ports:
       - "80:80"
     volumes:
-      - foldseek:/usr/local/apache2/htdocs/foldseek
-      - p2rank:/usr/local/apache2/htdocs/p2rank
+      - foldseek:/usr/local/apache2/htdocs/ds_foldseek
+      - p2rank:/usr/local/apache2/htdocs/ds_p2rank
       - conservation:/usr/local/apache2/htdocs/conservation
       - inputs:/usr/local/apache2/htdocs/inputs
       - tmp:/usr/local/apache2/htdocs/tmp

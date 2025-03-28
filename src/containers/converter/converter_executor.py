@@ -37,7 +37,7 @@ def run_structure_to_sequence(id):
 def run_sequence_to_structure(id):
 
     # get input
-    fasta_url = INPUTS_URL + f"{id}/sequence.fasta"
+    fasta_url = INPUTS_URL + f"{id}/sequence_1.fasta"
 
     response = requests.get(fasta_url)
     sequence = response.text.split('\n')[1]

@@ -39,14 +39,14 @@ def compute_conservation(id):
         response.raise_for_status()
         files_metadata = response.json()
 
-        for file, chains in files_metadata.items():  # TODO: Fetch files
-            file_url = INPUTS_URL + f"{id}/{file}.fasta"
+        for file, chains in files_metadata["fasta"].items():
+            file_url = INPUTS_URL + f"{id}/{file}"
             response = requests.get(file_url, stream=True)
             response.raise_for_status()
 
             result_file = os.path.join(result_folder, file)
             os.makedirs(id, exist_ok=True)
-            input_file_path = f"./{id}/{file}.fasta"
+            input_file_path = f"./{id}/{file}"
 
             with open(input_file_path, "wb") as seq_file:
                 for chunk in response.iter_content(chunk_size=8192):

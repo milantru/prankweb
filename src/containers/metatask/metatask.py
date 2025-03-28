@@ -35,40 +35,92 @@ class StatusType(Enum):
     COMPLETED = 1
     FAILED = 2
 
-TASKS_WITH_SEQ_INPUT = [ 'conservation' ] # [ 'plm'' ]
-TASKS_WITH_STR_INPUT = [ 'foldseek', 'p2rank' ]
+def extract_args_p2rank(input_data):
+    return {
+        'use_conservation': input_data['use_conservation']
+    }
 
-def download_input(url, input_file):
-    
-    if os.path.exists(input_file):
-        return
-    
+
+def _download_file_from_url(url: str, filename: str) -> None:
     response = requests.get(url)
-    print(response.status_code)
-    
     if response.status_code == 200:
-        with open(input_file, 'w') as file:
+        with open(filename, 'w') as file:
             file.write(response.text)
-        print(f'File downloaded: {input_file}')
-    else:
-        print(f'Download failed. HTTP status: {response.status_code}')
 
-def inputs_exist(input_folder):
+
+def _prepare_seq_input(url: str, input_folder: str) -> None:
+    os.makedirs(input_folder, exist_ok=True)
+
+    fasta_file = os.path.join(input_folder, 'sequence_1.fasta')
+    chain_json = os.path.join(input_folder, 'chains.json')
+
+    if not os.path.exists(fasta_file):
+        _download_file_from_url(url, fasta_file)
+
+    if not os.path.exists(chain_json):
+        with open(chain_json, 'w') as json_file:
+            json.dump(
+                { 'chains': ['A'], 'fasta': {'sequence_1.fasta': ['A'] } }, 
+                json_file,
+                indent=4
+            )
+
+
+def _prepare_str_input(url: str, input_folder: str) -> None:
+    os.makedirs(input_folder, exist_ok=True)
     
-    seq_exists = False
-    for filename in os.listdir(input_folder):
-        if filename.endswith(".fasta"):
-            seq_exists = True
-            break
-
-    str_file = input_folder + 'structure.pdb'
-    str_exists = os.path.exists(str_file)
-
-    return seq_exists and str_exists
-
-def is_task_running_or_completed(task, task_id):
+    pdb_file = os.path.join(input_folder, 'structure.pdb')
     
-    response = requests.get(APACHE_URL + f'{task}/{task_id}/status.json')
+    if not os.path.exists(pdb_file):
+        _download_file_from_url(url, pdb_file)
+
+
+def _inputs_exist(input_folder: str) -> bool:
+    seq_exists = os.path.exists(os.path.join(input_folder, 'sequence_1.fasta'))
+    chains_exists = os.path.exists(os.path.join(input_folder, 'chains.json'))
+    str_exists = os.path.exists(os.path.join(input_folder, 'structure.pdb'))
+    return chains_exists and seq_exists and str_exists
+
+
+def _save_converter_str_result(input_folder: str, result: str) -> None:
+    converter_result_file = os.path.join(input_folder + 'structure.pdb') 
+    with open(converter_result_file, 'w') as file:
+        file.write(result)
+
+
+def _save_converter_seq_result(input_folder: str, result: dict) -> None:
+
+    chain_to_sequence_mapping = {}
+    chains = []
+    file_number = 1
+
+    for sequence, chain_list in result.items():
+
+        # get chains
+        chains.extend(chain_list)
+
+        # create fasta file
+        filename = f'sequence_{file_number}.fasta'
+        with open(os.path.join(input_folder, f'{filename}'), 'w') as file:
+            file.write(f'> Chains: {chain_list}\n{sequence}')
+
+        # create mapping filename<->chain_list
+        chain_to_sequence_mapping[filename] = chain_list
+        
+        file_number += 1
+
+    # create json
+    with open(os.path.join(input_folder, 'chains.json'), 'w') as json_file:
+        json.dump(
+            { 'chains': chains, 'fasta': chain_to_sequence_mapping },
+            json_file,
+            indent=4
+        )
+
+
+def _is_task_running_or_completed(task_name: str, task_id: str) -> bool:
+    
+    response = requests.get(os.path.join(APACHE_URL, task_name, task_id, 'status.json'))
     
     if response.status_code != 200:
         return False
@@ -78,99 +130,53 @@ def is_task_running_or_completed(task, task_id):
     return (task_status == StatusType.STARTED.value or
             task_status == StatusType.COMPLETED.value)
 
-def extract_args_p2rank(input_data):
-    return {
-        'use_conservation': input_data['use_conservation']
-    }
 
-def extract_args(task, input_data):
-    match task:
-        case 'foldseek': return None
-        case 'p2rank': return extract_args_p2rank(input_data)
-        case 'plm': return None
-        case 'conservation': return None
+def _run_task(task_name, queue_name, id, id_existed, task_args=None):
+    if not id_existed or not _is_task_running_or_completed(task_name, id):
+        print(f'SENDING {task_name.upper()}')
+        task = celery.send_task(
+            task_name,
+            args=[id, task_args] if task_args else [id],
+            queue=queue_name
+        )
 
-def run_tasks(id, id_existed, task_list, input_data):
-    for task in task_list:
-        if not id_existed or not is_task_running_or_completed(task, id):
-            args = extract_args(task, input_data)
-            print(f'SENDING {task.upper()}')
-            celery.send_task(
-                f'ds_{task}' if task != 'conservation' else 'conservation',
-                args=[id, args] if args else [id],
-                queue=f'ds_{task}' if task != 'conservation' else 'conservation'
-            )
-
-def save_converter_str_result(input_folder, result: str):
-    converter_result_file = input_folder + 'structure.pdb' 
-    with open(converter_result_file, 'w') as file:
-        file.write(result)
-
-def save_converter_seq_result(input_folder, result: dict):
-
-    chain_to_sequence_mapping = {}
-    file_number = 1
-
-    for sequence, chain_list in result.items():
-        
-        # create fasta file
-        filename = f'sequence_{file_number}'
-        with open(input_folder + filename + '.fasta', 'w') as file:
-            file.write(f'> Chains: {chain_list}\n{sequence}')
-
-        # create mapping filename<->chain_list
-        chain_to_sequence_mapping[filename] = chain_list
-        
-        file_number += 1
-
-    # create json
-    with open(input_folder + 'chains.json', 'w') as json_file:
-        json.dump(chain_to_sequence_mapping, json_file, indent=4)
-
-router = { 
-    'SEQ': {
-        'input_file': 'sequence.fasta',
-        'converter': 'converter_seq_to_str',
-        'converter_result_function': save_converter_str_result,
-        'first_tasks': TASKS_WITH_SEQ_INPUT,
-        'second_tasks': TASKS_WITH_STR_INPUT
-    }, 
+        return task
     
-    'STR': {
-        'input_file': 'structure.pdb',
-        'converter': 'converter_str_to_seq',
-        'converter_result_function': save_converter_seq_result,
-        'first_tasks': TASKS_WITH_STR_INPUT,
-        'second_tasks': TASKS_WITH_SEQ_INPUT
-    } 
-}
+    return None
 
-@celery.task(name='metatask')
-def metatask(input_data):
 
-    print('METATASK')
+@celery.task(name='metatask_SEQ')
+def metatask_seq(input_data: dict) -> None:
+    
+    print('METATASK_SEQ')
 
     id           = input_data['id']
     id_existed   = bool(input_data['id_existed'])
-    input_method = input_data['input_method']      # 'STR' / 'SEQ'
-    input_url    = input_data['input_url']
+    use_conservation = input_data['use_conservation']
     input_folder = f'inputs/{id}/'
 
     # prepare input
-    os.makedirs(input_folder, exist_ok=True)
-    download_input(input_url, input_folder + router[input_method]['input_file'])
-    
-    # run first tasks
-    #run_tasks(id, id_existed, router[input_method]['first_tasks'], input_data)
+    _prepare_seq_input(input_data['input_url'], input_folder)
 
-    # prepare second input
-    if not id_existed or not inputs_exist(input_folder):
-        # run converter
-        print(f'SENDING CONVERTER')
+    # _run_task(
+    #     task_name='ds_plm',
+    #     queue_name='ds_plm',
+    #     id=id,
+    #     id_existed=id_existed,
+    # )
+
+    conservation = _run_task(
+        task_name='conservation',
+        queue_name='conservation',
+        id=id,
+        id_existed=id_existed,
+    )
+    
+    if not id_existed or not _inputs_exist():
         converter = celery.send_task(
-            router[input_method]['converter'],
+            'converter_seq_to_str',
+            queue='converter',
             args=[id],
-            queue='converter'
         )
 
         # wait for converter
@@ -180,11 +186,103 @@ def metatask(input_data):
         converter_result = converter.result
 
         # store results
-        router[input_method]['converter_result_function'](input_folder, converter_result)
-          
+        _save_converter_str_result(input_folder, converter_result)
 
-        print(f'CONVERTER RESULT SAVED')
+    _run_task(
+        task_name='ds_foldseek',
+        queue_name='ds_foldseek',
+        id=id,
+        id_existed=id_existed,
+    )
 
-    # run second tasks
-    run_tasks(id, id_existed, router[input_method]['second_tasks'], input_data)
-    run_tasks(id, id_existed, router[input_method]['first_tasks'], input_data)
+    if not use_conservation:
+        _run_task(
+            task_name='ds_p2rank',
+            queue_name='ds_p2rank',
+            id=id,
+            id_existed=id_existed,
+            task_args=extract_args_p2rank(input_data)
+        )
+    else:
+        while not conservation.ready():
+            time.sleep(5)
+
+        _run_task(
+            task_name='ds_p2rank',
+            queue_name='ds_p2rank',
+            id=id,
+            id_existed=id_existed,
+            task_args=extract_args_p2rank(input_data)
+        )
+
+
+@celery.task(name='metatask_STR')
+def metatask_str(input_data: dict) -> None:
+    
+    print('METATASK_STR')
+
+    id           = input_data['id']
+    id_existed   = bool(input_data['id_existed'])
+    use_conservation = input_data['use_conservation']
+    input_folder = f'inputs/{id}/'
+
+    # prepare input
+    _prepare_str_input(input_data['input_url'], input_folder)
+
+    _run_task(
+        task_name='ds_foldseek',
+        queue_name='ds_foldseek',
+        id=id,
+        id_existed=id_existed,
+    )
+
+    if not use_conservation:
+        _run_task(
+            task_name='ds_p2rank',
+            queue_name='ds_p2rank',
+            id=id,
+            id_existed=id_existed,
+            task_args=extract_args_p2rank(input_data)
+        )
+
+    if not id_existed or not _inputs_exist():
+        converter = celery.send_task(
+            'converter_str_to_seq',
+            queue='converter',
+            args=[id],
+        )
+
+        # wait for converter
+        while not converter.ready():
+            time.sleep(0.1)
+
+        converter_result = converter.result
+
+        # store results
+        _save_converter_seq_result(input_folder, converter_result)
+
+    # _run_task(
+    #     task_name='ds_plm',
+    #     queue_name='ds_plm',
+    #     id=id,
+    #     id_existed=id_existed,
+    # )
+    
+    conservation = _run_task(
+        task_name='conservation',
+        queue_name='conservation',
+        id=id,
+        id_existed=id_existed,
+    )
+
+    if use_conservation:
+        while not conservation.ready():
+            time.sleep(5)
+        
+        _run_task(
+            task_name='ds_p2rank',
+            queue_name='ds_p2rank',
+            id=id,
+            id_existed=id_existed,
+            task_args=extract_args_p2rank(input_data)
+        )

@@ -285,7 +285,7 @@ def upload_data():
     try:
         # send task
         result = celery.send_task(
-            'metatask',
+            f'metatask_{metatask_payload["input_method"]}',
             args=[metatask_payload],
             queue='metatask'
         )
