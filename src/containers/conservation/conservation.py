@@ -3,7 +3,9 @@ import subprocess
 import random
 import typing
 import requests
-import tempfile
+from requests.exceptions import HTTPError
+import json
+from enum import Enum
 
 PHMMER_DIR = "./hmmer-3.4/src/"
 ESL_DIR = "./hmmer-3.4/easel/miniapps/"
@@ -13,45 +15,63 @@ RESULT_FOLDER = "./results/{id}/"
 MAX_SEQS = 100
 INPUTS_URL = "http://apache:80/inputs/"
 
+class StatusType(Enum):
+    STARTED = 0
+    COMPLETED = 1
+    FAILED = 2
+
+def update_status(status_file_path, id, status, message=""):
+    try:
+        with open(status_file_path, "w") as f:
+            json.dump({"status": status, "errorMessages": message}, f)
+    except Exception as e:
+        print(f"Error updating status for {id}: {e}")
 
 def compute_conservation(id):
-    
-    json_url = INPUTS_URL + f"{id}/chains.json"
-    response = requests.get(json_url)
-    files_metadata = response.json()
+    result_folder = RESULT_FOLDER.format(id=id)
+    os.makedirs(result_folder, exist_ok=True)
+    status_file_path = os.path.join(result_folder, "status.json")
+    update_status(status_file_path, id, StatusType.STARTED.value)
 
-    for file, chains in files_metadata.items():  # TODO: Fetch files
-        
-        file_url = INPUTS_URL + f"{id}/{file}.fasta"
-        response = requests.get(file_url, stream=True)
+    try:
+        json_url = INPUTS_URL + f"{id}/chains.json"
+        response = requests.get(json_url)
         response.raise_for_status()
+        files_metadata = response.json()
 
-        result_folder = RESULT_FOLDER.format(id=id)
+        for file, chains in files_metadata.items():  # TODO: Fetch files
+            file_url = INPUTS_URL + f"{id}/{file}.fasta"
+            response = requests.get(file_url, stream=True)
+            response.raise_for_status()
 
-        os.makedirs(result_folder, exist_ok=True)
-        result_file = os.path.join(result_folder, file)
+            result_file = os.path.join(result_folder, file)
+            os.makedirs(id, exist_ok=True)
+            input_file_path = f"./{id}/{file}.fasta"
 
-        os.makedirs(id, exist_ok=True)
+            with open(input_file_path, "wb") as seq_file:
+                for chunk in response.iter_content(chunk_size=8192):
+                    seq_file.write(chunk)
 
-        input_file_path = f"./{id}/{file}.fasta"
-        
-        with open(input_file_path, "wb") as seq_file:
-            for chunk in response.iter_content(chunk_size=8192):
-                seq_file.write(chunk)
+            temp_folder = TEMP.format(id=id)
+            os.makedirs(temp_folder, exist_ok=True)
 
-        temp_folder = TEMP.format(id=id)
+            compute_conservation_for_chain(input_file_path, result_file, temp_folder)
 
-        os.makedirs(temp_folder, exist_ok=True)
+            for chain in chains:
+                os.symlink(file, f"{result_folder}/input{chain}.hom")
 
-        compute_conservation_for_chain(input_file_path, result_file, temp_folder)
-
-        for chain in chains:
-            os.symlink(file, f"{result_folder}/input{chain}.hom")
-
+        update_status(status_file_path, id, StatusType.COMPLETED.value)
+    except HTTPError as e:
+        update_status(status_file_path, id, StatusType.FAILED.value, e)
+        print(f"HTTP error occurred: {e}") #TODO LOG
+    except Exception as e:
+        update_status(status_file_path, id, StatusType.FAILED.value, str(e))
+        print(f"Error computing conservation for {id}: {e}")
 
 def _default_execute_command(command: str):
     # We do not check return code here.
     subprocess.run(command, shell=True, env=os.environ.copy())
+
 
 def compute_conservation_for_chain(
         fasta_file: str,
