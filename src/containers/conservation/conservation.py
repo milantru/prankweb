@@ -44,7 +44,8 @@ def compute_conservation(id):
             response = requests.get(file_url, stream=True)
             response.raise_for_status()
 
-            result_file = os.path.join(result_folder, file)
+            hom_file = file.split('.')[0] + ".hom"
+            result_file = os.path.join(result_folder, hom_file)
             os.makedirs(id, exist_ok=True)
             input_file_path = f"./{id}/{file}"
 
@@ -58,9 +59,13 @@ def compute_conservation(id):
             compute_conservation_for_chain(input_file_path, result_file, temp_folder)
 
             for chain in chains:
-                os.symlink(file, f"{result_folder}/input{chain}.hom")
+                os.symlink(hom_file, f"{result_folder}/input{chain}.hom")
+
+            # cleanup
+            os.remove(input_file_path)
 
         update_status(status_file_path, id, StatusType.COMPLETED.value)
+
     except HTTPError as e:
         update_status(status_file_path, id, StatusType.FAILED.value, e)
         print(f"HTTP error occurred: {e}") #TODO LOG

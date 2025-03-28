@@ -35,11 +35,6 @@ class StatusType(Enum):
     COMPLETED = 1
     FAILED = 2
 
-def extract_args_p2rank(input_data):
-    return {
-        'use_conservation': input_data['use_conservation']
-    }
-
 
 def _download_file_from_url(url: str, filename: str) -> None:
     response = requests.get(url)
@@ -152,7 +147,6 @@ def metatask_seq(input_data: dict) -> None:
 
     id           = input_data['id']
     id_existed   = bool(input_data['id_existed'])
-    use_conservation = input_data['use_conservation']
     input_folder = f'inputs/{id}/'
 
     # prepare input
@@ -172,7 +166,7 @@ def metatask_seq(input_data: dict) -> None:
         id_existed=id_existed,
     )
     
-    if not id_existed or not _inputs_exist():
+    if not id_existed or not _inputs_exist(input_folder):
         converter = celery.send_task(
             'converter_seq_to_str',
             queue='converter',
@@ -195,25 +189,24 @@ def metatask_seq(input_data: dict) -> None:
         id_existed=id_existed,
     )
 
-    if not use_conservation:
-        _run_task(
-            task_name='ds_p2rank',
-            queue_name='ds_p2rank',
-            id=id,
-            id_existed=id_existed,
-            task_args=extract_args_p2rank(input_data)
-        )
-    else:
-        while not conservation.ready():
-            time.sleep(5)
+    _run_task(
+        task_name='ds_p2rank',
+        queue_name='ds_p2rank',
+        id=id,
+        id_existed=id_existed,
+        task_args={ 'use_conservation': False }
+    )
 
-        _run_task(
-            task_name='ds_p2rank',
-            queue_name='ds_p2rank',
-            id=id,
-            id_existed=id_existed,
-            task_args=extract_args_p2rank(input_data)
-        )
+    while not conservation.ready():
+        time.sleep(5)
+
+    _run_task(
+        task_name='ds_p2rank',
+        queue_name='ds_p2rank',
+        id=id,
+        id_existed=id_existed,
+        task_args={ 'use_conservation': True }
+    )
 
 
 @celery.task(name='metatask_STR')
@@ -223,7 +216,6 @@ def metatask_str(input_data: dict) -> None:
 
     id           = input_data['id']
     id_existed   = bool(input_data['id_existed'])
-    use_conservation = input_data['use_conservation']
     input_folder = f'inputs/{id}/'
 
     # prepare input
@@ -236,16 +228,15 @@ def metatask_str(input_data: dict) -> None:
         id_existed=id_existed,
     )
 
-    if not use_conservation:
-        _run_task(
-            task_name='ds_p2rank',
-            queue_name='ds_p2rank',
-            id=id,
-            id_existed=id_existed,
-            task_args=extract_args_p2rank(input_data)
-        )
+    _run_task(
+        task_name='ds_p2rank',
+        queue_name='ds_p2rank',
+        id=id,
+        id_existed=id_existed,
+        task_args={ 'use_conservation': False }
+    )
 
-    if not id_existed or not _inputs_exist():
+    if not id_existed or not _inputs_exist(input_folder):
         converter = celery.send_task(
             'converter_str_to_seq',
             queue='converter',
@@ -275,14 +266,13 @@ def metatask_str(input_data: dict) -> None:
         id_existed=id_existed,
     )
 
-    if use_conservation:
-        while not conservation.ready():
-            time.sleep(5)
-        
-        _run_task(
-            task_name='ds_p2rank',
-            queue_name='ds_p2rank',
-            id=id,
-            id_existed=id_existed,
-            task_args=extract_args_p2rank(input_data)
-        )
+    while not conservation.ready():
+        time.sleep(5)
+    
+    _run_task(
+        task_name='ds_p2rank',
+        queue_name='ds_p2rank',
+        id=id,
+        id_existed=id_existed,
+        task_args={ 'use_conservation': True }
+    )

@@ -5,9 +5,11 @@ import json
 import requests
 from enum import Enum
 import post_processor
+import glob
 
 RESULTS_FOLDER = "results"
-INPUTS_URL = "http://apache:80/inputs/"
+INPUTS_URL = "http://apache:80/inputs/{id}/"
+CONSERVATION_FILES_URL = "http://apache:80/conservation/{id}/"
 
 class StatusType(Enum):
     STARTED = 0
@@ -27,17 +29,41 @@ def update_status(status_file_path, id, status, message=""):
     except Exception as e:
         print(f"Error updating status for {id}: {e}")
 
-def run_p2rank(id, use_conservation=False):
+def prepare_hom_files(id, eval_folder):
+    chains_json = INPUTS_URL.format(id=id) + "chains.json"
+
+    response = requests.get(chains_json, stream=True)
+    response.raise_for_status()
+
+    metadata = response.json()
+
+    for chain in metadata["chains"]:
+        filename = f"input{chain}.hom"
+        chain_hom_file = CONSERVATION_FILES_URL.format(id=id) + filename
+
+        response = requests.get(chain_hom_file, stream=True)
+        response.raise_for_status()
+
+        with open(os.path.join(eval_folder, filename), "wb") as hom_file:
+            for chunk in response.iter_content(chunk_size=8192):
+                hom_file.write(chunk)
+
+
+def run_p2rank(id, params):
     print("P2RANK")
     print(id)
+    
+    use_conservation = params['use_conservation']
 
     eval_folder = os.path.join(RESULTS_FOLDER, f"{id}")
+    if use_conservation:
+        eval_folder = os.path.join(eval_folder, "conservation")
     os.makedirs(eval_folder, exist_ok=True)
     status_file_path = os.path.join(eval_folder, "status.json")
     update_status(status_file_path, id, StatusType.STARTED.value)
 
     try:
-        pdb_url = INPUTS_URL + str(id) + "/structure.pdb"
+        pdb_url = INPUTS_URL.format(id=id) + "structure.pdb"
         query_structure_file = os.path.join(eval_folder, "input.pdb")
 
         response = requests.get(pdb_url, stream=True)
@@ -46,6 +72,9 @@ def run_p2rank(id, use_conservation=False):
         with open(query_structure_file, "wb") as struct_file:
             for chunk in response.iter_content(chunk_size=8192):
                 struct_file.write(chunk)
+        
+        if use_conservation:
+            prepare_hom_files(id, eval_folder)
 
         conservation_param = ConservationParam.HMM.value if use_conservation else ConservationParam.DEFAULT.value
 
@@ -59,9 +88,12 @@ def run_p2rank(id, use_conservation=False):
 
         subprocess.run(command, check=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
 
-        post_processor.process_p2rank_output(id, eval_folder, query_structure_file)
+        post_processor.process_p2rank_output(id, eval_folder, query_structure_file, pdb_url)
 
         update_status(status_file_path, id, StatusType.COMPLETED.value)
+        os.remove(query_structure_file)
+        for file in glob.glob(os.path.join(eval_folder, "*.hom")):
+            os.remove(file)
 
     except requests.RequestException as e:
         update_status(status_file_path, id, StatusType.FAILED.value, f"Failed to download PDB file: {str(e)}")

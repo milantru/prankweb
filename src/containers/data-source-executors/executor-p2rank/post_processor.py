@@ -2,6 +2,7 @@ import os
 import json
 from data_format.builder import ProteinDataBuilder, BindingSite
 from dataclasses import asdict
+from Bio.PDB.Polypeptide import three_to_index, index_to_one
 
 # _____________predictions.csv________________
 # name     ,  rank,   score, probability,  ...
@@ -21,6 +22,7 @@ PREDICTION_PROBABILITY_INDEX = 3
 #_____________________________________________
 
 CHAIN_INDEX = 0
+RESIDUE_INDEX = 2
 POCKET_INDEX = 6
 
 RESULT_FILE = "{}_chain_result.json"
@@ -31,38 +33,39 @@ def read_residues(residues_result_file):
         file.readline()  # Skip header
         for index, line in enumerate(file):
             row = [item.strip() for item in line.strip().split(',')]
-            chain, pocket = row[CHAIN_INDEX], int(row[POCKET_INDEX])
-            
+            chain, residue, pocket = row[CHAIN_INDEX], row[RESIDUE_INDEX], int(row[POCKET_INDEX])
+            if chain not in grouped_data:
+                grouped_data[chain] = {"pockets" : {}, "residues" : ""}
             if pocket != 0:
-                if chain not in grouped_data:
-                    grouped_data[chain] = {}
-                if pocket not in grouped_data[chain]:
-                    grouped_data[chain][pocket] = {'indices': [], 'probability': None}
-                grouped_data[chain][pocket]['indices'].append(index)
+                if pocket not in grouped_data[chain]["pockets"]:
+                    grouped_data[chain]["pockets"][pocket] = {'indices': [], 'probability': None}
+                grouped_data[chain]["pockets"][pocket]['indices'].append(index)
+
+            grouped_data[chain]["residues"] += index_to_one(three_to_index(residue))
     return grouped_data
 
 def update_pocket_probabilities(pocket_prediction_result_file, grouped_data):
     with open(pocket_prediction_result_file, 'r') as file:
-        file.readline()  # Skip header
+        file.readline()  # Skip header =+  
         for line in file:
             row = [item.strip() for item in line.strip().split(',')]
             pocket, probability = int(row[PREDICTION_POCKET_INDEX].replace("pocket", "")), float(row[PREDICTION_PROBABILITY_INDEX])
 
             for chain in grouped_data:
-                if pocket in grouped_data[chain]:
-                    grouped_data[chain][pocket]['probability'] = probability
+                if pocket in grouped_data[chain]["pockets"]:
+                    grouped_data[chain]["pockets"][pocket]['probability'] = probability
 
-def process_p2rank_output(id, result_folder, query_file):
+def process_p2rank_output(id, result_folder, query_file, pdb_url):
     residues_result_file = query_file + "_residues.csv"
     pocket_prediction_result_file = query_file + "_predictions.csv"
 
     grouped_data = read_residues(residues_result_file)
     update_pocket_probabilities(pocket_prediction_result_file, grouped_data)
 
-    for chain, pockets in grouped_data.items():
-        protein_data_builder = ProteinDataBuilder(id=id, chain=chain, sequence="TODO", pdb_url="TODO")
+    for chain, data in grouped_data.items():
+        protein_data_builder = ProteinDataBuilder(id=id, chain=chain, sequence=data["residues"], pdb_url=pdb_url)
         
-        for pocket, data in pockets.items():
+        for pocket, data in data["pockets"].items():
             binding_site = BindingSite(
                 id=f"pocket_{pocket}", 
                 confidence=data['probability'], 
