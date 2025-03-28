@@ -8,8 +8,8 @@ import tempfile
 PHMMER_DIR = "./hmmer-3.4/src/"
 ESL_DIR = "./hmmer-3.4/easel/miniapps/"
 DATABASE = "./uniprot_sprot.fasta" # TODO: DOWNLOAD uniref50.fasta AND USE IT
-TEMP = "./tmp_conservation"
-RESULT_FILE = "./results/{id}/{file}.hom"
+TEMP = "./tmp_conservation_{id}"
+RESULT_FOLDER = "./results/{id}/"
 MAX_SEQS = 100
 INPUTS_URL = "http://apache:80/inputs/"
 
@@ -26,31 +26,43 @@ def compute_conservation(id):
         response = requests.get(file_url, stream=True)
         response.raise_for_status()
 
-        result_file = RESULT_FILE.format(id=id, file=file)
+        result_folder = RESULT_FOLDER.format(id=id)
+
+        os.makedirs(result_folder, exist_ok=True)
+        result_file = os.path.join(result_folder, file)
+
+        os.makedirs(id, exist_ok=True)
+
+        input_file_path = f"./{id}/{file}.fasta"
         
-        with tempfile.NamedTemporaryFile(mode="wb", suffix=".fasta", delete=True) as seq_file:
+        with open(input_file_path, "wb") as seq_file:
             for chunk in response.iter_content(chunk_size=8192):
                 seq_file.write(chunk)
-            
-            compute_conservation_for_chain(seq_file.name, result_file)
+
+        temp_folder = TEMP.format(id=id)
+
+        os.makedirs(temp_folder, exist_ok=True)
+
+        compute_conservation_for_chain(input_file_path, result_file, temp_folder)
 
         for chain in chains:
-            os.symlink(result_file, f"./results/{id}/input{chain}.hom")
-        
+            os.symlink(file, f"{result_folder}/input{chain}.hom")
+
 
 def _default_execute_command(command: str):
     # We do not check return code here.
-    subprocess.run(command, check=True)
+    subprocess.run(command, shell=True, env=os.environ.copy())
 
 def compute_conservation_for_chain(
         fasta_file: str,
-        target_file: str,
+        result_file: str,
+        temp_folder: str,
 ):
     
     execute_command = _default_execute_command
 
     unweighted_msa_file = _generate_msa(
-        fasta_file, DATABASE, TEMP, execute_command)
+        fasta_file, DATABASE, temp_folder, execute_command)
 
     sample_file = _select_sequences(unweighted_msa_file, MAX_SEQS)
     if sample_file:
@@ -65,28 +77,19 @@ def compute_conservation_for_chain(
 
     ic_file, r_file = _calculate_information_content(
         weighted_msa_file, execute_command)
-    fasta_file_header, fasta_file_sequence = _read_fasta_file(fasta_file)
+    fasta_file_sequence = _read_fasta_file(fasta_file)
     information_content, freqgap = _read_information_content(ic_file, r_file)
-
-    original_target_file = target_file
 
     if information_content:
         assert len(fasta_file_sequence) == \
                len(information_content) == \
                len(freqgap)
-        _write_tsv(target_file, fasta_file_sequence, information_content)
-        _write_tsv(target_file + ".freqgap", fasta_file_sequence, freqgap)
+        _write_tsv(result_file, fasta_file_sequence, information_content)
+        _write_tsv(result_file + ".freqgap", fasta_file_sequence, freqgap)
     else:  # `information_content` is `None` if no MSA was generated
         filler_values = ["-1000.0" for _ in fasta_file_sequence]
-        _write_tsv(target_file, fasta_file_sequence, filler_values)
-        _write_tsv(target_file + ".freqgap", fasta_file_sequence, filler_values)
-
-    _mask_ic_file(
-        target_file,
-        target_file + ".freqgap",
-        original_target_file,
-        0.5, "-1000.0",
-    )
+        _write_tsv(result_file, fasta_file_sequence, filler_values)
+        _write_tsv(result_file + ".freqgap", fasta_file_sequence, filler_values)
 
     return weighted_msa_file
 
@@ -158,10 +161,10 @@ def _calculate_information_content(
 def _read_fasta_file(fasta_file: str):
     fasta_file_sequence = ""
     with open(fasta_file) as stream:
-        fasta_file_header = next(stream).rstrip()
+        _ = next(stream).rstrip() # skip header
         for line in stream:
             fasta_file_sequence += line.rstrip()
-    return fasta_file_header, fasta_file_sequence
+    return fasta_file_sequence
 
 
 def _read_information_content(ic_file: str, r_file: str):
@@ -192,17 +195,4 @@ def _write_tsv(target_file: str, fasta_file_sequence: str, feature):
         for (i, j), value in zip(enumerate(fasta_file_sequence), feature):
             stream.write("\t".join((str(i), value, j)) + "\n")
 
-
-def _mask_ic_file(
-        ic_file: str, freqgap_file: str, target_file: str,
-        max_freqgap, mask_string: str):
-    with open(ic_file) as ic_stream, \
-            open(freqgap_file) as freqgap_stream, \
-            open(target_file, mode="w") as target_stream:
-        for line_ic, line_freqgap in zip(ic_stream, freqgap_stream):
-            index, freqgap, aa = line_freqgap.split("\t")
-            if float(freqgap) > max_freqgap:
-                target_stream.write("\t".join((index, mask_string, aa)))
-            else:
-                target_stream.write(line_ic)
 
