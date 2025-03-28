@@ -209,7 +209,7 @@ def validate_seq(input_data):
         
     # check sequence
     sequence:str = input_data['sequence']
-    if not sequence.startswith('>'): sequence = '>' + sequence
+    if not sequence.startswith('>'): sequence = '>PLANKWEB_SEQ\n' + sequence
     if not _text_is_fasta_format(sequence):
         return 'Sequence not in FASTA format', None
     
@@ -285,7 +285,7 @@ def upload_data():
     try:
         # send task
         result = celery.send_task(
-            'metatask',
+            f'metatask_{metatask_payload["input_method"]}',
             args=[metatask_payload],
             queue='metatask'
         )

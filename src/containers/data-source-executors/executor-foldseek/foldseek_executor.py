@@ -1,16 +1,10 @@
 import os
 import subprocess
-from celery import Celery
 import tempfile
 import json
-import base64
 import requests
 from enum import Enum
-
 import post_processor
-
-# Celery configuration
-celery = Celery('tasks', broker='amqp://guest:guest@message-broker:5672//', backend='rpc://')
 
 RESULTS_FOLDER = "results"
 FOLDSEEK_DB = "foldseek_db/pdb"
@@ -30,13 +24,10 @@ def update_status(status_file_path, id, status, message=""):
     except Exception as e:
         print(f"Error updating status for {id}: {e}")
 
-
-@celery.task(name='ds_foldseek')
-def ds_foldseek(id):
-
+def run_foldseek(id):
     print("FOLDSEEK")
     print(id)
-    
+
     eval_folder = os.path.join(RESULTS_FOLDER, f"{id}")
     os.makedirs(eval_folder, exist_ok=True)
     status_file_path = os.path.join(eval_folder, "status.json")
@@ -44,16 +35,15 @@ def ds_foldseek(id):
 
     try:
         pdb_url = INPUTS_URL + str(id) + "/structure.pdb"
-        query_structure_file = ""
+        query_structure_file = os.path.join(eval_folder, "input.pdb")
 
         response = requests.get(pdb_url, stream=True)
         response.raise_for_status()
 
-        with tempfile.NamedTemporaryFile(mode="wb", suffix=".pdb", delete=False) as struct_file:
+        with open(query_structure_file, "wb") as struct_file:
             for chunk in response.iter_content(chunk_size=8192):
                 struct_file.write(chunk)
-            query_structure_file = struct_file.name
-    
+
         foldseek_result_file = os.path.join(eval_folder, f"aln_res_{id}")
 
         command = [
@@ -77,7 +67,4 @@ def ds_foldseek(id):
     except Exception as e:
         update_status(status_file_path, id, StatusType.FAILED.value, f"An unexpected error occurred: {e}")
         print(f"An unexpected error occurred: {e}")
-    finally:
-        if query_structure_file and isinstance(query_structure_file, str) and os.path.exists(query_structure_file):
-            os.remove(query_structure_file)
-            print(f"Temporary PDB file deleted: {query_structure_file}")
+
