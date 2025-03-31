@@ -1,3 +1,2 @@
 celery
 requests
-biopython

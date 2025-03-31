@@ -1,13 +1,11 @@
-from enum import Enum
-import os
-
-from Bio.Seq import Seq
-from Bio.SeqRecord import SeqRecord
-from Bio import SeqIO
-from celery import Celery
-import requests
-import time
 import json
+import os
+import time
+from enum import Enum
+
+import requests
+from celery import Celery
+from celery.result import AsyncResult
 
 ################################ Celery setup ##################################
 
@@ -35,6 +33,7 @@ class StatusType(Enum):
     COMPLETED = 1
     FAILED = 2
 
+############################## Private functions ###############################
 
 def _download_file_from_url(url: str, filename: str) -> None:
     response = requests.get(url)
@@ -113,9 +112,9 @@ def _save_converter_seq_result(input_folder: str, result: dict) -> None:
         )
 
 
-def _is_task_running_or_completed(task_name: str, task_id: str) -> bool:
+def _is_task_running_or_completed(output_folder: str) -> bool:
     
-    response = requests.get(os.path.join(APACHE_URL, task_name, task_id, 'status.json'))
+    response = requests.get(os.path.join(output_folder, 'status.json'))
     
     if response.status_code != 200:
         return False
@@ -126,8 +125,19 @@ def _is_task_running_or_completed(task_name: str, task_id: str) -> bool:
             task_status == StatusType.COMPLETED.value)
 
 
-def _run_task(task_name, queue_name, id, id_existed, task_args=None):
-    if not id_existed or not _is_task_running_or_completed(task_name, id):
+def _run_task(
+        task_name: str,
+        queue_name: str,
+        id: str,
+        id_existed: bool,
+        output_folder: str | None = None,
+        task_args: dict | None = None
+) -> AsyncResult | None:
+    
+    if not output_folder:
+        output_folder = os.path.join(APACHE_URL, task_name, id, 'status.json')
+    
+    if not id_existed or not _is_task_running_or_completed(output_folder):
         print(f'SENDING {task_name.upper()}')
         task = celery.send_task(
             task_name,
@@ -139,6 +149,50 @@ def _run_task(task_name, queue_name, id, id_existed, task_args=None):
     
     return None
 
+
+def _run_plm(id, id_existed):
+    _run_task(
+        task_name='ds_plm',
+        queue_name='ds_plm',
+        id=id,
+        id_existed=id_existed,
+    )
+
+
+def _run_foldseek(id: str, id_existed: bool) -> None:
+    _run_task(
+        task_name='ds_foldseek',
+        queue_name='ds_foldseek',
+        id=id,
+        id_existed=id_existed,
+    )
+
+
+def _run_p2rank(id: str, id_existed: bool, use_conservation: bool) -> None:
+    
+    output_folder = os.path.join(APACHE_URL, 'ds_p2rank', id)
+    if use_conservation:
+        output_folder = os.path.join(output_folder, 'conservation')
+
+    _run_task(
+        task_name='ds_p2rank',
+        queue_name='ds_p2rank',
+        id=id,
+        id_existed=id_existed,
+        output_folder=output_folder,
+        task_args={ 'use_conservation': use_conservation }
+    )
+
+
+def _run_conservation(id: str, id_existed: bool) -> AsyncResult | None:
+    return _run_task(
+        task_name='conservation',
+        queue_name='conservation',
+        id=id,
+        id_existed=id_existed,
+    )
+
+############################### Public functions ###############################
 
 @celery.task(name='metatask_SEQ')
 def metatask_seq(input_data: dict) -> None:
@@ -152,19 +206,9 @@ def metatask_seq(input_data: dict) -> None:
     # prepare input
     _prepare_seq_input(input_data['input_url'], input_folder)
 
-    # _run_task(
-    #     task_name='ds_plm',
-    #     queue_name='ds_plm',
-    #     id=id,
-    #     id_existed=id_existed,
-    # )
+    # _run_plm(id, id_existed)
 
-    conservation = _run_task(
-        task_name='conservation',
-        queue_name='conservation',
-        id=id,
-        id_existed=id_existed,
-    )
+    conservation = _run_conservation(id, id_existed)
     
     if not id_existed or not _inputs_exist(input_folder):
         converter = celery.send_task(
@@ -182,31 +226,15 @@ def metatask_seq(input_data: dict) -> None:
         # store results
         _save_converter_str_result(input_folder, converter_result)
 
-    _run_task(
-        task_name='ds_foldseek',
-        queue_name='ds_foldseek',
-        id=id,
-        id_existed=id_existed,
-    )
+    _run_foldseek(id, id_existed)
 
-    _run_task(
-        task_name='ds_p2rank',
-        queue_name='ds_p2rank',
-        id=id,
-        id_existed=id_existed,
-        task_args={ 'use_conservation': False }
-    )
+    _run_p2rank(id, id_existed, use_conservation=False)
 
-    while not conservation.ready():
-        time.sleep(5)
+    if conservation:
+        while not conservation.ready():
+            time.sleep(5)
 
-    _run_task(
-        task_name='ds_p2rank',
-        queue_name='ds_p2rank',
-        id=id,
-        id_existed=id_existed,
-        task_args={ 'use_conservation': True }
-    )
+    _run_p2rank(id, id_existed, use_conservation=True)
 
 
 @celery.task(name='metatask_STR')
@@ -221,20 +249,9 @@ def metatask_str(input_data: dict) -> None:
     # prepare input
     _prepare_str_input(input_data['input_url'], input_folder)
 
-    _run_task(
-        task_name='ds_foldseek',
-        queue_name='ds_foldseek',
-        id=id,
-        id_existed=id_existed,
-    )
+    _run_foldseek(id, id_existed)
 
-    _run_task(
-        task_name='ds_p2rank',
-        queue_name='ds_p2rank',
-        id=id,
-        id_existed=id_existed,
-        task_args={ 'use_conservation': False }
-    )
+    _run_p2rank(id, id_existed, use_conservation=False)
 
     if not id_existed or not _inputs_exist(input_folder):
         converter = celery.send_task(
@@ -252,27 +269,12 @@ def metatask_str(input_data: dict) -> None:
         # store results
         _save_converter_seq_result(input_folder, converter_result)
 
-    # _run_task(
-    #     task_name='ds_plm',
-    #     queue_name='ds_plm',
-    #     id=id,
-    #     id_existed=id_existed,
-    # )
+    # _run_plm(id, id_existed)
     
-    conservation = _run_task(
-        task_name='conservation',
-        queue_name='conservation',
-        id=id,
-        id_existed=id_existed,
-    )
+    conservation = _run_conservation(id, id_existed)
 
-    while not conservation.ready():
-        time.sleep(5)
+    if conservation:
+        while not conservation.ready():
+            time.sleep(5)
     
-    _run_task(
-        task_name='ds_p2rank',
-        queue_name='ds_p2rank',
-        id=id,
-        id_existed=id_existed,
-        task_args={ 'use_conservation': True }
-    )
+    _run_p2rank(id, id_existed, use_conservation=True)
