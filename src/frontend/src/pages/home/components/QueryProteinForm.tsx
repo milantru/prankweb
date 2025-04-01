@@ -194,7 +194,15 @@ function QueryProteinForm() {
             return;
         }
 
-        navigate(`/analytical-page?id=${id}`);
+        const chains = formState.inputMethod === InputMethods.InputPdbBlock || formState.inputMethod === InputMethods.InputUserFileBlock
+            ? (selectedInputBlockData as InputPdbBlockData | InputUserFileBlockData).chains
+            : "";
+
+        let url = `/analytical-page?id=${id}`;
+        if (chains) {
+            url += `&&chains=${chains}`;
+        }
+        navigate(url);
         setIsSubmitting(false);
     }
 

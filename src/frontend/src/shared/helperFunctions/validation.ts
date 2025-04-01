@@ -1,4 +1,4 @@
-export function sanitizeCode(code: string): string {
+export function sanitizeCode(code: string): string { // Code - either pdb or uniprot
     return code.replace(/[^0-9a-z]/gi, "").toUpperCase();
 }
 
