@@ -8,6 +8,11 @@ services:
     restart: always
     volumes:
       - rabbitmq:/var/lib/rabbitmq
+    healthcheck:
+      test: rabbitmq-diagnostics -q status
+      interval: 30s
+      timeout: 30s
+      retries: 3
 
   id-database:
     image: redis:7.4.2
@@ -15,9 +20,16 @@ services:
     volumes:
       - redis:/data
     command: redis-server --save 600 1 --loglevel warning
+    healthcheck:
+      test: redis-cli info
+      interval: 30s
+      timeout: 30s
+      retries: 3
 
   executor-http-api:
-    image: httpd:2.4.63
+    build:
+      context: ./containers/executor-http-api/
+    # image: httpd:2.4.63
     container_name: apache
     restart: always
     ports:
@@ -29,6 +41,12 @@ services:
       - inputs:/usr/local/apache2/htdocs/inputs
       - tmp:/usr/local/apache2/htdocs/tmp
     command: httpd -D FOREGROUND
+    healthcheck:
+      test: curl -f http://localhost/server-status?auto
+      interval: 30s
+      timeout: 30s
+      retries: 3
+
 
   id-provider:
     build:
@@ -78,7 +96,7 @@ services:
       - ./containers/data-source-executors/executor-foldseek/foldseek_executor.py:/app/foldseek_executor.py
       - ./containers/data-source-executors/executor-foldseek/post_processor.py:/app/post_processor.py
       - ./containers/data-source-executors/data_format/builder.py:/app/data_format/builder.py
-    command: celery --app=celery_worker worker --queues=ds_foldseek --loglevel=debug
+    command: celery --app=celery_worker worker --queues=ds_foldseek --hostname=foldseek_worker --loglevel=debug
 
   ds-p2rank:
     build:
@@ -93,7 +111,7 @@ services:
       - ./containers/data-source-executors/executor-p2rank/p2rank_executor.py:/app/p2rank_executor.py
       - ./containers/data-source-executors/executor-p2rank/post_processor.py:/app/post_processor.py
       - ./containers/data-source-executors/data_format/builder.py:/app/data_format/builder.py
-    command: celery --app=celery_worker worker --queues=ds_p2rank --loglevel=debug
+    command: celery --app=celery_worker worker --queues=ds_p2rank --hostname=p2rank_worker --loglevel=debug
 
   conservation:
     build:
@@ -106,7 +124,7 @@ services:
       - conservation:/app/results
       - ./containers/conservation/celery_worker.py:/app/celery_worker.py
       - ./containers/conservation/conservation.py:/app/conservation.py
-    command: celery --app=celery_worker worker --queues=conservation --loglevel=debug
+    command: celery --app=celery_worker worker --queues=conservation --hostname=conservation_worker --loglevel=debug
 
   converter:
     build:
@@ -118,7 +136,7 @@ services:
       - message-broker
     volumes:
       - ./containers/converter/converter_executor.py:/app/converter_executor.py
-    command: celery --app=celery_worker worker --queues=converter --loglevel=debug
+    command: celery --app=celery_worker worker --queues=converter --hostname=converter_worker --loglevel=debug
 
   metatask:
     build:
@@ -132,7 +150,7 @@ services:
     volumes:
       - inputs:/app/inputs
       - ./containers/metatask/metatask.py:/app/metatask.py
-    command: celery --app=metatask worker --queues=metatask --loglevel=debug
+    command: celery --app=metatask worker --queues=metatask --hostname=metatask_worker --loglevel=debug
 
   flower:
     build: https://github.com/mher/flower.git
