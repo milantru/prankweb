@@ -23,7 +23,9 @@ services:
     ports:
       - "80:80"
     volumes:
-      - foldseek:/usr/local/apache2/htdocs/foldseek
+      - foldseek:/usr/local/apache2/htdocs/ds_foldseek
+      - p2rank:/usr/local/apache2/htdocs/ds_p2rank
+      - conservation:/usr/local/apache2/htdocs/conservation
       - inputs:/usr/local/apache2/htdocs/inputs
       - tmp:/usr/local/apache2/htdocs/tmp
     command: httpd -D FOREGROUND
@@ -78,6 +80,34 @@ services:
       - ./containers/data-source-executors/data_format/builder.py:/app/data_format/builder.py
     command: celery --app=celery_worker worker --queues=ds_foldseek --loglevel=debug
 
+  ds-p2rank:
+    build:
+      context: ./containers/data-source-executors/
+      dockerfile: ./executor-p2rank/Dockerfile
+    container_name: ds-p2rank
+    restart: always
+    depends_on:
+      - message-broker
+    volumes:
+      - p2rank:/app/results
+      - ./containers/data-source-executors/executor-p2rank/p2rank_executor.py:/app/p2rank_executor.py
+      - ./containers/data-source-executors/executor-p2rank/post_processor.py:/app/post_processor.py
+      - ./containers/data-source-executors/data_format/builder.py:/app/data_format/builder.py
+    command: celery --app=celery_worker worker --queues=ds_p2rank --loglevel=debug
+
+  conservation:
+    build:
+      context: ./containers/conservation
+    container_name: conservation
+    restart: always
+    depends_on:
+      - message-broker
+    volumes:
+      - conservation:/app/results
+      - ./containers/conservation/celery_worker.py:/app/celery_worker.py
+      - ./containers/conservation/conservation.py:/app/conservation.py
+    command: celery --app=celery_worker worker --queues=conservation --loglevel=debug
+
   converter:
     build:
       context: ./containers/converter/
@@ -87,8 +117,8 @@ services:
     depends_on:
       - message-broker
     volumes:
-      - ./containers/converter/converter.py:/app/converter.py
-    command: celery --app=converter worker --queues=converter --loglevel=debug
+      - ./containers/converter/converter_executor.py:/app/converter_executor.py
+    command: celery --app=celery_worker worker --queues=converter --loglevel=debug
 
   metatask:
     build:
@@ -119,5 +149,7 @@ volumes:
   rabbitmq:
   redis:
   foldseek:
+  p2rank:
   inputs:
+  conservation:
   tmp:

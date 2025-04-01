@@ -1,17 +1,14 @@
 FROM python:3.10.7
 
-RUN apt-get update \
-  && apt-get -y --no-install-recommends install celery
+RUN apt-get update
 
 WORKDIR /app
 
-COPY executor-foldseek/requirements.txt .
+COPY executor-foldseek/. .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY data_format/ data_format/
 RUN pip install -e data_format/
-
-COPY executor-foldseek/. .
 
 RUN wget https://mmseqs.com/foldseek/foldseek-linux-avx2.tar.gz && \
     tar xvzf foldseek-linux-avx2.tar.gz && \

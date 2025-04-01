@@ -1,13 +1,16 @@
-from celery import Celery
-from flask import Flask, request, jsonify
-import requests
-from subprocess import Popen
+import os
 import time
-
-from Bio import SeqIO, PDB
-from io import StringIO
 from enum import Enum
+from io import StringIO
+from subprocess import Popen
+from typing import TypeAlias
+
+import requests
+from Bio import SeqIO, PDB
+from celery import Celery
+from flask import Flask, request, jsonify, Response
 from humps import decamelize
+from werkzeug.datastructures import FileStorage
 
 ########################### Flask and Celery setup #############################
 
@@ -24,6 +27,10 @@ celery.conf.update({
 })
 
 ################################## Constants ###################################
+
+ErrorStr: TypeAlias = str
+ProteinID: TypeAlias = str
+ValidationResult: TypeAlias = tuple[ErrorStr | None, ProteinID | None]
 
 class InputMethods(Enum):
     PDB = '0'
@@ -52,31 +59,34 @@ PDB_FILE_URL = 'https://files.rcsb.org/download/{}.pdb'
 UNIPROT_ID_URL = 'https://rest.uniprot.org/uniprotkb/{}'
 UNIPROT_FILE_URL = 'https://alphafold.ebi.ac.uk/files/AF-{}-F1-model_v4.pdb'
 
-############################### Helper methods #################################
+############################## Private functions ###############################
 
-def _check_form_fields(input_data, form_fields):
+def _check_form_fields(input_data: dict, form_fields: list) -> ErrorStr | None:
     for field in form_fields:
         if field not in input_data:
             return f'{field} not found'
         
     return None
 
-def _file_exists_at_url(url):
+
+def _file_exists_at_url(url: str) -> bool:
     try:
         response = requests.head(url, allow_redirects=True, timeout=(3,5))
         return response.status_code == 200
     except requests.RequestException as e:
         print(f'Error checking URL: {e}')
         return False
-    
-def _text_is_fasta_format(text):
+
+
+def _text_is_fasta_format(text: str) -> bool:
     try:
         records = list(SeqIO.parse(StringIO(text), 'fasta'))
         return len(records) > 0  # At least one valid record
     except Exception:
         return False
-    
-def _try_parse_pdb(pdb_file, user_chains):
+
+
+def _try_parse_pdb(pdb_file: str, user_chains: list) -> ErrorStr | None:
     
     structure = None
     
@@ -97,7 +107,8 @@ def _try_parse_pdb(pdb_file, user_chains):
     
     return None
 
-def validate_pdb(input_data): 
+
+def _validate_pdb(input_data: dict) -> ValidationResult: 
 
     err = _check_form_fields(input_data, PDB_FORM_FIELDS)    
     if err:
@@ -134,7 +145,8 @@ def validate_pdb(input_data):
 
     return None, pdb_id
 
-def validate_custom_str(input_data, input_file):
+
+def _validate_custom_str(input_data: dict, input_file: FileStorage | None) -> ValidationResult:
 
     err = _check_form_fields(input_data, CUSTOM_STR_FORM_FIELDS)    
     if err:
@@ -158,7 +170,7 @@ def validate_custom_str(input_data, input_file):
     del input_data['userInputModel']
 
     # save file to tmp folder
-    tmp_file = f'/tmp/{str(time.time())[-5:] + "_" + input_file.filename}'
+    tmp_file = f'/tmp/{str(time.time())[-5:]}_{input_file.filename}'
     input_file.save(tmp_file)
 
     # try to parse pdb and check selected chains
@@ -167,14 +179,15 @@ def validate_custom_str(input_data, input_file):
     err = _try_parse_pdb(tmp_file, selected_chains)
     
     # tmp_folder is mounted to volume tmp which is shared with apache
-    input_data['inputUrl'] = APACHE_URL + tmp_file
+    input_data['inputUrl'] = os.path.join(APACHE_URL, tmp_file)
 
     # Delete tmp file after 15 minutes
     Popen(f'sleep 900 && rm -f {tmp_file}', shell=True)
     
     return err, None
 
-def validate_uniprot(input_data):
+
+def _validate_uniprot(input_data: dict) -> ValidationResult:
     
     err = _check_form_fields(input_data, UNIPROT_FORM_FIELDS)    
     if err:
@@ -201,42 +214,44 @@ def validate_uniprot(input_data):
 
     return None, uniprot_id
 
-def validate_seq(input_data):
+
+def _validate_seq(input_data: dict) -> ValidationResult:
     
     err = _check_form_fields(input_data, SEQUENCE_FORM_FIELDS)    
     if err:
-        return err
+        return err, None
         
     # check sequence
     sequence:str = input_data['sequence']
-    if not sequence.startswith('>'): sequence = '>' + sequence
+    if not sequence.startswith('>'): sequence = '>PLANKWEB_SEQ\n' + sequence
     if not _text_is_fasta_format(sequence):
         return 'Sequence not in FASTA format', None
     
     # save sequence to tmp folder
-    tmp_file = f'/tmp/{str(time.time())[-5:]}' + '_' + 'seq'
+    tmp_file = f'/tmp/{str(time.time())[-5:]}_seq'
     with open(tmp_file, 'w') as f: f.write(sequence)
 
     # tmp_folder is mounted to volume tmp which is shared with apache
-    input_data['inputUrl'] = APACHE_URL + tmp_file
+    input_data['inputUrl'] = os.path.join(APACHE_URL, tmp_file)
 
     # Delete tmp file after 15 minutes
     Popen(f'sleep 900 && rm -f {tmp_file}', shell=True)
     
     return None, sequence
 
-def is_input_valid(input_method, input_data, input_file):
+
+def _is_input_valid(input_method: str, input_data: dict, input_file: FileStorage | None) -> ValidationResult:
     match input_method:
-        case InputMethods.PDB.value: return validate_pdb(input_data)
-        case InputMethods.CUSTOM_STR.value: return validate_custom_str(input_data, input_file)
-        case InputMethods.UNIPROT.value: return validate_uniprot(input_data)
-        case InputMethods.SEQUENCE.value: return validate_seq(input_data)
+        case InputMethods.PDB.value: return _validate_pdb(input_data)
+        case InputMethods.CUSTOM_STR.value: return _validate_custom_str(input_data, input_file)
+        case InputMethods.UNIPROT.value: return _validate_uniprot(input_data)
+        case InputMethods.SEQUENCE.value: return _validate_seq(input_data)
         case _: raise  Exception('Unexpected input method')
 
-############################### 'Main' method ##################################
+############################## Public functions ################################
 
 @app.route('/upload-data', methods=['POST'])
-def upload_data():
+def upload_data() -> Response:
 
     input_method = request.form.get('inputMethod')
     if input_method is None:
@@ -248,7 +263,7 @@ def upload_data():
 
     print('INPUT TYPE:', input_method) # TODO: replace by log
 
-    err, protein = is_input_valid(input_method, input_data, input_file)
+    err, protein = _is_input_valid(input_method, input_data, input_file)
     if err:
         print(err)
         return jsonify({'error': err}), 400
@@ -285,7 +300,7 @@ def upload_data():
     try:
         # send task
         result = celery.send_task(
-            'metatask',
+            f'metatask_{metatask_payload["input_method"]}',
             args=[metatask_payload],
             queue='metatask'
         )
@@ -299,6 +314,7 @@ def upload_data():
         print(f'Error submitting task: {e}')
     
     return jsonify(response_data['id'])
+
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=3000)
