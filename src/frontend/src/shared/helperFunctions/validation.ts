@@ -1,4 +1,4 @@
-export function sanitizeCode(code: string): string {
+export function sanitizeCode(code: string): string { // Code - either pdb or uniprot
     return code.replace(/[^0-9a-z]/gi, "").toUpperCase();
 }
 
@@ -7,6 +7,10 @@ export function sanitizeChains(chains: string, useSpaceAsComma: boolean = false)
         chains = chains.replace(/[ ]/gi, ",");
     }
     return chains.replace(/[^0-9a-z,]/gi, "").toUpperCase();
+}
+
+export function sanitizeSequence(sequence: string): string {
+    return sequence.replace(/[^a-z]/gi, "").toUpperCase();
 }
 
 export function validatePdbCode(pdbCode: string): boolean {
