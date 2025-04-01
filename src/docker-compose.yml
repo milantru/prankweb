@@ -2,10 +2,9 @@ services:
   message-broker:
     build:
       context: ./containers/message-broker/
-      #dockerfile: ./containers/message-broker/Dockerfile
-    hostname: "message-broker"
     container_name: message-broker
-    restart: always
+    hostname: message-broker
+    restart: unless-stopped
     volumes:
       - rabbitmq:/var/lib/rabbitmq
     healthcheck:
@@ -17,45 +16,44 @@ services:
   id-database:
     image: redis:7.4.2
     container_name: id-database
+    restart: unless-stopped
     volumes:
       - redis:/data
-    command: redis-server --save 600 1 --loglevel warning
     healthcheck:
       test: redis-cli info
       interval: 30s
       timeout: 30s
       retries: 3
+    command: redis-server --save 600 1 --loglevel warning
 
   executor-http-api:
     build:
       context: ./containers/executor-http-api/
-    # image: httpd:2.4.63
     container_name: apache
-    restart: always
-    ports:
-      - "80:80"
+    restart: unless-stopped
     volumes:
       - foldseek:/usr/local/apache2/htdocs/ds_foldseek
       - p2rank:/usr/local/apache2/htdocs/ds_p2rank
       - conservation:/usr/local/apache2/htdocs/conservation
       - inputs:/usr/local/apache2/htdocs/inputs
       - tmp:/usr/local/apache2/htdocs/tmp
-    command: httpd -D FOREGROUND
+    ports:
+      - "80:80"
     healthcheck:
       test: curl -f http://localhost/server-status?auto
       interval: 30s
       timeout: 30s
       retries: 3
+    command: httpd -D FOREGROUND
 
   id-provider:
     build:
       context: ./containers/id-provider/
-      #dockerfile: ./containers/id-provider/Dockerfile
     container_name: id-provider
+    restart: unless-stopped
     depends_on:
-      - id-database:
-          condition: service_healthy
-      
+      id-database:
+        condition: service_healthy
     volumes:
       - ./containers/id-provider/id-provider.py:/app/id-provider.py
     command: python -u id-provider.py
@@ -65,26 +63,28 @@ services:
       context: ./
       dockerfile: ./containers/gateway/Dockerfile
     container_name: gateway
+    restart: unless-stopped
     depends_on:
-      - http-server:
-          condition: service_healthy
+      http-server:
+        condition: service_started
     ports:
       - "8081:8081"
 
   http-server:
     build:
       context: ./containers/http-server/
-      #dockerfile: ./containers/http-server/Dockerfile
     container_name: http-server
+    restart: unless-stopped
     depends_on:
       id-provider:
-        condition: service_healthy
+        condition: service_started
       message-broker:
         condition: service_healthy
+      metatask:
+        condition: service_started
     volumes:
       - tmp:/tmp
       - ./containers/http-server/http-server.py:/app/http-server.py
-    #command: python -u http-server.py
     command: gunicorn -w 4 -b :3000 http-server:app
 
   ds-foldseek:
@@ -92,7 +92,7 @@ services:
       context: ./containers/data-source-executors/
       dockerfile: ./executor-foldseek/Dockerfile
     container_name: ds-foldseek
-    restart: always
+    restart: unless-stopped
     depends_on:
       message-broker:
         condition: service_healthy
@@ -108,7 +108,7 @@ services:
       context: ./containers/data-source-executors/
       dockerfile: ./executor-p2rank/Dockerfile
     container_name: ds-p2rank
-    restart: always
+    restart: unless-stopped
     depends_on:
       message-broker:
         condition: service_healthy
@@ -123,7 +123,7 @@ services:
     build:
       context: ./containers/conservation
     container_name: conservation
-    restart: always
+    restart: unless-stopped
     depends_on:
       message-broker:
         condition: service_healthy
@@ -136,9 +136,8 @@ services:
   converter:
     build:
       context: ./containers/converter/
-      #dockerfile: ./containers/data-source-executors/executor-foldseek/Dockerfile
     container_name: converter
-    restart: always
+    restart: unless-stopped
     depends_on:
       message-broker:
         condition: service_healthy
@@ -149,16 +148,19 @@ services:
   metatask:
     build:
       context: ./containers/metatask/
-      #dockerfile: ./containers/metatask/Dockerfile
     container_name: metatask
-    restart: "always"
+    restart: unless-stopped
     depends_on:
       message-broker:
         condition: service_healthy
       converter:
+        condition: service_started
       conservation:
+        condition: service_started
       ds-foldseek:
+        condition: service_started
       ds-p2rank:
+        condition: service_started
     volumes:
       - inputs:/app/inputs
       - ./containers/metatask/metatask.py:/app/metatask.py
@@ -167,14 +169,15 @@ services:
   flower:
     build: https://github.com/mher/flower.git
     container_name: flower
-    environment:
-      CELERY_BROKER_URL: "amqp://guest:guest@message-broker:5672"
+    restart: unless-stopped
     depends_on:
       message-broker:
         condition: service_healthy
+    environment:
+      CELERY_BROKER_URL: amqp://guest:guest@message-broker:5672
     ports:
-      - "5555:5555"
-    command: "celery flower --url_prefix=service/flower"
+      - 5555:5555
+    command: celery flower --url_prefix=service/flower
 
 volumes:
   rabbitmq:
