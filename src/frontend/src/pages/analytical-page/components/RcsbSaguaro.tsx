@@ -7,7 +7,7 @@ type Props = {
     chainResult: ChainResult;
 };
 
-function RcsbSaguaro({ chainResult: chainResult }: Props) {
+function RcsbSaguaro({ chainResult }: Props) {
     // ID of the DOM element where the plugin is placed
     const elementId = "application-rcsb";
     /* If query seq is set to start at 0, it means some sequences might 
@@ -44,7 +44,10 @@ function RcsbSaguaro({ chainResult: chainResult }: Props) {
         for (const res of Object.values(chainResult.dataSourceExecutorResults)) {
             allBindingSites.push(...res.bindingSites);
 
-            res?.similarProteins.forEach(simProt =>
+            if (!res.similarProteins) {
+                continue;
+            }
+            res.similarProteins.forEach(simProt =>
                 allBindingSites.push(...simProt.bindingSites));
         }
 
@@ -212,7 +215,7 @@ function RcsbSaguaro({ chainResult: chainResult }: Props) {
                 rowConfigData.push(bindingSiteRow)
             });
 
-            if (result.similarProteins === null) {
+            if (!result.similarProteins) {
                 continue;
             }
             for (const simProt of result.similarProteins) {

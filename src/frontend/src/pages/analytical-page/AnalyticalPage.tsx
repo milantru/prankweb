@@ -71,7 +71,12 @@ type SimilarProtein = {
 export type ProcessedResult = {
 	pdbUrl: string; // TODO asi nad daj jak aj query seq daj lebo to je asi pre query tak nech pri query seq je
 	bindingSites: BindingSite[]; // e.g. found them experimentally (1 source) or predicted (another source) 
-	similarProteins: SimilarProtein[] | null;
+	/* The original idea was that similar proteins are optional so they could be null,
+	 * but it seems even though the server (Python) sets it to None, package used
+	 * to turn snake case to camel case makes it undefined, not null. So it is probably
+	 * never null. The value is either set or undefined. But because of defensive 
+	 * programming, let's assume it can be also null. */
+	similarProteins: SimilarProtein[] | undefined | null;
 };
 
 type DataSourceExecutorResult = Record<string, ProcessedResult>;
@@ -96,8 +101,8 @@ function AnalyticalPage() {
 	const [pollingInterval, setPollingInterval] = useState<number | null>(null);
 	const isPageVisible = useVisibilityChange();
 	const dataSourceExecutors: DataSourceExecutor[] = [
-		{ name: "ds_foldseek", results: [] },
-		// { name: "ds_p2rank", results: [] } // TODO
+		{ name: "ds_p2rank", results: [] },
+		{ name: "ds_foldseek", results: [] }
 	]
 	const isFetching: boolean[] = new Array(dataSourceExecutors.length).fill(false);
 	const isPollingFinished: boolean[] = new Array(dataSourceExecutors.length).fill(true);
@@ -253,7 +258,6 @@ function AnalyticalPage() {
 			}
 			setChainResults(chainResultsTmp);
 			setSelectedChain(chains[0]) // Every protein has at least 1 chain
-			dataSourceExecutors.forEach(dse => dse.results = []); // Free space (data has been processed and stored, we don't need this anymore)
 		}
 		isFetching[dataSourceIndex] = false;
 	}
@@ -383,7 +387,7 @@ function AnalyticalPage() {
 		/* "Preprocessing phase": Align query and similar sequences while also updating binding site indices.
 		 * Results without similar sequences are skipped (unchanged). */
 		for (const unprocessedResult of Object.values(unprocessedResultPerDataSourceExecutor)) {
-			if (unprocessedResult.similarProteins === null) {
+			if (!unprocessedResult.similarProteins) {
 				continue;
 			}
 			const querySeq = unprocessedResult.sequence;
@@ -396,7 +400,7 @@ function AnalyticalPage() {
 		let masterQuerySeq = "";
 		const similarProteins: Record<string, SimilarProtein[]> = {};
 		for (const [dataSourceName, result] of Object.entries(unprocessedResultPerDataSourceExecutor)) {
-			if (result.similarProteins === null) {
+			if (!result.similarProteins) {
 				continue;
 			}
 			similarProteins[dataSourceName] = result.similarProteins.map<SimilarProtein>(simProt => ({
@@ -413,7 +417,7 @@ function AnalyticalPage() {
 
 		const offsets: Record<string, number[]> = {};
 		for (const [dataSourceName, result] of Object.entries(unprocessedResultPerDataSourceExecutor)) {
-			if (result.similarProteins === null) {
+			if (!result.similarProteins) {
 				continue;
 			}
 			offsets[dataSourceName] = new Array(result.similarProteins.length).fill(0);
@@ -425,7 +429,7 @@ function AnalyticalPage() {
 		 * mapping[dataSourceName][simProtIdx][idxFrom] -> idxTo. */
 		const mapping: Record<string, Record<number, number>[] | Record<number, number>> = {};
 		for (const [dataSourceName, result] of Object.entries(unprocessedResultPerDataSourceExecutor)) {
-			if (result.similarProteins === null) {
+			if (!result.similarProteins) {
 				mapping[dataSourceName] = {};
 			} else {
 				mapping[dataSourceName] = Array.from(
@@ -436,9 +440,14 @@ function AnalyticalPage() {
 		};
 
 		for (let aminoAcidIdx = 0; aminoAcidIdx < querySeqLength; aminoAcidIdx++) {
-			// TODO skus ci result?.similarProteins hodi undefined/false ak je null, ak ano ta super
-			const isGapMode = Object.entries(unprocessedResultPerDataSourceExecutor).some(([dataSourceName, result]) =>
-				result?.similarProteins.some((simProt, simProtIdx) => simProt.alignmentData.querySequence[aminoAcidIdx + offsets[dataSourceName][simProtIdx]] === '-'));
+			// TODO refactor asi
+			const isGapMode = Object.entries(unprocessedResultPerDataSourceExecutor).some(([dataSourceName, result]) => {
+				if (!result.similarProteins) {
+					return false;
+				}
+				return result.similarProteins.some((simProt, simProtIdx) =>
+					simProt.alignmentData.querySequence[aminoAcidIdx + offsets[dataSourceName][simProtIdx]] === '-')
+			});
 
 			let aminoAcidOfQuerySeq: string = null!;
 			/* Master query sequence is being built iteratively character by character,
@@ -447,7 +456,7 @@ function AnalyticalPage() {
 			* master query sequence that will be outputted/added later in code. */
 			const aminoAcidOrGapOfMasterQuerySeqCurrIdx = masterQuerySeq.length;
 			for (const [dataSourceName, result] of Object.entries(unprocessedResultPerDataSourceExecutor)) {
-				if (result.similarProteins === null) {
+				if (!result.similarProteins) {
 					mapping[dataSourceName][aminoAcidIdx] = aminoAcidOrGapOfMasterQuerySeqCurrIdx;
 					continue;
 				}
@@ -487,7 +496,7 @@ function AnalyticalPage() {
 
 		// "Postprocessing phase": Update all residue indices of each binding site
 		Object.entries(unprocessedResultPerDataSourceExecutor).forEach(([dataSourceName, result]) => {
-			if (result.similarProteins === null) {
+			if (!result.similarProteins) {
 				// Update residues of binding sites of query protein
 				result.bindingSites.forEach(bindingSite =>
 					updateBindingSiteResiduesIndices(bindingSite, mapping[dataSourceName] as Record<number, number>));
