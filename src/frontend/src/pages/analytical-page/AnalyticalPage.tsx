@@ -150,12 +150,12 @@ function AnalyticalPage() {
 			<div id="visualizations" className="row">
 				<div id="visualization-rcsb" className="col-xs-12 col-md-6 col-xl-6">
 					{chainResults !== null ? (
-						// TODO skus lepsie dat aby aj pre ine rozlisenie bolo pekne + mozno sa zbav nepotrebnych bootstrap tried atd
+						// TODO sprav cely panel, viacej moznosti sa budu dat vyberat asi v buducnosti napr checkbox pre merge binding sitov
 						<div className="d-flex flex-column ">
-							<div className="position-absolute w-25 ml-2 d-flex align-items-center justify-content-center">
-								{/* <div className="mr-2 font-weight-bold">Chains:</div> */}
+							<div className="position-absolute w-25 d-flex align-items-center justify-content-center">
+								<div className="mr-1 font-weight-bold">Chains:</div>
 								<Select
-									defaultValue={Object.keys(chainResults)[0]}
+									defaultValue={{ label: Object.keys(chainResults)[0], chain: Object.keys(chainResults)[0] }}
 									onChange={(selectedOption: any) => setSelectedChain(selectedOption.value)}
 									/* as any is used here to silence error message which seems to be irrelevant, it says
 									* the type is wrong but according to the official GitHub repo README of the package,
@@ -163,8 +163,7 @@ function AnalyticalPage() {
 									options={Object.keys(chainResults).map(chain => ({
 										label: chain,
 										value: chain
-									})) as any}
-									placeholder="Chain" />
+									})) as any} />
 							</div>
 							<div className="w-100 mt-2">
 								<RcsbSaguaro chainResult={chainResults[selectedChain]} />
