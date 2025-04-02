@@ -64,7 +64,7 @@ export async function getDataSourceExecutorResultStatusAPI(
 	dataSourceName: string,
 	id: string
 ): Promise<{ status: DataStatus | null, userFriendlyErrorMessage: string }> {
-	const url = `${apiBaseUrl}/${dataSourceName}/${id}/status.json`;
+	const url = `${apiBaseUrl}/data/${dataSourceName}/${id}/status.json`;
 	const errorMessage = `Failed to fetch ${dataSourceName}${dataSourceName.toLowerCase().endsWith("s") ? "'" : "'s"} status.`;
 
 	try {
@@ -95,7 +95,7 @@ export async function getDataSourceExecutorResultAPI(
 	id: string,
 	chain: string
 ): Promise<{ result: UnprocessedResult | null, userFriendlyErrorMessage: string }> {
-	const url = `${apiBaseUrl}/${dataSourceName}/${id}/${chain}_chain_result.json`;
+	const url = `${apiBaseUrl}/data/${dataSourceName}/${id}/${chain}_chain_result.json`;
 	const errorMessage = `Failed to fetch ${dataSourceName}${dataSourceName.toLowerCase().endsWith("s") ? "'" : "'s"} result.`;
 
 	try {
@@ -116,7 +116,7 @@ export async function getDataSourceExecutorResultAPI(
 }
 
 export async function getAllChainsAPI(id: string): Promise<{ chains: string[], userFriendlyErrorMessage: string }> {
-	const url = `${apiBaseUrl}/inputs/${id}/chains.json`;
+	const url = `${apiBaseUrl}/data/inputs/${id}/chains.json`;
 	const errorMessage = "Failed to fetch all chains.";
 
 	try {
