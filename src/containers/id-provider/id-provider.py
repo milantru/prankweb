@@ -19,7 +19,7 @@ def check(key):
 @app.route('/generate', methods=['POST'])
 def get_or_generate():
 
-    input_method = int(request.json.get('input_method'))
+    input_method = request.json.get('input_method')
     input_protein = request.json.get('input_protein')
     print(input_method)
     print(input_protein)
@@ -52,10 +52,10 @@ def get_or_generate():
         # Convert the ID to hexadecimal (without the '0x' prefix)
         new_id = hex(new_id)[2:]
 
-        if input_method != InputMethods.CUSTOM_STR.value:
-            redis_client.set(key, new_id)
-
         generated_id += new_id
+
+        if input_method != InputMethods.CUSTOM_STR.value:
+            redis_client.set(key, generated_id)
 
     print(f"Generated ID: {generated_id} for {key}")
     return jsonify({"id": generated_id, "stored_value": key, "existed" : False})
