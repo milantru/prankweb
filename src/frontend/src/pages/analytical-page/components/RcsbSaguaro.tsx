@@ -10,8 +10,9 @@ type Props = {
 function RcsbSaguaro({ chainResult }: Props) {
     // ID of the DOM element where the plugin is placed
     const elementId = "application-rcsb";
+    const predictedPocketColor = "#00aa00";
     /* If query seq is set to start at 0, it means some sequences might 
-     * be in negative numbers on board. */
+    * be in negative numbers on board. */
     const shouldQuerySeqStartAtZero = false;
 
     useEffect(() => {
@@ -100,14 +101,22 @@ function RcsbSaguaro({ chainResult }: Props) {
             const opacity = opacities !== null ? opacities[i] : null;
 
             let color: string;
-            do {
-                let baseColor = stringToColor(str);
+            if (str.startsWith("pocket")) {
+                // Let's use fixed color for predicted binding sites
+                let baseColor = predictedPocketColor;
                 color = opacities !== null
                     ? chroma(baseColor).alpha(opacity).hex()
                     : chroma(baseColor).hex();
+            } else {
+                do {
+                    let baseColor = stringToColor(str);
+                    color = opacities !== null
+                        ? chroma(baseColor).alpha(opacity).hex()
+                        : chroma(baseColor).hex();
 
-                str += "salt"; // This will fix potential hash collisions
-            } while (Object.values(colors).some(existingColor => existingColor === color) || color in forbiddenColors);
+                    str += "salt"; // This will fix potential hash collisions
+                } while (Object.values(colors).some(existingColor => existingColor === color) || color in forbiddenColors);
+            }
 
             colors[strings[i]] = color;
         }

@@ -2,3 +2,10 @@
     /* This overwrites progress bar color of react-toastify warning toast. */
     background-color: #c3c3c3;
 }
+
+g.rcsbElement rect {
+    /* This rule overwrites colors for binding sites so they are visible even with bright color or low opacity. */
+    stroke: grey;
+    stroke-opacity: 1;
+    fill-opacity: 1;
+}
