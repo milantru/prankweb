@@ -150,12 +150,12 @@ function AnalyticalPage() {
 			<div id="visualizations" className="row">
 				<div id="visualization-rcsb" className="col-xs-12 col-md-6 col-xl-6">
 					{chainResults !== null ? (
-						// TODO skus lepsie dat aby aj pre ine rozlisenie bolo pekne + mozno sa zbav nepotrebnych bootstrap tried atd
+						// TODO sprav cely panel, viacej moznosti sa budu dat vyberat asi v buducnosti napr checkbox pre merge binding sitov
 						<div className="d-flex flex-column ">
-							<div className="position-absolute w-25 ml-2 d-flex align-items-center justify-content-center">
-								{/* <div className="mr-2 font-weight-bold">Chains:</div> */}
+							<div className="position-absolute w-25 d-flex align-items-center justify-content-center">
+								<div className="mr-1 font-weight-bold">Chains:</div>
 								<Select
-									defaultValue={Object.keys(chainResults)[0]}
+									defaultValue={{ label: Object.keys(chainResults)[0], chain: Object.keys(chainResults)[0] }}
 									onChange={(selectedOption: any) => setSelectedChain(selectedOption.value)}
 									/* as any is used here to silence error message which seems to be irrelevant, it says
 									* the type is wrong but according to the official GitHub repo README of the package,
@@ -163,8 +163,7 @@ function AnalyticalPage() {
 									options={Object.keys(chainResults).map(chain => ({
 										label: chain,
 										value: chain
-									})) as any}
-									placeholder="Chain" />
+									})) as any} />
 							</div>
 							<div className="w-100 mt-2">
 								<RcsbSaguaro chainResult={chainResults[selectedChain]} />
@@ -274,11 +273,11 @@ function AnalyticalPage() {
 		return startPart + alignedPart + endPart;
 	}
 
-	function createMapping(sequence: string, sequenceWithGaps: string) {
-		// key: idx in original seq (without gaps), value: idx in query seq with gaps
+	function createMapping(sequenceWithoutGaps: string, sequenceWithGaps: string) {
+		// key: idx in original seq without gaps, value: idx in query seq with gaps
 		const mapping: Record<number, number> = {};
 
-		for (let i = 0, j = 0; i < sequence.length; i++, j++) {
+		for (let i = 0, j = 0; i < sequenceWithoutGaps.length; i++, j++) {
 			let aminoAcidOrGap = sequenceWithGaps[j];
 			if (aminoAcidOrGap === "-") {
 				do {
@@ -296,9 +295,9 @@ function AnalyticalPage() {
 	}
 
 	function updateBindingSiteResiduesIndices(bindingSite: BindingSite, mapping: Record<number, number>) {
-		bindingSite.residues.forEach(idx =>
-			idx = mapping[idx]
-		)
+		for (let i = 0; i < bindingSite.residues.length; i++) {
+			bindingSite.residues[i] = mapping[bindingSite.residues[i]];
+		}
 	}
 
 	function alignQueryAndSimilarSequence(querySequence: string, similarProtein: UnprocessedSimilarProtein) {
@@ -423,16 +422,24 @@ function AnalyticalPage() {
 			offsets[dataSourceName] = new Array(result.similarProteins.length).fill(0);
 		}
 
-		/* For data sources which do not return similar proteins, mapping will work like:
-		 * mapping[dataSourceName][idxFrom] -> idxTo,
-		 * and for data sources which return similar proteins like:
-		 * mapping[dataSourceName][simProtIdx][idxFrom] -> idxTo. */
-		const mapping: Record<string, Record<number, number>[] | Record<number, number>> = {};
+		/* Now we are going to create 2 mappings: A and B. A is for general mapping from query sequence
+		 * to master query sequence which we are going to create (that's the one at the top of the sequence display).
+		 * we can use it e.g. to map residues of predicated binding sites of query sequence.
+		 * The other mapping is for mapping simialr proteins to master query protein. It can be used e.g. to map
+		 * binding sites of similar proteins to master query sequence. We need this separate mapping because
+		 * binding site of similar protein is related to that similar protein, to its amino acid positions,
+		 * and we are going to do the aligning now. So their (similar protein amino acids) indices 
+		 * are going to change. So we need to know from which amino acid of similar sequence 
+		 * we are mapping to which master query amino acid. */
+		// mapping A: mapping[dataSourceName][idxFrom] -> idxTo
+		const mapping: Record<string, Record<number, number>> = {};
+		// mapping B: similarProteinsMapping[dataSourceName][simProtIdx][idxFrom] -> idxTo
+		const similarProteinsMapping: Record<string, Record<number, number>[]> = {};
 		for (const [dataSourceName, result] of Object.entries(unprocessedResultPerDataSourceExecutor)) {
-			if (!result.similarProteins) {
-				mapping[dataSourceName] = {};
-			} else {
-				mapping[dataSourceName] = Array.from(
+			mapping[dataSourceName] = {};
+
+			if (result.similarProteins) {
+				similarProteinsMapping[dataSourceName] = Array.from(
 					{ length: result.similarProteins.length },
 					(): Record<number, number> => ({})
 				);
@@ -440,14 +447,10 @@ function AnalyticalPage() {
 		};
 
 		for (let aminoAcidIdx = 0; aminoAcidIdx < querySeqLength; aminoAcidIdx++) {
-			// TODO refactor asi
-			const isGapMode = Object.entries(unprocessedResultPerDataSourceExecutor).some(([dataSourceName, result]) => {
-				if (!result.similarProteins) {
-					return false;
-				}
-				return result.similarProteins.some((simProt, simProtIdx) =>
+			const isGapMode = Object.entries(unprocessedResultPerDataSourceExecutor).some(([dataSourceName, result]) =>
+				result.similarProteins && result.similarProteins.some((simProt, simProtIdx) =>
 					simProt.alignmentData.querySequence[aminoAcidIdx + offsets[dataSourceName][simProtIdx]] === '-')
-			});
+			);
 
 			let aminoAcidOfQuerySeq: string = null!;
 			/* Master query sequence is being built iteratively character by character,
@@ -456,11 +459,13 @@ function AnalyticalPage() {
 			* master query sequence that will be outputted/added later in code. */
 			const aminoAcidOrGapOfMasterQuerySeqCurrIdx = masterQuerySeq.length;
 			for (const [dataSourceName, result] of Object.entries(unprocessedResultPerDataSourceExecutor)) {
+				/* We will overwrite many times with the same value, but it is correct and to reduce cycles 
+				 * and branching, it will remain like this. */
+				mapping[dataSourceName][aminoAcidIdx] = aminoAcidOrGapOfMasterQuerySeqCurrIdx;
+
 				if (!result.similarProteins) {
-					mapping[dataSourceName][aminoAcidIdx] = aminoAcidOrGapOfMasterQuerySeqCurrIdx;
 					continue;
 				}
-
 				for (let simProtIdx = 0; simProtIdx < result.similarProteins.length; simProtIdx++) {
 					const similarProtein = result.similarProteins[simProtIdx];
 					const offset = offsets[dataSourceName][simProtIdx];
@@ -469,7 +474,7 @@ function AnalyticalPage() {
 					if (isGapMode) {
 						if (aminoAcidOrGapOfQuerySeq === '-') {
 							similarProteins[dataSourceName][simProtIdx].sequence += similarProtein.alignmentData.similarSequence[aminoAcidIdx + offset];
-							mapping[dataSourceName][simProtIdx][aminoAcidIdx + offset] = aminoAcidOrGapOfMasterQuerySeqCurrIdx;
+							similarProteinsMapping[dataSourceName][simProtIdx][aminoAcidIdx + offset] = aminoAcidOrGapOfMasterQuerySeqCurrIdx;
 							offsets[dataSourceName][simProtIdx] = offset + 1;
 						} else {
 							similarProteins[dataSourceName][simProtIdx].sequence += '-';
@@ -481,7 +486,7 @@ function AnalyticalPage() {
 						 * but it is correct and to avoid further program branching it will be left like this. */
 						aminoAcidOfQuerySeq = aminoAcidOrGapOfQuerySeq;
 						similarProteins[dataSourceName][simProtIdx].sequence += similarProtein.alignmentData.similarSequence[aminoAcidIdx + offset];
-						mapping[dataSourceName][simProtIdx][aminoAcidIdx + offset] = aminoAcidOrGapOfMasterQuerySeqCurrIdx;
+						similarProteinsMapping[dataSourceName][simProtIdx][aminoAcidIdx + offset] = aminoAcidOrGapOfMasterQuerySeqCurrIdx;
 					}
 				}
 			}
@@ -496,15 +501,15 @@ function AnalyticalPage() {
 
 		// "Postprocessing phase": Update all residue indices of each binding site
 		Object.entries(unprocessedResultPerDataSourceExecutor).forEach(([dataSourceName, result]) => {
-			if (!result.similarProteins) {
-				// Update residues of binding sites of query protein
-				result.bindingSites.forEach(bindingSite =>
-					updateBindingSiteResiduesIndices(bindingSite, mapping[dataSourceName] as Record<number, number>));
-			} else {
+			// Update residues of binding sites of query protein
+			result.bindingSites.forEach(bindingSite =>
+				updateBindingSiteResiduesIndices(bindingSite, mapping[dataSourceName]));
+
+			if (result.similarProteins) {
 				// Update residues of binding sites of all similar proteins
 				result.similarProteins.forEach((simProt, simProtIdx) =>
 					simProt.bindingSites.forEach(bindingSite =>
-						updateBindingSiteResiduesIndices(bindingSite, mapping[dataSourceName][simProtIdx] as Record<number, number>)));
+						updateBindingSiteResiduesIndices(bindingSite, similarProteinsMapping[dataSourceName][simProtIdx])));
 			}
 		});
 
