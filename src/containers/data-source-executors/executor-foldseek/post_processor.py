@@ -43,14 +43,13 @@ def extract_binding_sites_for_chain(pdb_id, pdb_file_path, input_chain) -> List[
             if chain_id != input_chain:
                 continue
             residue_dict = {}
-            sequence_index = 0 
+            sequence_index = 0
             ligand_binding_sites = {}
 
             for residue in chain:
                 if residue.id[0] == " " and is_aa(residue, standard=True):  # Exclude heteroatoms and non-amino acids
-                    residue_name = index_to_one(three_to_index(residue.resname))
                     residue_index = residue.id[1]  # Get residue structure index
-                    residue_dict[residue_index] = (residue_name, sequence_index)
+                    residue_dict[residue_index] = sequence_index
                     sequence_index += 1
             
             for residue in chain:
@@ -67,12 +66,12 @@ def extract_binding_sites_for_chain(pdb_id, pdb_file_path, input_chain) -> List[
                             nearby_residue = nearby_atom.get_parent()
                             if nearby_residue not in binding_residues and nearby_residue.id[0] != "W":  # Exclude water and non-amino acids
                                 binding_residues.add(nearby_residue)
-                                nearby_residue_name = residue.resname
                                 nearby_residue_index = nearby_residue.id[1]
                                 
                                 if ligand_id not in ligand_binding_sites:
                                     ligand_binding_sites[ligand_id] = []
-                                ligand_binding_sites[ligand_id].append(nearby_residue_index)
+                                if residue_dict.get(nearby_residue_index, None) != None:
+                                    ligand_binding_sites[ligand_id].append(residue_dict[nearby_residue_index])
             
             for ligand_id, residues in ligand_binding_sites.items():
                 binding_sites.append(
