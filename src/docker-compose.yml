@@ -32,11 +32,11 @@ services:
     container_name: apache
     restart: unless-stopped
     volumes:
-      - foldseek:/usr/local/apache2/htdocs/ds_foldseek
-      - p2rank:/usr/local/apache2/htdocs/ds_p2rank
-      - conservation:/usr/local/apache2/htdocs/conservation
-      - inputs:/usr/local/apache2/htdocs/inputs
-      - tmp:/usr/local/apache2/htdocs/tmp
+      - foldseek:/usr/local/apache2/htdocs/data/ds_foldseek
+      - p2rank:/usr/local/apache2/htdocs/data/ds_p2rank
+      - conservation:/usr/local/apache2/htdocs/data/conservation
+      - inputs:/usr/local/apache2/htdocs/data/inputs
+      - tmp:/usr/local/apache2/htdocs/data/tmp
     ports:
       - 80:80
     healthcheck:
@@ -82,6 +82,10 @@ services:
         condition: service_healthy
       metatask:
         condition: service_started
+    environment:
+      ID_PROVIDER_URL: http://id-provider:5000/generate
+    env_file:
+      - tasks.env
     volumes:
       - tmp:/tmp
       - ./containers/http-server/http-server.py:/app/http-server.py
@@ -96,6 +100,8 @@ services:
     depends_on:
       message-broker:
         condition: service_healthy
+    env_file:
+      - tasks.env
     volumes:
       - foldseek:/app/results
       - ./containers/data-source-executors/executor-foldseek/foldseek_executor.py:/app/foldseek_executor.py
@@ -112,6 +118,8 @@ services:
     depends_on:
       message-broker:
         condition: service_healthy
+    env_file:
+      - tasks.env
     volumes:
       - p2rank:/app/results
       - ./containers/data-source-executors/executor-p2rank/p2rank_executor.py:/app/p2rank_executor.py
@@ -127,6 +135,8 @@ services:
     depends_on:
       message-broker:
         condition: service_healthy
+    env_file:
+      - tasks.env
     volumes:
       - conservation:/app/results
       - ./containers/conservation/celery_worker.py:/app/celery_worker.py
@@ -141,6 +151,8 @@ services:
     depends_on:
       message-broker:
         condition: service_healthy
+    env_file:
+      - tasks.env
     volumes:
       - ./containers/converter/converter_executor.py:/app/converter_executor.py
     command: celery --app=celery_worker worker --queues=converter --hostname=converter_worker --loglevel=debug
@@ -161,6 +173,8 @@ services:
         condition: service_started
       ds-p2rank:
         condition: service_started
+    env_file:
+      - tasks.env
     volumes:
       - inputs:/app/inputs
       - ./containers/metatask/metatask.py:/app/metatask.py

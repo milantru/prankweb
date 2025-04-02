@@ -10,9 +10,9 @@ from celery.result import AsyncResult
 ################################ Celery setup ##################################
 
 celery = Celery(
-    'tasks',
-    broker='amqp://guest:guest@message-broker:5672//',
-    backend='rpc://'
+    os.getenv('CELERY_NAME'),
+    broker=os.getenv('CELERY_BROKER_URL'),
+    backend=os.getenv('CELERY_BACKEND_URL')
 )
 celery.conf.update({
     'task_routes': {
@@ -26,7 +26,7 @@ celery.conf.update({
 
 ################################## Constants ###################################
 
-APACHE_URL = 'http://apache:80/'
+APACHE_URL = os.getenv('APACHE_URL')
 
 class StatusType(Enum):
     STARTED = 0

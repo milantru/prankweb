@@ -13,7 +13,7 @@ DATABASE = "./uniprot_sprot.fasta" # TODO: DOWNLOAD uniref50.fasta AND USE IT
 TEMP = "./tmp_conservation_{id}"
 RESULT_FOLDER = "./results/{id}/"
 MAX_SEQS = 100
-INPUTS_URL = "http://apache:80/inputs/"
+INPUTS_URL = os.getenv('INPUTS_URL')
 
 class StatusType(Enum):
     STARTED = 0
@@ -34,13 +34,13 @@ def compute_conservation(id):
     update_status(status_file_path, id, StatusType.STARTED.value)
 
     try:
-        json_url = INPUTS_URL + f"{id}/chains.json"
+        json_url = os.path.join(INPUTS_URL, f"{id}/chains.json")
         response = requests.get(json_url)
         response.raise_for_status()
         files_metadata = response.json()
 
         for file, chains in files_metadata["fasta"].items():
-            file_url = INPUTS_URL + f"{id}/{file}"
+            file_url = os.path.join(INPUTS_URL, f"{id}/{file}")
             response = requests.get(file_url, stream=True)
             response.raise_for_status()
 

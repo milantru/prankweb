@@ -8,7 +8,7 @@ import post_processor
 
 RESULTS_FOLDER = "results"
 FOLDSEEK_DB = "foldseek_db/pdb"
-INPUTS_URL = "http://apache:80/inputs/"
+INPUTS_URL = os.getenv('INPUTS_URL')
 
 class StatusType(Enum):
     STARTED = 0
@@ -34,7 +34,7 @@ def run_foldseek(id):
     update_status(status_file_path, id, StatusType.STARTED.value)
 
     try:
-        pdb_url = INPUTS_URL + str(id) + "/structure.pdb"
+        pdb_url = os.path.join(INPUTS_URL, str(id), "/structure.pdb")
         query_structure_file = os.path.join(eval_folder, "input.pdb")
 
         response = requests.get(pdb_url, stream=True)

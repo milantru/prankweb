@@ -8,8 +8,8 @@ import post_processor
 import glob
 
 RESULTS_FOLDER = "results"
-INPUTS_URL = "http://apache:80/inputs/{id}/"
-CONSERVATION_FILES_URL = "http://apache:80/conservation/{id}/"
+INPUTS_URL = os.getenv('INPUTS_URL')
+CONSERVATION_FILES_URL = os.getenv('CONSERVATION_URL')
 
 class StatusType(Enum):
     STARTED = 0
@@ -27,7 +27,7 @@ def update_status(status_file_path, id, status, message=""):
         print(f"Error updating status for {id}: {e}")
 
 def prepare_hom_files(id, eval_folder):
-    chains_json = INPUTS_URL.format(id=id) + "chains.json"
+    chains_json = os.path.join(INPUTS_URL, id, "chains.json")
 
     response = requests.get(chains_json, stream=True)
     response.raise_for_status()
@@ -36,7 +36,7 @@ def prepare_hom_files(id, eval_folder):
 
     for chain in metadata["chains"]:
         filename = f"input{chain}.hom"
-        chain_hom_file = CONSERVATION_FILES_URL.format(id=id) + filename
+        chain_hom_file = os.path.join(CONSERVATION_FILES_URL, id, filename)
 
         response = requests.get(chain_hom_file, stream=True)
         response.raise_for_status()
@@ -61,7 +61,7 @@ def run_p2rank(id, params):
     update_status(status_file_path, id, StatusType.STARTED.value)
 
     try:
-        pdb_url = INPUTS_URL.format(id=id) + "structure.pdb"
+        pdb_url = os.path.join(INPUTS_URL, id, "structure.pdb")
         query_structure_file = os.path.join(eval_folder, "input.pdb")
 
         response = requests.get(pdb_url, stream=True)

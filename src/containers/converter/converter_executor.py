@@ -1,13 +1,14 @@
+import os
 import requests
 from Bio.PDB import PDBParser, Polypeptide, is_aa
 import tempfile
 
 ESMFOLD_URL = "https://api.esmatlas.com/foldSequence/v1/pdb/"
-INPUTS_URL = "http://apache:80/inputs/"
+INPUTS_URL = os.getenv('INPUTS_URL')
 
 def run_structure_to_sequence(id):
     
-    pdb_url = INPUTS_URL + f"{id}/structure.pdb"
+    pdb_url = os.path.join(INPUTS_URL, f"{id}/structure.pdb")
     query_structure_file = ""
 
     response = requests.get(pdb_url, stream=True)
@@ -37,7 +38,7 @@ def run_structure_to_sequence(id):
 def run_sequence_to_structure(id):
 
     # get input
-    fasta_url = INPUTS_URL + f"{id}/sequence_1.fasta"
+    fasta_url = os.path.join(INPUTS_URL, f"{id}/sequence_1.fasta")
 
     response = requests.get(fasta_url)
     sequence = response.text.split('\n')[1]

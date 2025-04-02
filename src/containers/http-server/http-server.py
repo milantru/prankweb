@@ -16,9 +16,9 @@ from werkzeug.datastructures import FileStorage
 
 app = Flask(__name__)
 celery = Celery(
-    'tasks',
-    broker='amqp://guest:guest@message-broker:5672//',
-    backend='rpc://'
+    os.getenv('CELERY_NAME'),
+    broker=os.getenv('CELERY_BROKER_URL'),
+    backend=os.getenv('CELERY_BACKEND_URL')
 )
 celery.conf.update({
     'task_routes': {
@@ -50,8 +50,8 @@ UNIPROT_FORM_FIELDS = [ 'uniprotCode', 'useConservation' ]
 SEQUENCE_FORM_FIELDS = [ 'sequence', 'useConservation' ]  
 
 
-ID_PROVIDER_URL = 'http://id-provider:5000/generate'
-APACHE_URL = 'http://apache:80'
+ID_PROVIDER_URL = os.getenv('ID_PROVIDER_URL')
+APACHE_URL = os.getenv('APACHE_URL')
 
 PDB_ID_URL = 'https://www.ebi.ac.uk/pdbe/api/pdb/entry/molecules/{}'
 PDB_FILE_URL = 'https://files.rcsb.org/download/{}.pdb'
@@ -180,7 +180,7 @@ def _validate_custom_str(input_data: dict, input_file: FileStorage | None) -> Va
     err = _try_parse_pdb(tmp_file, selected_chains)
     
     # tmp_folder is mounted to volume tmp which is shared with apache
-    input_data['inputUrl'] = APACHE_URL + tmp_file
+    input_data['inputUrl'] = os.path.join(APACHE_URL, tmp_file[1:]) # without /
 
     # input model setup for p2rank
     input_data['inputModel'] = InputModels(model).name.split('_')[0].lower()     # result is default / alphafold
@@ -240,7 +240,7 @@ def _validate_seq(input_data: dict) -> ValidationResult:
     with open(tmp_file, 'w') as f: f.write(sequence)
 
     # tmp_folder is mounted to volume tmp which is shared with apache
-    input_data['inputUrl'] = APACHE_URL + tmp_file
+    input_data['inputUrl'] = os.path.join(APACHE_URL, tmp_file[1:]) # without /
 
     # input model setup for p2rank
     input_data['inputModel'] = 'alphafold'
