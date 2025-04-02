@@ -16,9 +16,6 @@ class StatusType(Enum):
     COMPLETED = 1
     FAILED = 2
 
-class ConservationParam(Enum):
-    DEFAULT = "default"
-    HMM = "conservation_hmm"
 
 os.makedirs(RESULTS_FOLDER, exist_ok=True)
 
@@ -54,6 +51,7 @@ def run_p2rank(id, params):
     print(id)
     
     use_conservation = params['use_conservation']
+    input_model = params['input_model']
 
     eval_folder = os.path.join(RESULTS_FOLDER, f"{id}")
     if use_conservation:
@@ -76,13 +74,11 @@ def run_p2rank(id, params):
         if use_conservation:
             prepare_hom_files(id, eval_folder)
 
-        conservation_param = ConservationParam.HMM.value if use_conservation else ConservationParam.DEFAULT.value
-
         command = [
             "prank", "predict", 
             "-f", query_structure_file, 
             "-o", eval_folder, 
-            "-c", conservation_param,
+            "-c", input_model,
             "-visualizations", "0"
         ]
 

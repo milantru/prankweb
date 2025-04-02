@@ -3,6 +3,7 @@ import json
 from data_format.builder import ProteinDataBuilder, BindingSite
 from dataclasses import asdict
 from Bio.PDB.Polypeptide import three_to_index, index_to_one
+from Bio.Data.IUPACData import protein_letters_3to1
 
 # _____________predictions.csv________________
 # name     ,  rank,   score, probability,  ...
@@ -27,6 +28,9 @@ POCKET_INDEX = 6
 
 RESULT_FILE = "{}_chain_result.json"
 
+def is_amino_acid(code):
+    return code.capitalize() in protein_letters_3to1
+
 def read_residues(residues_result_file):
     grouped_data = {}
     with open(residues_result_file, 'r') as file:
@@ -34,14 +38,15 @@ def read_residues(residues_result_file):
         for index, line in enumerate(file):
             row = [item.strip() for item in line.strip().split(',')]
             chain, residue, pocket = row[CHAIN_INDEX], row[RESIDUE_INDEX], int(row[POCKET_INDEX])
-            if chain not in grouped_data:
-                grouped_data[chain] = {"pockets" : {}, "residues" : ""}
-            if pocket != 0:
-                if pocket not in grouped_data[chain]["pockets"]:
-                    grouped_data[chain]["pockets"][pocket] = {'indices': [], 'probability': None}
-                grouped_data[chain]["pockets"][pocket]['indices'].append(index)
+            if is_amino_acid(residue):
+                if chain not in grouped_data:
+                    grouped_data[chain] = {"pockets" : {}, "residues" : ""}
+                if pocket != 0:
+                    if pocket not in grouped_data[chain]["pockets"]:
+                        grouped_data[chain]["pockets"][pocket] = {'indices': [], 'probability': None}
+                    grouped_data[chain]["pockets"][pocket]['indices'].append(index)
 
-            grouped_data[chain]["residues"] += index_to_one(three_to_index(residue))
+                grouped_data[chain]["residues"] += index_to_one(three_to_index(residue))
     return grouped_data
 
 def update_pocket_probabilities(pocket_prediction_result_file, grouped_data):

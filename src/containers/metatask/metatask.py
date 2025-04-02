@@ -135,7 +135,7 @@ def _run_task(
 ) -> AsyncResult | None:
     
     if not output_folder:
-        output_folder = os.path.join(APACHE_URL, task_name, id, 'status.json')
+        output_folder = os.path.join(APACHE_URL, task_name, id)
     
     if not id_existed or not _is_task_running_or_completed(output_folder):
         print(f'SENDING {task_name.upper()}')
@@ -168,11 +168,19 @@ def _run_foldseek(id: str, id_existed: bool) -> None:
     )
 
 
-def _run_p2rank(id: str, id_existed: bool, use_conservation: bool) -> None:
+def _run_p2rank(id: str, id_existed: bool, input_model: str, use_conservation: bool) -> None:
     
     output_folder = os.path.join(APACHE_URL, 'ds_p2rank', id)
     if use_conservation:
         output_folder = os.path.join(output_folder, 'conservation')
+
+    p2rank_models = {
+        ('default', False): 'default',
+        ('default', True): 'conservation_hmm', 
+        ('alphafold', False): 'alphafold',  
+        ('alphafold', True): 'alphafold_conservation_hmm'  
+    }
+    
 
     _run_task(
         task_name='ds_p2rank',
@@ -180,7 +188,10 @@ def _run_p2rank(id: str, id_existed: bool, use_conservation: bool) -> None:
         id=id,
         id_existed=id_existed,
         output_folder=output_folder,
-        task_args={ 'use_conservation': use_conservation }
+        task_args={
+            'input_model': p2rank_models[(input_model, use_conservation)],
+            'use_conservation': use_conservation
+        }
     )
 
 
@@ -202,6 +213,7 @@ def metatask_seq(input_data: dict) -> None:
     id           = input_data['id']
     id_existed   = bool(input_data['id_existed'])
     input_folder = f'inputs/{id}/'
+    p2rank_model = input_data['input_model']
 
     # prepare input
     _prepare_seq_input(input_data['input_url'], input_folder)
@@ -228,13 +240,13 @@ def metatask_seq(input_data: dict) -> None:
 
     _run_foldseek(id, id_existed)
 
-    _run_p2rank(id, id_existed, use_conservation=False)
+    _run_p2rank(id, id_existed, input_model=p2rank_model, use_conservation=False)
 
     if conservation:
         while not conservation.ready():
             time.sleep(5)
 
-    _run_p2rank(id, id_existed, use_conservation=True)
+    _run_p2rank(id, id_existed, input_model=p2rank_model, use_conservation=True)
 
 
 @celery.task(name='metatask_STR')
@@ -245,13 +257,14 @@ def metatask_str(input_data: dict) -> None:
     id           = input_data['id']
     id_existed   = bool(input_data['id_existed'])
     input_folder = f'inputs/{id}/'
+    p2rank_model = input_data['input_model']
 
     # prepare input
     _prepare_str_input(input_data['input_url'], input_folder)
 
     _run_foldseek(id, id_existed)
 
-    _run_p2rank(id, id_existed, use_conservation=False)
+    _run_p2rank(id, id_existed, input_model=p2rank_model, use_conservation=False)
 
     if not id_existed or not _inputs_exist(input_folder):
         converter = celery.send_task(
@@ -277,4 +290,4 @@ def metatask_str(input_data: dict) -> None:
         while not conservation.ready():
             time.sleep(5)
     
-    _run_p2rank(id, id_existed, use_conservation=True)
+    _run_p2rank(id, id_existed, input_model=p2rank_model, use_conservation=True)
