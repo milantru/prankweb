@@ -135,7 +135,7 @@ def _run_task(
 ) -> AsyncResult | None:
     
     if not output_folder:
-        output_folder = os.path.join(APACHE_URL, task_name, id, 'status.json')
+        output_folder = os.path.join(APACHE_URL, task_name, id)
     
     if not id_existed or not _is_task_running_or_completed(output_folder):
         print(f'SENDING {task_name.upper()}')
