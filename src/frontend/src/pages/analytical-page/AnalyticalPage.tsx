@@ -101,8 +101,8 @@ function AnalyticalPage() {
 	const [pollingInterval, setPollingInterval] = useState<number | null>(null);
 	const isPageVisible = useVisibilityChange();
 	const dataSourceExecutors: DataSourceExecutor[] = [
-		{ name: "ds_p2rank", results: [] },
-		{ name: "ds_foldseek", results: [] }
+		{ name: "p2rank", results: [] },
+		{ name: "foldseek", results: [] }
 	]
 	const isFetching: boolean[] = new Array(dataSourceExecutors.length).fill(false);
 	const isPollingFinished: boolean[] = new Array(dataSourceExecutors.length).fill(true);
