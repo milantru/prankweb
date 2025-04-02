@@ -72,14 +72,14 @@ def extract_binding_sites_for_chain(pdb_id, pdb_file_path, input_chain) -> List[
                                 
                                 if ligand_id not in ligand_binding_sites:
                                     ligand_binding_sites[ligand_id] = []
-                                ligand_binding_sites[ligand_id].append((nearby_residue_name, nearby_residue_index))
+                                ligand_binding_sites[ligand_id].append(nearby_residue_index)
             
             for ligand_id, residues in ligand_binding_sites.items():
                 binding_sites.append(
                     BindingSite(
                         id=ligand_id[0], # Get ligand name from tuple e.g. ('H_ADP', 704, ' ')
                         confidence=1,
-                        residues=sorted(residues, key=lambda x: x[1])
+                        residues=sorted(residues)
                     )
                 )
     return binding_sites
@@ -97,7 +97,7 @@ def save_results(result_folder: str, file_name: str, builder: ProteinDataBuilder
 
 def process_similar_protein(fields: List[str], curr_chain: str, id: str) -> SimilarProteinBuilder:
     sim_protein_pdb_id, sim_protein_chain = fields[1][:4], fields[1].split("_")[1]
-    sim_builder = SimilarProteinBuilder(sim_protein_pdb_id, "FULL_SEQ_TODO???", sim_protein_chain)
+    sim_builder = SimilarProteinBuilder(sim_protein_pdb_id, fields[8], sim_protein_chain)
     sim_builder.set_alignment_data(
         query_start=int(fields[4]) - 1,
         query_end=int(fields[5]) - 1,

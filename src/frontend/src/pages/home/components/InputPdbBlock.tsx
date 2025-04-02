@@ -23,8 +23,6 @@ function InputPdbBlock({ data, setData, setErrorMessage }: Props) {
     const [pdbCodeOfPrevLoadedChains, setPdbCodeOfPrevLoadedChains] = useState<string | null>(null);
 
     useEffect(() => {
-        setErrorMessage("");
-        
         if (!useOriginalStructure && validatePdbCode(data.pdbCode)) {
             loadPdbChains();
         }
@@ -109,6 +107,7 @@ function InputPdbBlock({ data, setData, setErrorMessage }: Props) {
     };
 
     async function loadPdbChains() {
+        setErrorMessage("");
         const pdbCode = data.pdbCode;
         if (!validatePdbCode(pdbCode)) {
             /* This function should be called only when we know the pdb code is valid, 

@@ -2,7 +2,7 @@ import axios from "axios";
 import { InputBlockData, InputMethods } from "../../pages/home/components/QueryProteinForm";
 import { apiBaseUrl } from "../constants";
 import { getErrorMessages } from "../helperFunctions/errorHandling";
-import { Result } from "../../pages/analytical-page/AnalyticalPage";
+import { UnprocessedResult } from "../../pages/analytical-page/AnalyticalPage";
 import camelcaseKeys from "camelcase-keys";
 
 /**
@@ -92,9 +92,10 @@ export async function getDataSourceExecutorResultStatusAPI(
 
 export async function getDataSourceExecutorResultAPI(
 	dataSourceName: string,
-	id: string
-): Promise<{ results: Result[], userFriendlyErrorMessage: string }> {
-	const url = `${apiBaseUrl}/${dataSourceName}/${id}/${id}_result.json`;
+	id: string,
+	chain: string
+): Promise<{ result: UnprocessedResult | null, userFriendlyErrorMessage: string }> {
+	const url = `${apiBaseUrl}/${dataSourceName}/${id}/${chain}_chain_result.json`;
 	const errorMessage = `Failed to fetch ${dataSourceName}${dataSourceName.toLowerCase().endsWith("s") ? "'" : "'s"} result.`;
 
 	try {
@@ -103,15 +104,31 @@ export async function getDataSourceExecutorResultAPI(
 				"Content-Type": "application/json"
 			}
 		});
-		console.log(response.data);
-		const results: Result[] = camelcaseKeys(JSON.parse(JSON.stringify(response.data)), { deep: true });
-		return { results, userFriendlyErrorMessage: "" };
+		const result: UnprocessedResult = camelcaseKeys(JSON.parse(JSON.stringify(response.data)), { deep: true });
+		return { result, userFriendlyErrorMessage: "" };
 	}
 	catch (error) {
 		const errMsgs = getErrorMessages(error);
 		errMsgs.forEach(errMsg => console.error(errMsg));
 
-		return { results: [], userFriendlyErrorMessage: errorMessage };
+		return { result: null, userFriendlyErrorMessage: errorMessage };
+	}
+}
+
+export async function getAllChainsAPI(id: string): Promise<{ chains: string[], userFriendlyErrorMessage: string }> {
+	const url = `${apiBaseUrl}/inputs/${id}/chains.json`;
+	const errorMessage = "Failed to fetch all chains.";
+
+	try {
+		const response = await axios.get(url);
+
+		const chains = response.data["chains"];
+		return { chains: chains, userFriendlyErrorMessage: "" };
+	} catch (error) {
+		const errMsgs = getErrorMessages(error);
+		errMsgs.forEach(errMsg => console.error(errMsg));
+
+		return { chains: [], userFriendlyErrorMessage: errorMessage };
 	}
 }
 
