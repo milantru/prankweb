@@ -63,6 +63,16 @@ class ProteinBuilderBase:
         self._binding_sites.append(BindingSite(id, confidence, residues))
         return self
 
+    def add_binding_site(self, *args):
+        if isinstance(args[0], BindingSite):
+            self._binding_sites.append(args[0])
+        elif len(args) == 3 and isinstance(args[0], str) and isinstance(args[1], float) and isinstance(args[2], list):
+            self._binding_sites.append(BindingSite(args[0], args[1], args[2]))
+        else:
+            raise TypeError("Invalid arguments for add_binding_site")
+
+        return self
+
 class SimilarProteinBuilder(ProteinBuilderBase):
     def __init__(self, pdb_id: str, sequence: str, chain: str):
         super().__init__(sequence, chain)
@@ -86,6 +96,25 @@ class SimilarProteinBuilder(ProteinBuilderBase):
     @overload
     def set_alignment_data(self, similar_sequence_alignment_data: SimilarSequenceAlignmentData):
         self._alignment_data = similar_sequence_alignment_data
+        return self
+
+    def set_alignment_data(self, *args) -> "SimilarProteinBuilder":
+        if len(args) == 7:
+            query_start, query_end, query_part, similar_seq, similar_start, similar_end, similar_part = args
+            self._alignment_data = SimilarSequenceAlignmentData(
+                query_seq_aligned_part_start_idx=query_start,
+                query_seq_aligned_part_end_idx=query_end,
+                query_seq_aligned_part=query_part,
+                similar_sequence=similar_seq,
+                similar_seq_aligned_part_start_idx=similar_start,
+                similar_seq_aligned_part_end_idx=similar_end,
+                similar_seq_aligned_part=similar_part
+            )
+        elif len(args) == 1 and isinstance(args[0], SimilarSequenceAlignmentData):
+            self._alignment_data = args[0]
+        else:
+            raise TypeError("Invalid arguments for set_alignment_data")
+
         return self
 
     def build(self) -> SimilarProtein:
