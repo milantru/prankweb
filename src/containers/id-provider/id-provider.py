@@ -54,8 +54,8 @@ def get_or_generate():
 
         generated_id += new_id
 
-        if input_method != InputMethods.CUSTOM_STR.value:
-            redis_client.set(key, generated_id)
+    if input_method != InputMethods.CUSTOM_STR.value:
+        redis_client.set(key, generated_id)
 
     print(f"Generated ID: {generated_id} for {key}")
     return jsonify({"id": generated_id, "stored_value": key, "existed" : False})
