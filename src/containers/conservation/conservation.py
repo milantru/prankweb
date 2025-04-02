@@ -44,8 +44,8 @@ def compute_conservation(id):
             response = requests.get(file_url, stream=True)
             response.raise_for_status()
 
-            hom_file = file.split('.')[0] + ".hom"
-            result_file = os.path.join(result_folder, hom_file)
+            hom_file_name = file.split('.')[0]
+            result_file = os.path.join(result_folder, hom_file_name)
             os.makedirs(id, exist_ok=True)
             input_file_path = f"./{id}/{file}"
 
@@ -59,7 +59,8 @@ def compute_conservation(id):
             compute_conservation_for_chain(input_file_path, result_file, temp_folder)
 
             for chain in chains:
-                os.symlink(hom_file, f"{result_folder}/input{chain}.hom")
+                os.symlink(hom_file_name + ".hom", f"{result_folder}/input{chain}.hom")
+                os.symlink(hom_file_name + ".json", f"{result_folder}/input{chain}.json")
 
             # cleanup
             os.remove(input_file_path)
@@ -109,11 +110,13 @@ def compute_conservation_for_chain(
         assert len(fasta_file_sequence) == \
                len(information_content) == \
                len(freqgap)
-        _write_tsv(result_file, fasta_file_sequence, information_content)
+        _write_tsv(result_file + ".hom", fasta_file_sequence, information_content)
+        _write_json(result_file + ".json", fasta_file_sequence, information_content)
         _write_tsv(result_file + ".freqgap", fasta_file_sequence, freqgap)
     else:  # `information_content` is `None` if no MSA was generated
         filler_values = ["-1000.0" for _ in fasta_file_sequence]
-        _write_tsv(result_file, fasta_file_sequence, filler_values)
+        _write_tsv(result_file+ ".hom", fasta_file_sequence, filler_values)
+        _write_json(result_file + ".json", fasta_file_sequence, filler_values)
         _write_tsv(result_file + ".freqgap", fasta_file_sequence, filler_values)
 
     return weighted_msa_file
@@ -220,4 +223,13 @@ def _write_tsv(target_file: str, fasta_file_sequence: str, feature):
         for (i, j), value in zip(enumerate(fasta_file_sequence), feature):
             stream.write("\t".join((str(i), value, j)) + "\n")
 
+def _write_json(target_file: str, fasta_file_sequence: str, feature):
+    with open(target_file, mode="w", newline="") as stream:
+        result = []
+        for (i, j), value in zip(enumerate(fasta_file_sequence), feature):
+            result.append({
+                "index": i,
+                "value": value
+            })
+        json.dump(result, stream, indent=4)
 

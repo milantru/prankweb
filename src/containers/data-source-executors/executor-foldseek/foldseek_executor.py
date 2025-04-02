@@ -34,7 +34,7 @@ def run_foldseek(id):
     update_status(status_file_path, id, StatusType.STARTED.value)
 
     try:
-        pdb_url = os.path.join(INPUTS_URL, str(id), "/structure.pdb")
+        pdb_url = os.path.join(INPUTS_URL, id, "structure.pdb")
         query_structure_file = os.path.join(eval_folder, "input.pdb")
 
         response = requests.get(pdb_url, stream=True)
