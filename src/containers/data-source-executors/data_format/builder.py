@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import List, Optional, overload
 from datetime import datetime
 
 @dataclass
@@ -47,18 +47,29 @@ class ProteinData:
     metadata: Metadata
     similar_proteins: Optional[List[SimilarProtein]] = None
 
-class SimilarProteinBuilder:
-    def __init__(self, pdb_id: str, sequence: str, chain: str):
-        self._pdb_id = pdb_id
+class ProteinBuilderBase:
+    def __init__(self, sequence: str, chain: str):
         self._sequence = sequence
         self._chain = chain
         self._binding_sites = []
-        self._alignment_data = None
 
+    @overload
+    def add_binding_site(self, binding_site: BindingSite):
+        self._binding_sites.append(binding_site)
+        return self
+    
+    @overload
     def add_binding_site(self, id: str, confidence: float, residues: List[int]):
         self._binding_sites.append(BindingSite(id, confidence, residues))
         return self
 
+class SimilarProteinBuilder(ProteinBuilderBase):
+    def __init__(self, pdb_id: str, sequence: str, chain: str):
+        super().__init__(sequence, chain)
+        self._pdb_id = pdb_id
+        self._alignment_data = None
+
+    @overload
     def set_alignment_data(self, query_start: int, query_end: int, query_part: str, 
                            similar_seq: str, similar_start: int, similar_end: int, similar_part: str):
         self._alignment_data = SimilarSequenceAlignmentData(
@@ -70,6 +81,11 @@ class SimilarProteinBuilder:
             similar_seq_aligned_part_end_idx=similar_end,
             similar_seq_aligned_part=similar_part
         )
+        return self
+
+    @overload
+    def set_alignment_data(self, similar_sequence_alignment_data: SimilarSequenceAlignmentData):
+        self._alignment_data = similar_sequence_alignment_data
         return self
 
     def build(self) -> SimilarProtein:
@@ -84,19 +100,13 @@ class SimilarProteinBuilder:
             alignment_data=self._alignment_data
         )
 
-class ProteinDataBuilder:
+class ProteinDataBuilder(ProteinBuilderBase):
     def __init__(self, id: str, chain: str, sequence: str, pdb_url: str):
+        super().__init__(sequence, chain)
         self._id = id
-        self._chain = chain
-        self._sequence = sequence
         self._pdb_url = pdb_url
-        self._binding_sites = []
         self._similar_proteins = []
         self._metadata = None
-
-    def add_binding_site(self, id: str, confidence: float, residues: List[int]):
-        self._binding_sites.append(BindingSite(id, confidence, residues))
-        return self
 
     def add_similar_protein(self, similar_protein: SimilarProtein):
         self._similar_proteins.append(similar_protein)

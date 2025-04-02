@@ -76,7 +76,7 @@ def process_p2rank_output(id, result_folder, query_file, pdb_url):
                 confidence=data['probability'], 
                 residues=data['indices']
             )
-            protein_data_builder.add_binding_site(binding_site.id, binding_site.confidence, binding_site.residues)
+            protein_data_builder.add_binding_site(binding_site)
 
         protein_data_builder.add_metadata(data_source="p2rank")
 

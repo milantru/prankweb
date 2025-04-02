@@ -114,12 +114,8 @@ def process_similar_protein(fields: List[str], curr_chain: str, id: str) -> Simi
 
         binding_sites = extract_binding_sites_for_chain(id, temp_filename, curr_chain)
 
-        for site in binding_sites:
-            sim_builder.add_binding_site(
-                id=site.id,
-                confidence=site.confidence,
-                residues=site.residues
-            )
+        for binding_site in binding_sites:
+            sim_builder.add_binding_site(binding_site)
     return sim_builder
 
 def process_foldseek_output(result_folder, foldseek_result_file, id, query_structure_file):
@@ -139,24 +135,16 @@ def process_foldseek_output(result_folder, foldseek_result_file, id, query_struc
             if builder == None:
                 builder = ProteinDataBuilder(id, chain, query_seq, "TODO")
                 binding_sites = extract_binding_sites_for_chain(id, query_structure_file, curr_chain)
-                for site in binding_sites:
-                    builder.add_binding_site(
-                        id=site.id,
-                        confidence=site.confidence,
-                        residues=site.residues
-                    )
+                for binding_site in binding_sites:
+                    builder.add_binding_site(binding_site)
 
             if curr_chain != chain:
                 save_results(result_folder, RESULT_FILE.format(curr_chain), builder)
                 curr_chain = chain
                 builder = ProteinDataBuilder(id, curr_chain, query_seq, "TODO")
                 binding_sites = extract_binding_sites_for_chain(id, query_structure_file, curr_chain)
-                for site in binding_sites:
-                    builder.add_binding_site(
-                        id=site.id,
-                        confidence=site.confidence,
-                        residues=site.residues
-                    )
+                for binding_site in binding_sites:
+                    builder.add_binding_site(binding_site)
             
             sim_builder = process_similar_protein(fields, curr_chain, id)
             builder.add_similar_protein(sim_builder.build())
