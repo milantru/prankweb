@@ -40,7 +40,7 @@ class InputMethods(Enum):
 
 class InputModels(Enum):
     DEFAULT = '0'
-    CONSERVATION_HMM = '1'
+    DEFAULT_CONSERVATION_HMM = '1'
     ALPHAFOLD = '2'
     ALPHAFOLD_CONSERVATION_HMM = '3'
 
@@ -138,6 +138,9 @@ def _validate_pdb(input_data: dict) -> ValidationResult:
 
         # append sequence to the dict
         input_data['inputUrl'] = url
+        
+        # input model setup for p2rank
+        input_data['inputModel'] = 'default'
 
     except Exception as e:
         print(e)
@@ -160,14 +163,12 @@ def _validate_custom_str(input_data: dict, input_file: FileStorage | None) -> Va
     if not any(model == m.value for m in InputModels):
         return 'Selected input model not supported', None
     
+    del input_data['userInputModel']
+    
     # extract input model and conservation
     input_data['useConservation'] = (
         'true' if 'CONSERVATION' in InputModels(model).name else 'false'
     )
-    input_data['inputModel'] = (
-        'alphafold' if 'ALPHAFOLD' in InputModels(model).name else 'default'
-    )
-    del input_data['userInputModel']
 
     # save file to tmp folder
     tmp_file = f'/tmp/{str(time.time())[-5:]}_{input_file.filename}'
@@ -179,7 +180,10 @@ def _validate_custom_str(input_data: dict, input_file: FileStorage | None) -> Va
     err = _try_parse_pdb(tmp_file, selected_chains)
     
     # tmp_folder is mounted to volume tmp which is shared with apache
-    input_data['inputUrl'] = os.path.join(APACHE_URL, tmp_file)
+    input_data['inputUrl'] = APACHE_URL + tmp_file
+
+    # input model setup for p2rank
+    input_data['inputModel'] = InputModels(model).name.split('_')[0].lower()     # result is default / alphafold
 
     # Delete tmp file after 15 minutes
     Popen(f'sleep 900 && rm -f {tmp_file}', shell=True)
@@ -209,6 +213,9 @@ def _validate_uniprot(input_data: dict) -> ValidationResult:
         # append sequence to the dict
         input_data['inputUrl'] = url
 
+        # input model setup for p2rank
+        input_data['inputModel'] = 'alphafold'
+
     except Exception:
         return 'Unknown exception occured', None
 
@@ -222,17 +229,21 @@ def _validate_seq(input_data: dict) -> ValidationResult:
         return err, None
         
     # check sequence
-    sequence:str = input_data['sequence']
+    sequence = input_data['sequence']
     if not sequence.startswith('>'): sequence = '>PLANKWEB_SEQ\n' + sequence
     if not _text_is_fasta_format(sequence):
         return 'Sequence not in FASTA format', None
+    del input_data['sequence']
     
     # save sequence to tmp folder
     tmp_file = f'/tmp/{str(time.time())[-5:]}_seq'
     with open(tmp_file, 'w') as f: f.write(sequence)
 
     # tmp_folder is mounted to volume tmp which is shared with apache
-    input_data['inputUrl'] = os.path.join(APACHE_URL, tmp_file)
+    input_data['inputUrl'] = APACHE_URL + tmp_file
+
+    # input model setup for p2rank
+    input_data['inputModel'] = 'alphafold'
 
     # Delete tmp file after 15 minutes
     Popen(f'sleep 900 && rm -f {tmp_file}', shell=True)
