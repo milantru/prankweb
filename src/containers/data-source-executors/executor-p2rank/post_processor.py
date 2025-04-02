@@ -70,13 +70,15 @@ def process_p2rank_output(id, result_folder, query_file, pdb_url):
     for chain, data in grouped_data.items():
         protein_data_builder = ProteinDataBuilder(id=id, chain=chain, sequence=data["residues"], pdb_url=pdb_url)
         
-        for pocket, data in data["pockets"].items():
+        sorted_pockets = sorted(data["pockets"].items(), key=lambda item: item[1]['probability'], reverse=True)
+
+        for pocket, data in sorted_pockets:
             binding_site = BindingSite(
                 id=f"pocket_{pocket}", 
                 confidence=data['probability'], 
                 residues=data['indices']
             )
-            protein_data_builder.add_binding_site(binding_site.id, binding_site.confidence, binding_site.residues)
+            protein_data_builder.add_binding_site(binding_site)
 
         protein_data_builder.add_metadata(data_source="p2rank")
 
