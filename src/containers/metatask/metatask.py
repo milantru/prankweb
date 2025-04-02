@@ -180,9 +180,6 @@ def _run_p2rank(id: str, id_existed: bool, input_model: str, use_conservation: b
         ('alphafold', False): 'alphafold',  
         ('alphafold', True): 'alphafold_conservation_hmm'  
     }
-
-    if use_conservation:
-        p2rank_model = 'conservation_hmm'
     
 
     _run_task(
