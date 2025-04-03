@@ -2,7 +2,7 @@ import axios from "axios";
 import { InputBlockData, InputMethods } from "../../pages/home/components/QueryProteinForm";
 import { apiBaseUrl } from "../constants";
 import { getErrorMessages } from "../helperFunctions/errorHandling";
-import { UnprocessedResult } from "../../pages/analytical-page/AnalyticalPage";
+import { Conservation, UnprocessedResult } from "../../pages/analytical-page/AnalyticalPage";
 import camelcaseKeys from "camelcase-keys";
 
 /**
@@ -93,9 +93,12 @@ export async function getDataSourceExecutorResultStatusAPI(
 export async function getDataSourceExecutorResultAPI(
 	dataSourceName: string,
 	id: string,
-	chain: string
+	chain: string,
+	useConservation: boolean = false
 ): Promise<{ result: UnprocessedResult | null, userFriendlyErrorMessage: string }> {
-	const url = `${apiBaseUrl}/data/ds_${dataSourceName}/${id}/${chain}_chain_result.json`;
+	const url = dataSourceName === "p2rank" && useConservation
+		? `${apiBaseUrl}/data/ds_${dataSourceName}/${id}/conservation/${chain}_chain_result.json`
+		: `${apiBaseUrl}/data/ds_${dataSourceName}/${id}/${chain}_chain_result.json`;
 	const errorMessage = `Failed to fetch ${dataSourceName}${dataSourceName.toLowerCase().endsWith("s") ? "'" : "'s"} result.`;
 
 	try {
@@ -112,6 +115,30 @@ export async function getDataSourceExecutorResultAPI(
 		errMsgs.forEach(errMsg => console.error(errMsg));
 
 		return { result: null, userFriendlyErrorMessage: errorMessage };
+	}
+}
+
+export async function getConservationsAPI(
+	id: string,
+	chain: string,
+): Promise<{ conservations: Conservation[], userFriendlyErrorMessage: string }> {
+	const url = `${apiBaseUrl}/data/conservation/${id}/input${chain}.json`;
+	const errorMessage = "Failed to fetch conservation.";
+
+	try {
+		const response = await axios.get<Conservation[]>(url, {
+			headers: {
+				"Content-Type": "application/json"
+			}
+		});
+		const conservations = response.data;
+		return { conservations, userFriendlyErrorMessage: "" };
+	}
+	catch (error) {
+		const errMsgs = getErrorMessages(error);
+		errMsgs.forEach(errMsg => console.error(errMsg));
+
+		return { conservations: [], userFriendlyErrorMessage: errorMessage };
 	}
 }
 

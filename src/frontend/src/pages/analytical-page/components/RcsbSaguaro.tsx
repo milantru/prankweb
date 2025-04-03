@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { RcsbFv } from "@rcsb/rcsb-saguaro";
-import { BindingSite, ChainResult } from "../AnalyticalPage";
+import { BindingSite, ChainResult, Conservation } from "../AnalyticalPage";
 import chroma from "chroma-js";
 
 type Props = {
@@ -158,6 +158,25 @@ function RcsbSaguaro({ chainResult }: Props) {
         };
     }
 
+    function createConservationRow(conservations: Conservation[]) {
+        const max = Math.max(...conservations.map(conservation => conservation.value));
+
+        const conservationData = conservations.map(conservation => ({
+            begin: conservation.index,
+            value: conservation.value / max // normalization
+        }));
+
+        return {
+            trackId: "conservation",
+            trackHeight: 20,
+            trackColor: "#F9F9F9",
+            displayType: "area",
+            displayColor: "#6d6d6d",
+            rowTitle: "Conservation",
+            trackData: conservationData,
+        };
+    }
+
     function createSimilarSequenceRow(id: string, title: string, sequence: string, trackColor: string) {
         return {
             trackId: id,
@@ -236,12 +255,15 @@ function RcsbSaguaro({ chainResult }: Props) {
                 simProt.bindingSites.forEach((bindingSite, idx) => {
                     const id = `${dataSourceName}-${simProt.pdbId}-${bindingSite.id}-${idx}`;
                     const title = bindingSite.id;
-                    const bindingSiteRow = createBlockRow(
+                    const simProtBindingSiteRow = createBlockRow(
                         id, title, bindingSite.residues, bindingSiteColors[bindingSite.id], dataSourceColor);
-                    rowConfigData.push(bindingSiteRow)
+                    rowConfigData.push(simProtBindingSiteRow)
                 });
             }
         }
+
+        const conservationRow = createConservationRow(chainResult.conservations);
+        rowConfigData.push(conservationRow);
 
         return rowConfigData;
     }

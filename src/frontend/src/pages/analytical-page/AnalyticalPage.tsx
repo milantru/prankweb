@@ -2,7 +2,7 @@ import { useSearchParams } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { useInterval } from "../../shared/hooks/useInterval";
 import { useVisibilityChange } from "../../shared/hooks/useVisibilityChange";
-import { DataStatus, getAllChainsAPI, getDataSourceExecutorResultAPI, getDataSourceExecutorResultStatusAPI } from "../../shared/services/apiCalls";
+import { DataStatus, getAllChainsAPI, getConservationsAPI, getDataSourceExecutorResultAPI, getDataSourceExecutorResultStatusAPI } from "../../shared/services/apiCalls";
 import RcsbSaguaro from "./components/RcsbSaguaro";
 import { FadeLoader } from "react-spinners";
 import { MolStarWrapper } from "./components/MolstarWrapper";
@@ -12,6 +12,11 @@ import { sanitizeCode, sanitizeSequence } from "../../shared/helperFunctions/val
 import Select from 'react-select';
 
 const POLLING_INTERVAL = 1000 * 5; // every 5 seconds
+
+export type Conservation = {
+	index: number;
+	value: number;
+};
 
 type AlignmentData = {
 	querySequence?: string; // This prop will be artificially added and used when aligning similar proteins
@@ -84,6 +89,7 @@ type DataSourceExecutorResult = Record<string, ProcessedResult>;
 export type ChainResult = {
 	querySequence: string,
 	dataSourceExecutorResults: DataSourceExecutorResult;
+	conservations: Conservation[];
 };
 
 export type ChainResults = Record<string, ChainResult>;
@@ -97,6 +103,7 @@ function AnalyticalPage() {
 	let chains = searchParams.get("chains")
 		? searchParams.get("chains").split(",").filter(x => x.length > 0)
 		: []; // When no chains are selected by the user, we select all of them (we fetch all chains later when fetching results)
+	const useConservation = searchParams.get("useConservation")?.toLowerCase() === "true";
 	// When pollingInterval is set to null, it is turned off (initially it's turned off, it will be turned on after component loading)
 	const [pollingInterval, setPollingInterval] = useState<number | null>(null);
 	const isPageVisible = useVisibilityChange();
@@ -226,7 +233,7 @@ function AnalyticalPage() {
 				const {
 					result,
 					userFriendlyErrorMessage: dataFetchingErrorMessage
-				} = await getDataSourceExecutorResultAPI(dataSourceExecutors[dataSourceIndex].name, id, chain);
+				} = await getDataSourceExecutorResultAPI(dataSourceExecutors[dataSourceIndex].name, id, chain, useConservation);
 				if (dataFetchingErrorMessage.length > 0) {
 					toastWarning(dataFetchingErrorMessage + "\nRetrying...");
 					i--; // Try again for the same chain
@@ -253,7 +260,11 @@ function AnalyticalPage() {
 			const chainUnprocessedResults = transform(allResults);
 			const chainResultsTmp: ChainResults = {};
 			for (const [chain, dataSourceResults] of Object.entries(chainUnprocessedResults)) {
-				chainResultsTmp[chain] = await alignSequencesAcrossAllDataSources(dataSourceResults);
+				const { conservations, userFriendlyErrorMessage } = await getConservationsAPI(id, chain);
+				if (userFriendlyErrorMessage.length > 0) {
+					// TODO err msg meno zmen + handle error + mozno tie chainy aj skor moze celkovo rychlejsie sa asi da preco awaitujes po jednom? aj resulty aj chainy
+				}
+				chainResultsTmp[chain] = await alignSequencesAcrossAllDataSources(dataSourceResults, conservations);
 			}
 			setChainResults(chainResultsTmp);
 			setSelectedChain(chains[0]) // Every protein has at least 1 chain
@@ -374,11 +385,14 @@ function AnalyticalPage() {
 		return res;
 	}
 
-	function alignSequencesAcrossAllDataSources(unprocessedResultPerDataSourceExecutor: Record<string, UnprocessedResult>): ChainResult {
+	function alignSequencesAcrossAllDataSources(
+		unprocessedResultPerDataSourceExecutor: Record<string, UnprocessedResult>,
+		conservations: Conservation[]
+	): ChainResult {
 		const dataSourceExecutorsCount = Object.keys(unprocessedResultPerDataSourceExecutor).length;
 		if (dataSourceExecutorsCount == 0) {
 			// if we dont have any result from any data source executor, then we have nothing to align
-			return { querySequence: "", dataSourceExecutorResults: {} };
+			return { querySequence: "", dataSourceExecutorResults: {}, conservations: [] };
 			// return dataSourceExecutorsResults; // TODO asi skor toto vrat potom
 		}
 		// TODO what if we have data source executor results but no with sim prots? Maybe add if?
@@ -512,6 +526,10 @@ function AnalyticalPage() {
 						updateBindingSiteResiduesIndices(bindingSite, similarProteinsMapping[dataSourceName][simProtIdx])));
 			}
 		});
+		for (const conservation of conservations) {
+			// TODO mapping asi len jeden staci pre horne binding sity
+			conservation.index = mapping["foldseek"][conservation.index];
+		}
 
 		const dataSourceExecutorResultsTmp: Record<string, ProcessedResult> = {};
 		Object.entries(unprocessedResultPerDataSourceExecutor).forEach(([dataSourceName, result]) =>
@@ -521,7 +539,7 @@ function AnalyticalPage() {
 				similarProteins: similarProteins[dataSourceName]
 			}
 		);
-		return { querySequence: masterQuerySeq, dataSourceExecutorResults: dataSourceExecutorResultsTmp };
+		return { querySequence: masterQuerySeq, dataSourceExecutorResults: dataSourceExecutorResultsTmp, conservations: conservations };
 	}
 
 	function updateErrorMessages(dataSourceIndex: number, errorMessage: string) {
