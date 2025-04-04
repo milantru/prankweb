@@ -24,7 +24,7 @@ services:
       interval: 30s
       timeout: 30s
       retries: 3
-    command: redis-server --save 600 1 --loglevel warning
+    command: redis-server --save 600 1 --loglevel verbose
 
   executor-http-api:
     build:
@@ -107,7 +107,7 @@ services:
       - ./containers/data-source-executors/executor-foldseek/foldseek_executor.py:/app/foldseek_executor.py
       - ./containers/data-source-executors/executor-foldseek/post_processor.py:/app/post_processor.py
       - ./containers/data-source-executors/data_format/builder.py:/app/data_format/builder.py
-    command: celery --app=celery_worker worker --queues=ds_foldseek --hostname=foldseek_worker --loglevel=debug
+    command: celery --app=celery_worker worker --queues=ds_foldseek --hostname=foldseek_worker --loglevel=info
 
   ds-p2rank:
     build:
@@ -125,7 +125,7 @@ services:
       - ./containers/data-source-executors/executor-p2rank/p2rank_executor.py:/app/p2rank_executor.py
       - ./containers/data-source-executors/executor-p2rank/post_processor.py:/app/post_processor.py
       - ./containers/data-source-executors/data_format/builder.py:/app/data_format/builder.py
-    command: celery --app=celery_worker worker --queues=ds_p2rank --hostname=p2rank_worker --loglevel=debug
+    command: celery --app=celery_worker worker --queues=ds_p2rank --hostname=p2rank_worker --loglevel=info
 
   conservation:
     build:
@@ -141,7 +141,7 @@ services:
       - conservation:/app/results
       - ./containers/conservation/celery_worker.py:/app/celery_worker.py
       - ./containers/conservation/conservation.py:/app/conservation.py
-    command: celery --app=celery_worker worker --queues=conservation --hostname=conservation_worker --loglevel=debug
+    command: celery --app=celery_worker worker --queues=conservation --hostname=conservation_worker --loglevel=info
 
   converter:
     build:
@@ -155,7 +155,7 @@ services:
       - tasks.env
     volumes:
       - ./containers/converter/converter_executor.py:/app/converter_executor.py
-    command: celery --app=celery_worker worker --queues=converter --hostname=converter_worker --loglevel=debug
+    command: celery --app=celery_worker worker --queues=converter --hostname=converter_worker --loglevel=info
 
   metatask:
     build:
@@ -178,7 +178,7 @@ services:
     volumes:
       - inputs:/app/inputs
       - ./containers/metatask/metatask.py:/app/metatask.py
-    command: celery --app=metatask worker --queues=metatask --hostname=metatask_worker --loglevel=debug
+    command: celery --app=metatask worker --queues=metatask --hostname=metatask_worker --loglevel=info
 
   flower:
     build: https://github.com/mher/flower.git
