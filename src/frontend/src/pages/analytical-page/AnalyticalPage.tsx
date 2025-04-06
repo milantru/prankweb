@@ -468,9 +468,9 @@ function AnalyticalPage() {
 
 			let aminoAcidOfQuerySeq: string = null!;
 			/* Master query sequence is being built iteratively character by character,
-			* that is why we can use masterQuerySeq.length to point to the newest character.
-			* This variable holds index of the current character (amino acid or gap) of
-			* master query sequence that will be outputted/added later in code. */
+			 * that is why we can use masterQuerySeq.length to point to the newest character.
+			 * This variable holds index of the current character (amino acid or gap) of
+			 * master query sequence that will be outputted/added later in code. */
 			const aminoAcidOrGapOfMasterQuerySeqCurrIdx = masterQuerySeq.length;
 			for (const [dataSourceName, result] of Object.entries(unprocessedResultPerDataSourceExecutor)) {
 				/* We will overwrite many times with the same value, but it is correct and to reduce cycles 
@@ -509,7 +509,11 @@ function AnalyticalPage() {
 				masterQuerySeq += '-';
 				aminoAcidIdx--; // Sequences with gaps where shifted, repeat for the same amino acid
 			} else {
-				masterQuerySeq += aminoAcidOfQuerySeq;
+				/* The only way `aminoAcidOfQuerySeq` can be null here is if we don't have any similar sequences at all (in any data source).
+				 * So we cannot create master query sequence using similar sequence versions of query sequence with gaps (each similar sequence 
+				 * should have its own version of query sequence with gaps), thus we have to use "default" query sequence without gaps
+				 * to build master query sequence. (Yes, it will be identity mapping.) */
+				masterQuerySeq += aminoAcidOfQuerySeq ?? querySeq[aminoAcidIdx];
 			}
 		}
 
