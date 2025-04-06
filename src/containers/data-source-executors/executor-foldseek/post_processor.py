@@ -2,7 +2,7 @@ import json
 import os
 import tempfile
 import requests
-from typing import List
+from typing import List, Tuple
 from Bio.PDB import PDBParser, PDBIO, NeighborSearch
 from Bio.PDB.Polypeptide import three_to_index, index_to_one, is_aa
 from data_format.builder import ProteinDataBuilder, SimilarProteinBuilder, BindingSite
@@ -24,11 +24,11 @@ from dataclasses import asdict
 #   - `taln` - Aligned target sequence with gaps - Only aligned part
 
 PDB_FILE_URL = "https://files.rcsb.org/download/{}.pdb"
-
+INPUTS_URL = os.getenv('INPUTS_URL')
 RESULT_FILE = "{}_chain_result.json"
 
 
-def extract_binding_sites_for_chain(pdb_id, pdb_file_path, input_chain) -> List[BindingSite]:
+def extract_binding_sites_for_chain(pdb_id, pdb_file_path, input_chain) -> Tuple[List[BindingSite], str]:
     with open(pdb_file_path, "r") as file:
         pdb = PDBParser().get_structure(pdb_id, file)
 
@@ -36,6 +36,7 @@ def extract_binding_sites_for_chain(pdb_id, pdb_file_path, input_chain) -> List[
     dist_thresh = 5  # Distance threshold for neighbor search
     atoms = list(pdb.get_atoms())
     ns = NeighborSearch(atom_list=atoms)
+    chain_seq = ""
 
     for model in pdb:
         for chain in model:
@@ -51,6 +52,7 @@ def extract_binding_sites_for_chain(pdb_id, pdb_file_path, input_chain) -> List[
                     residue_index = residue.id[1]  # Get residue structure index
                     residue_dict[residue_index] = sequence_index
                     sequence_index += 1
+                    chain_seq += index_to_one(three_to_index(residue.get_resname()))
             
             for residue in chain:
                 if residue.id[0].startswith("H_"):  # Identify ligand residues
@@ -81,7 +83,7 @@ def extract_binding_sites_for_chain(pdb_id, pdb_file_path, input_chain) -> List[
                         residues=sorted(residues)
                     )
                 )
-    return binding_sites
+    return binding_sites, chain_seq
 
 def save_results(result_folder: str, file_name: str, builder: ProteinDataBuilder):
 
@@ -112,7 +114,7 @@ def process_similar_protein(fields: List[str], curr_chain: str, id: str) -> Simi
         temp_file.write(response.content)
         temp_filename = temp_file.name
 
-        binding_sites = extract_binding_sites_for_chain(id, temp_filename, curr_chain)
+        binding_sites, _ = extract_binding_sites_for_chain(id, temp_filename, curr_chain)
 
         for binding_site in binding_sites:
             sim_builder.add_binding_site(binding_site)
@@ -123,18 +125,31 @@ def process_foldseek_output(result_folder, foldseek_result_file, id, query_struc
     with open(foldseek_result_file) as f:
         curr_chain = None
         builder = None
+
+        chains_json = os.path.join(INPUTS_URL, id, "chains.json")
+
+        response = requests.get(chains_json, stream=True)
+        response.raise_for_status()
+
+        metadata = response.json()
+
+        remaining_chains = metadata["chains"]
+
         for line in f:  
             fields = line.strip().split("\t")
             input_name = fields[0]
             query_seq = fields[3]
             chain = input_name.split("_")[1] if "_" in input_name else "A"
 
+            if chain in remaining_chains:
+                remaining_chains.remove(chain)
+
             if curr_chain == None:
                 curr_chain = chain
 
             if builder == None:
                 builder = ProteinDataBuilder(id, chain, query_seq, "TODO")
-                binding_sites = extract_binding_sites_for_chain(id, query_structure_file, curr_chain)
+                binding_sites, _ = extract_binding_sites_for_chain(id, query_structure_file, curr_chain)
                 for binding_site in binding_sites:
                     builder.add_binding_site(binding_site)
 
@@ -142,11 +157,19 @@ def process_foldseek_output(result_folder, foldseek_result_file, id, query_struc
                 save_results(result_folder, RESULT_FILE.format(curr_chain), builder)
                 curr_chain = chain
                 builder = ProteinDataBuilder(id, curr_chain, query_seq, "TODO")
-                binding_sites = extract_binding_sites_for_chain(id, query_structure_file, curr_chain)
+                binding_sites, _ = extract_binding_sites_for_chain(id, query_structure_file, curr_chain)
                 for binding_site in binding_sites:
                     builder.add_binding_site(binding_site)
             
             sim_builder = process_similar_protein(fields, curr_chain, id)
             builder.add_similar_protein(sim_builder.build())
 
-        save_results(result_folder, RESULT_FILE.format(curr_chain), builder)
+        if builder != None:
+            save_results(result_folder, RESULT_FILE.format(curr_chain), builder)
+
+        for chain in remaining_chains:
+            binding_sites, chain_seq = extract_binding_sites_for_chain(id, query_structure_file, chain)
+            builder = ProteinDataBuilder(id, chain, chain_seq, "TODO")
+            for binding_site in binding_sites:
+                builder.add_binding_site(binding_site)
+            save_results(result_folder, RESULT_FILE.format(chain), builder)

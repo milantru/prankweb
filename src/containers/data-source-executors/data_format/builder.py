@@ -12,29 +12,29 @@ class BindingSite:
 
 @dataclass
 class SimilarSequenceAlignmentData:
-    query_seq_aligned_part_start_idx: int
+    querySeqAlignedPartStartIdx: int
     """Index of amino acid in the sequence of query protein; ***0-indexed***"""
-    query_seq_aligned_part_end_idx: int
+    querySeqAlignedPartEndIdx: int
     """Index of amino acid in the sequence of query protein; ***0-indexed***"""
-    query_seq_aligned_part: str
-    similar_sequence: str
-    similar_seq_aligned_part_start_idx: int
+    querySeqAlignedPart: str
+    similarSequence: str
+    similarSeqAlignedPartStartIdx: int
     """Index of amino acid in the sequence of similar protein; ***0-indexed***"""
-    similar_seq_aligned_part_end_idx: int
+    similarSeqAlignedPartEndIdx: int
     """Index of amino acid in the sequence of similar protein; ***0-indexed***"""
-    similar_seq_aligned_part: str
+    similarSeqAlignedPart: str
 
 @dataclass
 class SimilarProtein:
-    pdb_id: str
+    pdbId: str
     chain: str
     sequence: str
-    binding_sites: BindingSite
-    alignment_data: SimilarSequenceAlignmentData
+    bindingSites: List[BindingSite]
+    alignmentData: SimilarSequenceAlignmentData
 
 @dataclass
 class Metadata:
-    data_source: str
+    dataSource: str
     timestamp: str  # ISO 8601 format
 
 @dataclass
@@ -42,10 +42,10 @@ class ProteinData:
     id: str
     chain: str
     sequence: str
-    pdb_url: str
-    binding_sites: List[BindingSite]
+    pdbUrl: str
+    bindingSites: List[BindingSite]
     metadata: Metadata
-    similar_proteins: Optional[List[SimilarProtein]] = None
+    similarProteins: Optional[List[SimilarProtein]] = None
 
 class ProteinBuilderBase:
     def __init__(self, sequence: str, chain: str):
@@ -82,13 +82,13 @@ class SimilarProteinBuilder(ProteinBuilderBase):
     def set_alignment_data(self, query_start: int, query_end: int, query_part: str, 
                            similar_seq: str, similar_start: int, similar_end: int, similar_part: str):
         self._alignment_data = SimilarSequenceAlignmentData(
-            query_seq_aligned_part_start_idx=query_start,
-            query_seq_aligned_part_end_idx=query_end,
-            query_seq_aligned_part=query_part,
-            similar_sequence=similar_seq,
-            similar_seq_aligned_part_start_idx=similar_start,
-            similar_seq_aligned_part_end_idx=similar_end,
-            similar_seq_aligned_part=similar_part
+            querySeqAlignedPartStartIdx=query_start,
+            querySeqAlignedPartEndIdx=query_end,
+            querySeqAlignedPart=query_part,
+            similarSequence=similar_seq,
+            similarSeqAlignedPartStartIdx=similar_start,
+            similarSeqAlignedPartEndIdx=similar_end,
+            similarSeqAlignedPart=similar_part
         )
         return self
 
@@ -97,11 +97,11 @@ class SimilarProteinBuilder(ProteinBuilderBase):
             raise ValueError("Alignment data must be set before building SimilarProtein")
         
         return SimilarProtein(
-            pdb_id=self._pdb_id,
+            pdbId=self._pdb_id,
             chain=self._chain,
             sequence=self._sequence,
-            binding_sites=self._binding_sites,
-            alignment_data=self._alignment_data
+            bindingSites=self._binding_sites,
+            alignmentData=self._alignment_data
         )
 
 class ProteinDataBuilder(ProteinBuilderBase):
@@ -119,7 +119,7 @@ class ProteinDataBuilder(ProteinBuilderBase):
     def add_metadata(self, data_source: str, timestamp: Optional[str] = None):
         if timestamp is None:
             timestamp = datetime.now().isoformat()
-        self._metadata = Metadata(data_source, timestamp)
+        self._metadata = Metadata(dataSource=data_source, timestamp=timestamp)
         return self
 
     def build(self) -> ProteinData:
@@ -130,8 +130,8 @@ class ProteinDataBuilder(ProteinBuilderBase):
             id=self._id,
             sequence=self._sequence,
             chain=self._chain,
-            pdb_url=self._pdb_url,
-            binding_sites=self._binding_sites,
+            pdbUrl=self._pdb_url,
+            bindingSites=self._binding_sites,
             metadata=self._metadata,
-            similar_proteins=self._similar_proteins if self._similar_proteins else None,
+            similarProteins=self._similar_proteins if self._similar_proteins else None,
         )
