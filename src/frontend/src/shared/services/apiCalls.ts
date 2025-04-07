@@ -85,8 +85,12 @@ export async function getDataSourceExecutorResultStatusAPI(
 		return { status: status, userFriendlyErrorMessage: "" };
 	}
 	catch (error) {
-		const errMsgs = getErrorMessages(error);
-		errMsgs.forEach(errMsg => console.error(errMsg));
+		if (error?.status === 404) {
+			console.warn(`Status for ${dataSourceName} and ${id} is missing. Maybe just not created yet?`);
+		} else {
+			const errMsgs = getErrorMessages(error);
+			errMsgs.forEach(errMsg => console.error(errMsg));
+		}
 
 		return { status: null, userFriendlyErrorMessage: errorMessage };
 	}
