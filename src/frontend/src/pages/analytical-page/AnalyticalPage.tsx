@@ -350,9 +350,9 @@ function AnalyticalPage() {
 	function updateBindingSiteResiduesIndices(bindingSite: BindingSite, mapping: Record<number, number>) {
 		for (let i = 0; i < bindingSite.residues.length; i++) {
 			if (bindingSite.residues[i] === undefined) {
-				console.error("Wild error appeared! Residue is undefined.");
+				console.error("Residue is undefined. Sequence display might not fully load or ommit some data.");
 			} else if (!(bindingSite.residues[i] in mapping)) {
-				console.error("Wild error appeared! Mapping for residue does not exist.");
+				console.error("Mapping for residue does not exist. Sequence display might not fully load or ommit some data.");
 			}
 			bindingSite.residues[i] = mapping[bindingSite.residues[i]];
 		}
