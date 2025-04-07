@@ -144,7 +144,7 @@ function AnalyticalPage() {
 
 	useInterval(() => {
 		for (let dataSourceExecutorIdx = 0; dataSourceExecutorIdx < dataSourceExecutors.length; dataSourceExecutorIdx++) {
-			if (isFetching[dataSourceExecutorIdx]) {
+			if (isFetching[dataSourceExecutorIdx] || isPollingFinished[dataSourceExecutorIdx]) {
 				continue;
 			}
 			fetchDataFromDataSource(dataSourceExecutorIdx);
