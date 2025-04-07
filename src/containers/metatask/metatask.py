@@ -127,7 +127,6 @@ def _is_task_running_or_completed(output_folder: str) -> bool:
 
 def _run_task(
         task_name: str,
-        queue_name: str,
         id: str,
         id_existed: bool,
         output_folder: str | None = None,
@@ -142,7 +141,6 @@ def _run_task(
         task = celery.send_task(
             task_name,
             args=[id, task_args] if task_args else [id],
-            queue=queue_name
         )
 
         return task
@@ -153,7 +151,6 @@ def _run_task(
 def _run_plm(id, id_existed):
     _run_task(
         task_name='ds_plm',
-        queue_name='ds_plm',
         id=id,
         id_existed=id_existed,
     )
@@ -162,7 +159,6 @@ def _run_plm(id, id_existed):
 def _run_foldseek(id: str, id_existed: bool) -> None:
     _run_task(
         task_name='ds_foldseek',
-        queue_name='ds_foldseek',
         id=id,
         id_existed=id_existed,
     )
@@ -184,7 +180,6 @@ def _run_p2rank(id: str, id_existed: bool, input_model: str, use_conservation: b
 
     _run_task(
         task_name='ds_p2rank',
-        queue_name='ds_p2rank',
         id=id,
         id_existed=id_existed,
         output_folder=output_folder,
@@ -198,7 +193,6 @@ def _run_p2rank(id: str, id_existed: bool, input_model: str, use_conservation: b
 def _run_conservation(id: str, id_existed: bool) -> AsyncResult | None:
     return _run_task(
         task_name='conservation',
-        queue_name='conservation',
         id=id,
         id_existed=id_existed,
     )
@@ -225,7 +219,6 @@ def metatask_seq(input_data: dict) -> None:
     if not id_existed or not _inputs_exist(input_folder):
         converter = celery.send_task(
             'converter_seq_to_str',
-            queue='converter',
             args=[id],
         )
 
@@ -269,7 +262,6 @@ def metatask_str(input_data: dict) -> None:
     if not id_existed or not _inputs_exist(input_folder):
         converter = celery.send_task(
             'converter_str_to_seq',
-            queue='converter',
             args=[id],
         )
 
