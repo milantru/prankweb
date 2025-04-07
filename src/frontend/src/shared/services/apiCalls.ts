@@ -61,9 +61,12 @@ type DataStatusResponse = {
 
 export async function getDataSourceExecutorResultStatusAPI(
 	dataSourceName: string,
-	id: string
+	id: string,
+	useConservation: boolean = false
 ): Promise<{ status: DataStatus | null, userFriendlyErrorMessage: string }> {
-	const url = `${apiBaseUrl}/data/ds_${dataSourceName}/${id}/status.json`;
+	const url = dataSourceName === "p2rank" && useConservation
+		? `${apiBaseUrl}/data/ds_${dataSourceName}/${id}/conservation/status.json`
+		: `${apiBaseUrl}/data/ds_${dataSourceName}/${id}/status.json`;
 	const errorMessage = `Failed to fetch ${dataSourceName}${dataSourceName.toLowerCase().endsWith("s") ? "'" : "'s"} status.`;
 
 	try {

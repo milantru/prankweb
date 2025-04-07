@@ -144,7 +144,7 @@ function AnalyticalPage() {
 
 	useInterval(() => {
 		for (let dataSourceExecutorIdx = 0; dataSourceExecutorIdx < dataSourceExecutors.length; dataSourceExecutorIdx++) {
-			if (isFetching[dataSourceExecutorIdx]) {
+			if (isFetching[dataSourceExecutorIdx] || isPollingFinished[dataSourceExecutorIdx]) {
 				continue;
 			}
 			fetchDataFromDataSource(dataSourceExecutorIdx);
@@ -215,7 +215,7 @@ function AnalyticalPage() {
 		const {
 			status,
 			userFriendlyErrorMessage: statusFetchingErrorMessage
-		} = await getDataSourceExecutorResultStatusAPI(dataSourceExecutors[dataSourceIndex].name, id);
+		} = await getDataSourceExecutorResultStatusAPI(dataSourceExecutors[dataSourceIndex].name, id, useConservation);
 		if (statusFetchingErrorMessage.length > 0) {
 			console.warn(statusFetchingErrorMessage + "\nRetrying...");
 			isFetching[dataSourceIndex] = false;
@@ -396,7 +396,7 @@ function AnalyticalPage() {
 		}
 
 		// Update all residue indices of each result bindig site
-		const mapping = createMapping(querySequence, querySeq);
+		const mapping = createMapping(similarProtein.alignmentData.similarSequence, similarSeq);
 		similarProtein.bindingSites.forEach(bindingSite =>
 			updateBindingSiteResiduesIndices(bindingSite, mapping));
 
