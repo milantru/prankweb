@@ -215,7 +215,7 @@ function AnalyticalPage() {
 		const {
 			status,
 			userFriendlyErrorMessage: statusFetchingErrorMessage
-		} = await getDataSourceExecutorResultStatusAPI(dataSourceExecutors[dataSourceIndex].name, id);
+		} = await getDataSourceExecutorResultStatusAPI(dataSourceExecutors[dataSourceIndex].name, id, useConservation);
 		if (statusFetchingErrorMessage.length > 0) {
 			console.warn(statusFetchingErrorMessage + "\nRetrying...");
 			isFetching[dataSourceIndex] = false;
