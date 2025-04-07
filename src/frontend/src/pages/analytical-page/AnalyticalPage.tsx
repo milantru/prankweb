@@ -1,8 +1,8 @@
 import { useSearchParams } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useInterval } from "../../shared/hooks/useInterval";
 import { useVisibilityChange } from "../../shared/hooks/useVisibilityChange";
-import { DataStatus, getAllChainsAPI, getDataSourceExecutorResultAPI, getDataSourceExecutorResultStatusAPI } from "../../shared/services/apiCalls";
+import { DataStatus, getAllChainsAPI, getConservationsAPI, getDataSourceExecutorResultAPI, getDataSourceExecutorResultStatusAPI } from "../../shared/services/apiCalls";
 import RcsbSaguaro from "./components/RcsbSaguaro";
 import { FadeLoader } from "react-spinners";
 import { MolStarWrapper } from "./components/MolstarWrapper";
@@ -12,6 +12,11 @@ import { sanitizeCode, sanitizeSequence } from "../../shared/helperFunctions/val
 import Select from 'react-select';
 
 const POLLING_INTERVAL = 1000 * 5; // every 5 seconds
+
+export type Conservation = {
+	index: number;
+	value: number;
+};
 
 type AlignmentData = {
 	querySequence?: string; // This prop will be artificially added and used when aligning similar proteins
@@ -84,6 +89,7 @@ type DataSourceExecutorResult = Record<string, ProcessedResult>;
 export type ChainResult = {
 	querySequence: string,
 	dataSourceExecutorResults: DataSourceExecutorResult;
+	conservations: Conservation[];
 };
 
 export type ChainResults = Record<string, ChainResult>;
@@ -94,21 +100,25 @@ function AnalyticalPage() {
 	if (!id) {
 		return <>No id provided.</>
 	}
-	let chains = searchParams.get("chains")
+	const [chains, setChains] = useState<string[]>(searchParams.get("chains")
 		? searchParams.get("chains").split(",").filter(x => x.length > 0)
-		: []; // When no chains are selected by the user, we select all of them (we fetch all chains later when fetching results)
+		: [] // When no chains are selected by the user, we select all of them (we fetch all chains later when fetching results)
+	);
+	const useConservation = searchParams.get("useConservation")?.toLowerCase() === "true";
 	// When pollingInterval is set to null, it is turned off (initially it's turned off, it will be turned on after component loading)
 	const [pollingInterval, setPollingInterval] = useState<number | null>(null);
 	const isPageVisible = useVisibilityChange();
-	const dataSourceExecutors: DataSourceExecutor[] = [
-		{ name: "ds_p2rank", results: [] },
-		{ name: "ds_foldseek", results: [] }
-	]
-	const isFetching: boolean[] = new Array(dataSourceExecutors.length).fill(false);
-	const isPollingFinished: boolean[] = new Array(dataSourceExecutors.length).fill(true);
+	const dataSourceExecutors = useMemo<DataSourceExecutor[]>(() => [
+		{ name: "p2rank", results: [] },
+		{ name: "foldseek", results: [] }
+	], []);
+	const isFetching = useMemo<boolean[]>(() => new Array(dataSourceExecutors.length).fill(false), []);
+	const isPollingFinished = useMemo<boolean[]>(() => new Array(dataSourceExecutors.length).fill(false), []);
 	const [errorMessages, setErrorMessages] = useState<string[]>(new Array(dataSourceExecutors.length).fill(""));
 	const [chainResults, setChainResults] = useState<ChainResults | null>(null);
-	const [selectedChain, setSelectedChain] = useState<string>(null!); // Will be set when chain results are set
+	const [selectedChain, setSelectedChain] = useState<string | null>(null); // Will be set when chain results are set
+	const [squashBindingSites, setSquashBindingSites] = useState<boolean>(false);
+	let lock = useMemo<boolean>(() => false, []);
 
 	useEffect(() => {
 		if (isPollingFinished.every(x => x)) {
@@ -149,24 +159,40 @@ function AnalyticalPage() {
 
 			<div id="visualizations" className="row">
 				<div id="visualization-rcsb" className="col-xs-12 col-md-6 col-xl-6">
-					{chainResults !== null ? (
-						// TODO sprav cely panel, viacej moznosti sa budu dat vyberat asi v buducnosti napr checkbox pre merge binding sitov
-						<div className="d-flex flex-column ">
-							<div className="position-absolute w-25 d-flex align-items-center justify-content-center">
-								<div className="mr-1 font-weight-bold">Chains:</div>
-								<Select
-									defaultValue={{ label: Object.keys(chainResults)[0], chain: Object.keys(chainResults)[0] }}
-									onChange={(selectedOption: any) => setSelectedChain(selectedOption.value)}
-									/* as any is used here to silence error message which seems to be irrelevant, it says
-									* the type is wrong but according to the official GitHub repo README of the package,
-									* this is how options should look like, so it should be OK. */
-									options={Object.keys(chainResults).map(chain => ({
-										label: chain,
-										value: chain
-									})) as any} />
+					{chainResults && selectedChain ? (
+						<div className="d-flex flex-column align-items-center">
+							{/* Settings/Filter panel */}
+							<div className="w-75 d-flex align-items-center border rounded px-3 py-2">
+								<div className="w-25 d-flex align-items-center ">
+									<div className="mr-1 font-weight-bold">Chains:</div>
+									<Select
+										defaultValue={{ label: Object.keys(chainResults)[0], chain: Object.keys(chainResults)[0] }}
+										onChange={(selectedOption: any) => setSelectedChain(selectedOption.value)}
+										/* as any is used here to silence error message which seems to be irrelevant, it says
+										* the type is wrong but according to the official GitHub repo README of the package,
+										* this is how options should look like, so it should be OK. */
+										options={Object.keys(chainResults).map(chain => ({
+											label: chain,
+											value: chain
+										})) as any} />
+								</div>
+								<div className="form-check mb-0">
+									<input
+										type="checkbox"
+										id="squash-binding-sites"
+										className="form-check-input"
+										checked={squashBindingSites}
+										onChange={() => setSquashBindingSites(prevState => !prevState)}
+									/>
+									<label className="form-check-label" htmlFor="squash-binding-sites">
+										Squash binding sites
+									</label>
+								</div>
 							</div>
+
 							<div className="w-100 mt-2">
-								<RcsbSaguaro chainResult={chainResults[selectedChain]} />
+								<RcsbSaguaro chainResult={chainResults[selectedChain]}
+									squashBindingSites={squashBindingSites} />
 							</div>
 						</div>
 					) : (
@@ -197,6 +223,7 @@ function AnalyticalPage() {
 		}
 		console.log("Status:" + status)
 
+		let chainsLocal: string[] = null!;
 		if (chains.length === 0) {
 			/* Every protein has at least one chain. No chains means none was selected by the user so we select all.
 			 * When status is ready, the chains.json (on the server, containing all the chains) should be ready as well,
@@ -206,7 +233,10 @@ function AnalyticalPage() {
 				toastWarning(allChainsFetchingErrorMessage + "\nRetrying...");
 				return;
 			}
-			chains = chainsTmp;
+			setChains(chainsTmp);
+			chainsLocal = chainsTmp;
+		} else {
+			chainsLocal = chains;
 		}
 
 		if (status === DataStatus.Processing) {
@@ -220,13 +250,13 @@ function AnalyticalPage() {
 		} else if (status === DataStatus.Completed) {
 			const results: UnprocessedResult[] = [];
 
-			for (let i = 0; i < chains.length; i++) {
-				const chain = chains[i];
+			for (let i = 0; i < chainsLocal.length; i++) {
+				const chain = chainsLocal[i];
 
 				const {
 					result,
 					userFriendlyErrorMessage: dataFetchingErrorMessage
-				} = await getDataSourceExecutorResultAPI(dataSourceExecutors[dataSourceIndex].name, id, chain);
+				} = await getDataSourceExecutorResultAPI(dataSourceExecutors[dataSourceIndex].name, id, chain, useConservation);
 				if (dataFetchingErrorMessage.length > 0) {
 					toastWarning(dataFetchingErrorMessage + "\nRetrying...");
 					i--; // Try again for the same chain
@@ -246,17 +276,40 @@ function AnalyticalPage() {
 		 * data source result is not required anymore, and we can stop it. */
 		isPollingFinished[dataSourceIndex] = true;
 		if (isPollingFinished.every(x => x)) {
+			if (lock) {
+				isFetching[dataSourceIndex] = false;
+				return;
+			}
+			lock = true;
 			setPollingInterval(null); // turn off polling entirely (for all data sources)
 
-			// TODO zmen nazvy refactor
+			// TODO zmen nazvy refactor?
 			const allResults = dataSourceExecutors.flatMap(x => x.results);
 			const chainUnprocessedResults = transform(allResults);
 			const chainResultsTmp: ChainResults = {};
-			for (const [chain, dataSourceResults] of Object.entries(chainUnprocessedResults)) {
-				chainResultsTmp[chain] = await alignSequencesAcrossAllDataSources(dataSourceResults);
+			const entries = Object.entries(chainUnprocessedResults);
+			for (let i = 0; i < entries.length; i++) {
+				const [chain, dataSourceResults] = entries[i];
+
+				let conservations = [];
+				if (useConservation) {
+					const {
+						conservations: conservationsTmp,
+						userFriendlyErrorMessage: conservationFetchingErrorMsg
+					} = await getConservationsAPI(id, chain);
+					if (conservationFetchingErrorMsg.length > 0) {
+						toastWarning(conservationFetchingErrorMsg + "\nRetrying...");
+						i--; // Try again
+						continue;
+					}
+					conservations = conservationsTmp;
+				}
+
+				chainResultsTmp[chain] = await alignSequencesAcrossAllDataSources(dataSourceResults, conservations);
 			}
+			setSelectedChain(chainsLocal[0]) // Every protein has at least 1 chain
 			setChainResults(chainResultsTmp);
-			setSelectedChain(chains[0]) // Every protein has at least 1 chain
+			lock = false;
 		}
 		isFetching[dataSourceIndex] = false;
 	}
@@ -296,6 +349,11 @@ function AnalyticalPage() {
 
 	function updateBindingSiteResiduesIndices(bindingSite: BindingSite, mapping: Record<number, number>) {
 		for (let i = 0; i < bindingSite.residues.length; i++) {
+			if (bindingSite.residues[i] === undefined) {
+				console.error("Wild error appeared! Residue is undefined.");
+			} else if (!(bindingSite.residues[i] in mapping)) {
+				console.error("Wild error appeared! Mapping for residue does not exist.");
+			}
 			bindingSite.residues[i] = mapping[bindingSite.residues[i]];
 		}
 	}
@@ -374,14 +432,23 @@ function AnalyticalPage() {
 		return res;
 	}
 
-	function alignSequencesAcrossAllDataSources(unprocessedResultPerDataSourceExecutor: Record<string, UnprocessedResult>): ChainResult {
+	function alignSequencesAcrossAllDataSources(
+		unprocessedResultPerDataSourceExecutor: Record<string, UnprocessedResult>,
+		conservations: Conservation[]
+	): ChainResult {
 		const dataSourceExecutorsCount = Object.keys(unprocessedResultPerDataSourceExecutor).length;
 		if (dataSourceExecutorsCount == 0) {
 			// if we dont have any result from any data source executor, then we have nothing to align
-			return { querySequence: "", dataSourceExecutorResults: {} };
+			return { querySequence: "", dataSourceExecutorResults: {}, conservations: [] };
 			// return dataSourceExecutorsResults; // TODO asi skor toto vrat potom
 		}
 		// TODO what if we have data source executor results but no with sim prots? Maybe add if?
+
+		// TODO mozno zmat getQuerySeqLength aj ten riadok cely: const querySeqLength = getQuerySeqLength(dataSourceExecutors[0].results[0].sequence);
+		// TODO issue #23 ["foldseek"] a ?? nestaci, binding sity nie su poposuvane...
+		const querySeq = unprocessedResultPerDataSourceExecutor["foldseek"]?.sequence
+			?? Object.values(unprocessedResultPerDataSourceExecutor)[0].sequence;
+		const querySeqLength = querySeq.length; // Length of the query sequence (sequence with no gaps)
 
 		/* "Preprocessing phase": Align query and similar sequences while also updating binding site indices.
 		 * Results without similar sequences are skipped (unchanged). */
@@ -389,7 +456,8 @@ function AnalyticalPage() {
 			if (!unprocessedResult.similarProteins) {
 				continue;
 			}
-			const querySeq = unprocessedResult.sequence;
+			// TODO issue #23
+			// const querySeq = unprocessedResult.sequence;
 			// Creates pairs of query seq and similar seq and aligns them (updates using reference) 
 			unprocessedResult.similarProteins.forEach(simProt => alignQueryAndSimilarSequence(querySeq, simProt));
 		}
@@ -410,9 +478,6 @@ function AnalyticalPage() {
 			}));
 		}
 
-		// TODO mozno zmat getQuerySeqLength aj ten riadok cely: const querySeqLength = getQuerySeqLength(dataSourceExecutors[0].results[0].sequence);
-		const querySeq = Object.values(unprocessedResultPerDataSourceExecutor)[0].sequence;
-		const querySeqLength = querySeq.length; // Length of the query sequence (sequence with no gaps)
 
 		const offsets: Record<string, number[]> = {};
 		for (const [dataSourceName, result] of Object.entries(unprocessedResultPerDataSourceExecutor)) {
@@ -422,22 +487,21 @@ function AnalyticalPage() {
 			offsets[dataSourceName] = new Array(result.similarProteins.length).fill(0);
 		}
 
-		/* Now we are going to create 2 mappings: A and B. A is for general mapping from query sequence
-		 * to master query sequence which we are going to create (that's the one at the top of the sequence display).
-		 * we can use it e.g. to map residues of predicated binding sites of query sequence.
-		 * The other mapping is for mapping simialr proteins to master query protein. It can be used e.g. to map
-		 * binding sites of similar proteins to master query sequence. We need this separate mapping because
-		 * binding site of similar protein is related to that similar protein, to its amino acid positions,
-		 * and we are going to do the aligning now. So their (similar protein amino acids) indices 
-		 * are going to change. So we need to know from which amino acid of similar sequence 
+		/* Now we are going to create 2 mappings: A and B.
+		 * A is for general mapping from query sequence to master query sequence which we are going to create (that's
+		 * the one at the top of the sequence display). We can use it e.g. to map residues of predicted 
+		 * binding sites of query sequence (to residues of master query sequence).
+		 * The other mapping (B) is for mapping similar proteins to master query protein. 
+		 * It can be used e.g. to map binding sites of similar proteins to master query sequence. We need this
+		 * separate mapping because binding site of similar protein is related to that similar protein,
+		 * to its amino acid positions, and we are going to do the aligning now. So their (similar protein amino acids)
+		 * indices are going to change. So we need to know from which amino acid of similar sequence 
 		 * we are mapping to which master query amino acid. */
-		// mapping A: mapping[dataSourceName][idxFrom] -> idxTo
-		const mapping: Record<string, Record<number, number>> = {};
+		// mapping A: mapping[idxFrom] -> idxTo
+		const mapping: Record<number, number> = {};
 		// mapping B: similarProteinsMapping[dataSourceName][simProtIdx][idxFrom] -> idxTo
 		const similarProteinsMapping: Record<string, Record<number, number>[]> = {};
 		for (const [dataSourceName, result] of Object.entries(unprocessedResultPerDataSourceExecutor)) {
-			mapping[dataSourceName] = {};
-
 			if (result.similarProteins) {
 				similarProteinsMapping[dataSourceName] = Array.from(
 					{ length: result.similarProteins.length },
@@ -454,14 +518,12 @@ function AnalyticalPage() {
 
 			let aminoAcidOfQuerySeq: string = null!;
 			/* Master query sequence is being built iteratively character by character,
-			* that is why we can use masterQuerySeq.length to point to the newest character.
-			* This variable holds index of the current character (amino acid or gap) of
-			* master query sequence that will be outputted/added later in code. */
+			 * that is why we can use masterQuerySeq.length to point to the newest character.
+			 * This variable holds index of the current character (amino acid or gap) of
+			 * master query sequence that will be outputted/added later in code. */
 			const aminoAcidOrGapOfMasterQuerySeqCurrIdx = masterQuerySeq.length;
+			mapping[aminoAcidIdx] = aminoAcidOrGapOfMasterQuerySeqCurrIdx;
 			for (const [dataSourceName, result] of Object.entries(unprocessedResultPerDataSourceExecutor)) {
-				/* We will overwrite many times with the same value, but it is correct and to reduce cycles 
-				 * and branching, it will remain like this. */
-				mapping[dataSourceName][aminoAcidIdx] = aminoAcidOrGapOfMasterQuerySeqCurrIdx;
 
 				if (!result.similarProteins) {
 					continue;
@@ -495,7 +557,11 @@ function AnalyticalPage() {
 				masterQuerySeq += '-';
 				aminoAcidIdx--; // Sequences with gaps where shifted, repeat for the same amino acid
 			} else {
-				masterQuerySeq += aminoAcidOfQuerySeq;
+				/* The only way `aminoAcidOfQuerySeq` can be null here is if we don't have any similar sequences at all (in any data source).
+				 * So we cannot create master query sequence using similar sequence versions of query sequence with gaps (each similar sequence 
+				 * should have its own version of query sequence with gaps), thus we have to use "default" query sequence without gaps
+				 * to build master query sequence. (Yes, it will be identity mapping.) */
+				masterQuerySeq += aminoAcidOfQuerySeq ?? querySeq[aminoAcidIdx];
 			}
 		}
 
@@ -503,7 +569,7 @@ function AnalyticalPage() {
 		Object.entries(unprocessedResultPerDataSourceExecutor).forEach(([dataSourceName, result]) => {
 			// Update residues of binding sites of query protein
 			result.bindingSites.forEach(bindingSite =>
-				updateBindingSiteResiduesIndices(bindingSite, mapping[dataSourceName]));
+				updateBindingSiteResiduesIndices(bindingSite, mapping));
 
 			if (result.similarProteins) {
 				// Update residues of binding sites of all similar proteins
@@ -512,6 +578,9 @@ function AnalyticalPage() {
 						updateBindingSiteResiduesIndices(bindingSite, similarProteinsMapping[dataSourceName][simProtIdx])));
 			}
 		});
+		for (const conservation of conservations) {
+			conservation.index = mapping[conservation.index];
+		}
 
 		const dataSourceExecutorResultsTmp: Record<string, ProcessedResult> = {};
 		Object.entries(unprocessedResultPerDataSourceExecutor).forEach(([dataSourceName, result]) =>
@@ -521,7 +590,7 @@ function AnalyticalPage() {
 				similarProteins: similarProteins[dataSourceName]
 			}
 		);
-		return { querySequence: masterQuerySeq, dataSourceExecutorResults: dataSourceExecutorResultsTmp };
+		return { querySequence: masterQuerySeq, dataSourceExecutorResults: dataSourceExecutorResultsTmp, conservations: conservations };
 	}
 
 	function updateErrorMessages(dataSourceIndex: number, errorMessage: string) {

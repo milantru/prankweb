@@ -194,13 +194,23 @@ function QueryProteinForm() {
             return;
         }
 
-        const chains = formState.inputMethod === InputMethods.InputPdbBlock || formState.inputMethod === InputMethods.InputUserFileBlock
+        const chains = formState.inputMethod === InputMethods.InputPdbBlock
+            || formState.inputMethod === InputMethods.InputUserFileBlock
             ? (selectedInputBlockData as InputPdbBlockData | InputUserFileBlockData).chains
             : "";
 
+        const useConservation = formState.inputMethod === InputMethods.InputPdbBlock
+            || formState.inputMethod === InputMethods.InputUniprotBlock
+            || formState.inputMethod === InputMethods.InputSequenceBlock
+            ? (selectedInputBlockData as InputPdbBlockData | InputUniprotBlockData | InputSequenceBlockData).useConservation
+            : false;
+
         let url = `/analytical-page?id=${id}`;
         if (chains) {
-            url += `&&chains=${chains}`;
+            url += `&chains=${chains}`;
+        }
+        if (useConservation) {
+            url += `&useConservation=${useConservation}`;
         }
         navigate(url);
         setIsSubmitting(false);
