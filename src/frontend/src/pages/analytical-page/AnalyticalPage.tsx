@@ -158,12 +158,15 @@ function AnalyticalPage() {
 			)}
 
 			<div id="visualizations" className="row">
-				<div id="visualization-rcsb" className="col-xs-12 col-md-6 col-xl-6">
+				{/* Sometimes when RcsbSaguro rerendered it kept rerendering over and over again. If you resized the window,
+					it stopped (sometimes it stopped on its own without resizing). When minHeight: "100vh" was added, 
+					this weird behavior disappeared. */}
+				<div id="visualization-rcsb" className="col-xs-12 col-md-6 col-xl-6" style={{ minHeight: "100vh" }}>
 					{chainResults && selectedChain ? (
 						<div className="d-flex flex-column align-items-center">
 							{/* Settings/Filter panel */}
-							<div className="w-75 d-flex align-items-center border rounded px-3 py-2">
-								<div className="w-25 d-flex align-items-center ">
+							<div className="w-75 d-flex flex-wrap align-items-center border rounded px-3 py-2">
+								<div className="d-flex align-items-center mr-2">
 									<div className="mr-1 font-weight-bold">Chains:</div>
 									<Select
 										defaultValue={{ label: Object.keys(chainResults)[0], chain: Object.keys(chainResults)[0] }}
