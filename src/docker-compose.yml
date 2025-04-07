@@ -7,6 +7,8 @@ services:
     restart: unless-stopped
     volumes:
       - rabbitmq:/var/lib/rabbitmq
+    ports:
+      - 15672:15672
     healthcheck:
       test: rabbitmq-diagnostics -q status
       interval: 30s
@@ -25,6 +27,20 @@ services:
       timeout: 30s
       retries: 3
     command: redis-server --save 600 1 --loglevel warning
+
+  celery-backend:
+    image: redis:7.4.2
+    container_name: celery-backend
+    hostname: celery-backend
+    restart: unless-stopped
+    volumes:
+      - celery:/data
+    healthcheck:
+      test: redis-cli info
+      interval: 30s
+      timeout: 30s
+      retries: 3
+    command: redis-server --save 300 1 --loglevel warning
 
   executor-http-api:
     build:
@@ -80,6 +96,8 @@ services:
         condition: service_started
       message-broker:
         condition: service_healthy
+      celery-backend:
+        condition: service_healthy
       metatask:
         condition: service_started
     environment:
@@ -100,6 +118,8 @@ services:
     depends_on:
       message-broker:
         condition: service_healthy
+      celery-backend:
+        condition: service_healthy
     env_file:
       - tasks.env
     volumes:
@@ -118,6 +138,8 @@ services:
     depends_on:
       message-broker:
         condition: service_healthy
+      celery-backend:
+        condition: service_healthy
     env_file:
       - tasks.env
     volumes:
@@ -135,6 +157,8 @@ services:
     depends_on:
       message-broker:
         condition: service_healthy
+      celery-backend:
+        condition: service_healthy
     env_file:
       - tasks.env
     volumes:
@@ -151,6 +175,8 @@ services:
     depends_on:
       message-broker:
         condition: service_healthy
+      celery-backend:
+        condition: service_healthy
     env_file:
       - tasks.env
     volumes:
@@ -164,6 +190,8 @@ services:
     restart: unless-stopped
     depends_on:
       message-broker:
+        condition: service_healthy
+      celery-backend:
         condition: service_healthy
       converter:
         condition: service_started
@@ -187,6 +215,8 @@ services:
     depends_on:
       message-broker:
         condition: service_healthy
+      celery-backend:
+        condition: service_healthy
     environment:
       CELERY_BROKER_URL: amqp://guest:guest@message-broker:5672
     ports:
@@ -200,4 +230,5 @@ volumes:
   p2rank:
   inputs:
   conservation:
+  celery:
   tmp:
