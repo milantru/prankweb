@@ -3,7 +3,6 @@ import { InputBlockData, InputMethods } from "../../pages/home/components/QueryP
 import { apiBaseUrl } from "../constants";
 import { getErrorMessages } from "../helperFunctions/errorHandling";
 import { Conservation, UnprocessedResult } from "../../pages/analytical-page/AnalyticalPage";
-import camelcaseKeys from "camelcase-keys";
 
 /**
  * Uploads data to the server and returns a unique identifier for the input.
@@ -102,13 +101,13 @@ export async function getDataSourceExecutorResultAPI(
 	const errorMessage = `Failed to fetch ${dataSourceName}${dataSourceName.toLowerCase().endsWith("s") ? "'" : "'s"} result.`;
 
 	try {
-		const response = await axios.get<object>(url, {
+		const response = await axios.get<UnprocessedResult>(url, {
 			headers: {
 				"Content-Type": "application/json"
 			}
 		});
-		const result: UnprocessedResult = camelcaseKeys(JSON.parse(JSON.stringify(response.data)), { deep: true });
-		return { result, userFriendlyErrorMessage: "" };
+
+		return { result: response.data, userFriendlyErrorMessage: "" };
 	}
 	catch (error) {
 		const errMsgs = getErrorMessages(error);
