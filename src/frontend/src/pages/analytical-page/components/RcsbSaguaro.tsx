@@ -165,7 +165,7 @@ function RcsbSaguaro({ chainResult, squashBindingSites }: Props) {
             return { begin: residues[0], end: residues[0], gaps: [], color: color };
         }
 
-        residues.sort();
+        residues.sort((a, b) => a - b);
         const min = residues[0];
         const max = residues[residues.length - 1];
 
