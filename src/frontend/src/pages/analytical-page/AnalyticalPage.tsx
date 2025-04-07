@@ -158,12 +158,15 @@ function AnalyticalPage() {
 			)}
 
 			<div id="visualizations" className="row">
-				<div id="visualization-rcsb" className="col-xs-12 col-md-6 col-xl-6">
+				{/* Sometimes when RcsbSaguro rerendered it kept rerendering over and over again. If you resized the window,
+					it stopped (sometimes it stopped on its own without resizing). When minHeight: "100vh" was added, 
+					this weird behavior disappeared. */}
+				<div id="visualization-rcsb" className="col-xs-12 col-md-6 col-xl-6" style={{ minHeight: "100vh" }}>
 					{chainResults && selectedChain ? (
 						<div className="d-flex flex-column align-items-center">
 							{/* Settings/Filter panel */}
-							<div className="w-75 d-flex align-items-center border rounded px-3 py-2">
-								<div className="w-25 d-flex align-items-center ">
+							<div className="w-75 d-flex flex-wrap align-items-center border rounded px-3 py-2">
+								<div className="d-flex align-items-center mr-2">
 									<div className="mr-1 font-weight-bold">Chains:</div>
 									<Select
 										defaultValue={{ label: Object.keys(chainResults)[0], chain: Object.keys(chainResults)[0] }}
@@ -350,9 +353,9 @@ function AnalyticalPage() {
 	function updateBindingSiteResiduesIndices(bindingSite: BindingSite, mapping: Record<number, number>) {
 		for (let i = 0; i < bindingSite.residues.length; i++) {
 			if (bindingSite.residues[i] === undefined) {
-				console.error("Wild error appeared! Residue is undefined.");
+				console.error("Residue is undefined. Sequence display might not fully load or ommit some data.");
 			} else if (!(bindingSite.residues[i] in mapping)) {
-				console.error("Wild error appeared! Mapping for residue does not exist.");
+				console.error("Mapping for residue does not exist. Sequence display might not fully load or ommit some data.");
 			}
 			bindingSite.residues[i] = mapping[bindingSite.residues[i]];
 		}
