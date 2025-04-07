@@ -291,7 +291,7 @@ def upload_data() -> Response:
     input_data['useConservation'] = use_conservation
 
     id_payload = {
-        'input_type': input_method,
+        'input_method': input_method,
         'input_protein': protein
     }
 
