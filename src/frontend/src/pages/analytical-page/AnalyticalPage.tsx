@@ -396,7 +396,7 @@ function AnalyticalPage() {
 		}
 
 		// Update all residue indices of each result bindig site
-		const mapping = createMapping(querySequence, querySeq);
+		const mapping = createMapping(similarProtein.alignmentData.similarSequence, similarSeq);
 		similarProtein.bindingSites.forEach(bindingSite =>
 			updateBindingSiteResiduesIndices(bindingSite, mapping));
 
