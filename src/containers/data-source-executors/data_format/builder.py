@@ -29,6 +29,7 @@ class SimilarProtein:
     pdbId: str
     chain: str
     sequence: str
+    pdbUrl: str
     bindingSites: List[BindingSite]
     alignmentData: SimilarSequenceAlignmentData
 
@@ -48,9 +49,10 @@ class ProteinData:
     similarProteins: Optional[List[SimilarProtein]] = None
 
 class ProteinBuilderBase:
-    def __init__(self, sequence: str, chain: str):
+    def __init__(self, sequence: str, chain: str, pdb_url: str):
         self._sequence = sequence
         self._chain = chain
+        self._pdb_url = pdb_url
         self._binding_sites = []
 
     @overload
@@ -74,8 +76,8 @@ class ProteinBuilderBase:
         return self
 
 class SimilarProteinBuilder(ProteinBuilderBase):
-    def __init__(self, pdb_id: str, sequence: str, chain: str):
-        super().__init__(sequence, chain)
+    def __init__(self, pdb_id: str, sequence: str, chain: str, pdb_url: str):
+        super().__init__(sequence, chain, pdb_url)
         self._pdb_id = pdb_id
         self._alignment_data = None
 
@@ -100,15 +102,15 @@ class SimilarProteinBuilder(ProteinBuilderBase):
             pdbId=self._pdb_id,
             chain=self._chain,
             sequence=self._sequence,
+            pdbUrl=self._pdb_url,
             bindingSites=self._binding_sites,
             alignmentData=self._alignment_data
         )
 
 class ProteinDataBuilder(ProteinBuilderBase):
     def __init__(self, id: str, chain: str, sequence: str, pdb_url: str):
-        super().__init__(sequence, chain)
+        super().__init__(sequence, chain, pdb_url)
         self._id = id
-        self._pdb_url = pdb_url
         self._similar_proteins = []
         self._metadata = None
 

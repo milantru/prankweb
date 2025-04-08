@@ -25,6 +25,7 @@ from dataclasses import asdict
 
 PDB_FILE_URL = "https://files.rcsb.org/download/{}.pdb"
 INPUTS_URL = os.getenv('INPUTS_URL')
+APACHE_URL = os.getenv('APACHE_URL')
 RESULT_FILE = "{}_chain_result.json"
 
 
@@ -96,9 +97,13 @@ def save_results(result_folder: str, file_name: str, builder: ProteinDataBuilder
 
     print("saved", result_file)
 
-def process_similar_protein(fields: List[str], curr_chain: str, id: str) -> SimilarProteinBuilder:
+def process_similar_protein(result_folder: str, fields: List[str], curr_chain: str, id: str) -> SimilarProteinBuilder:
     sim_protein_pdb_id, sim_protein_chain = fields[1][:4], fields[1].split("_")[1]
-    sim_builder = SimilarProteinBuilder(sim_protein_pdb_id, fields[8], sim_protein_chain)
+    pdb_filename = os.path.join(result_folder, f"{sim_protein_pdb_id}.pdb")
+    sim_prot_url = os.path.join(APACHE_URL, "ds_foldseek", id, f"{sim_protein_pdb_id}.pdb")
+
+    sim_builder = SimilarProteinBuilder(sim_protein_pdb_id, fields[8], sim_protein_chain, sim_prot_url)
+
     sim_builder.set_alignment_data(
         query_start=int(fields[4]) - 1,
         query_end=int(fields[5]) - 1,
@@ -108,19 +113,22 @@ def process_similar_protein(fields: List[str], curr_chain: str, id: str) -> Simi
         similar_end=int(fields[10]) - 1,
         similar_part=fields[11]
     )
-    with tempfile.NamedTemporaryFile(delete=True, suffix=".pdb") as temp_file:
-        response = requests.get(PDB_FILE_URL.format(sim_protein_pdb_id))
-        response.raise_for_status()
-        temp_file.write(response.content)
-        temp_filename = temp_file.name
-
-        binding_sites, _ = extract_binding_sites_for_chain(id, temp_filename, curr_chain)
-
+    try:
+        if not os.path.exists(pdb_filename):
+            response = requests.get(PDB_FILE_URL.format(sim_protein_pdb_id))
+            response.raise_for_status()
+            with open(pdb_filename, "wb") as f:
+                f.write(response.content)
+        
+        binding_sites, _ = extract_binding_sites_for_chain(id, pdb_filename, curr_chain)
         for binding_site in binding_sites:
             sim_builder.add_binding_site(binding_site)
+    except:
+        print(f"Failed to download or process PDB file for {sim_protein_pdb_id}.")
+        return None
     return sim_builder
 
-def process_foldseek_output(result_folder, foldseek_result_file, id, query_structure_file):
+def process_foldseek_output(result_folder, foldseek_result_file, id, query_structure_file, query_structure_file_url):
 
     with open(foldseek_result_file) as f:
         curr_chain = None
@@ -148,7 +156,7 @@ def process_foldseek_output(result_folder, foldseek_result_file, id, query_struc
                 curr_chain = chain
 
             if builder == None:
-                builder = ProteinDataBuilder(id, chain, query_seq, "TODO")
+                builder = ProteinDataBuilder(id, chain, query_seq, query_structure_file_url)
                 binding_sites, _ = extract_binding_sites_for_chain(id, query_structure_file, curr_chain)
                 for binding_site in binding_sites:
                     builder.add_binding_site(binding_site)
@@ -156,20 +164,22 @@ def process_foldseek_output(result_folder, foldseek_result_file, id, query_struc
             if curr_chain != chain:
                 save_results(result_folder, RESULT_FILE.format(curr_chain), builder)
                 curr_chain = chain
-                builder = ProteinDataBuilder(id, curr_chain, query_seq, "TODO")
+                builder = ProteinDataBuilder(id, curr_chain, query_seq, query_structure_file_url)
                 binding_sites, _ = extract_binding_sites_for_chain(id, query_structure_file, curr_chain)
                 for binding_site in binding_sites:
                     builder.add_binding_site(binding_site)
             
-            sim_builder = process_similar_protein(fields, curr_chain, id)
-            builder.add_similar_protein(sim_builder.build())
+            sim_builder = process_similar_protein(result_folder, fields, curr_chain, id)
+
+            if sim_builder is not None:
+                builder.add_similar_protein(sim_builder.build())
 
         if builder != None:
             save_results(result_folder, RESULT_FILE.format(curr_chain), builder)
 
         for chain in remaining_chains:
             binding_sites, chain_seq = extract_binding_sites_for_chain(id, query_structure_file, chain)
-            builder = ProteinDataBuilder(id, chain, chain_seq, "TODO")
+            builder = ProteinDataBuilder(id, chain, chain_seq, query_structure_file_url)
             for binding_site in binding_sites:
                 builder.add_binding_site(binding_site)
             save_results(result_folder, RESULT_FILE.format(chain), builder)
