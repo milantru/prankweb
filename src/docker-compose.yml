@@ -81,6 +81,8 @@ services:
     container_name: gateway
     restart: unless-stopped
     depends_on:
+      executor-http-api:
+        condition: service_healthy
       http-server:
         condition: service_started
     ports:
@@ -97,6 +99,8 @@ services:
       message-broker:
         condition: service_healthy
       celery-backend:
+        condition: service_healthy
+      executor-http-api:
         condition: service_healthy
       metatask:
         condition: service_started
@@ -120,6 +124,8 @@ services:
         condition: service_healthy
       celery-backend:
         condition: service_healthy
+      executor-http-api:
+        condition: service_healthy
     env_file:
       - tasks.env
     volumes:
@@ -140,6 +146,8 @@ services:
         condition: service_healthy
       celery-backend:
         condition: service_healthy
+      executor-http-api:
+        condition: service_healthy
     env_file:
       - tasks.env
     volumes:
@@ -159,6 +167,8 @@ services:
         condition: service_healthy
       celery-backend:
         condition: service_healthy
+      executor-http-api:
+        condition: service_healthy
     env_file:
       - tasks.env
     volumes:
@@ -177,6 +187,8 @@ services:
         condition: service_healthy
       celery-backend:
         condition: service_healthy
+      executor-http-api:
+        condition: service_healthy
     env_file:
       - tasks.env
     volumes:
@@ -192,6 +204,8 @@ services:
       message-broker:
         condition: service_healthy
       celery-backend:
+        condition: service_healthy
+      executor-http-api:
         condition: service_healthy
       converter:
         condition: service_started
