@@ -54,7 +54,7 @@ def run_foldseek(id):
 
         subprocess.run(command, check=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
 
-        post_processor.process_foldseek_output(eval_folder, foldseek_result_file, id, query_structure_file)
+        post_processor.process_foldseek_output(eval_folder, foldseek_result_file, id, query_structure_file, pdb_url)
 
         update_status(status_file_path, id, StatusType.COMPLETED.value)
 

@@ -29,10 +29,15 @@ type AlignmentData = {
 	similarSeqAlignedPart: string;
 };
 
+export type Residue = {
+	sequenceIndex: number;
+	structureIndex: number;
+}
+
 export type BindingSite = {
 	id: string;
 	confidence: number;
-	residues: number[]; // sequence indices
+	residues: Residue[];
 };
 
 type UnprocessedSimilarProtein = {
@@ -352,12 +357,12 @@ function AnalyticalPage() {
 
 	function updateBindingSiteResiduesIndices(bindingSite: BindingSite, mapping: Record<number, number>) {
 		for (let i = 0; i < bindingSite.residues.length; i++) {
-			if (bindingSite.residues[i] === undefined) {
+			if (bindingSite.residues[i].sequenceIndex === undefined) {
 				console.error("Residue is undefined. Sequence display might not fully load or ommit some data.");
-			} else if (!(bindingSite.residues[i] in mapping)) {
+			} else if (!(bindingSite.residues[i].sequenceIndex in mapping)) {
 				console.error("Mapping for residue does not exist. Sequence display might not fully load or ommit some data.");
 			}
-			bindingSite.residues[i] = mapping[bindingSite.residues[i]];
+			bindingSite.residues[i].sequenceIndex = mapping[bindingSite.residues[i].sequenceIndex];
 		}
 	}
 

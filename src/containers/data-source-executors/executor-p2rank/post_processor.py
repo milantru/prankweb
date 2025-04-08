@@ -1,6 +1,6 @@
 import os
 import json
-from data_format.builder import ProteinDataBuilder, BindingSite
+from data_format.builder import ProteinDataBuilder, BindingSite, Residue
 from dataclasses import asdict
 from Bio.PDB.Polypeptide import three_to_index, index_to_one
 from Bio.Data.IUPACData import protein_letters_3to1
@@ -23,6 +23,7 @@ PREDICTION_PROBABILITY_INDEX = 3
 #_____________________________________________
 
 CHAIN_INDEX = 0
+RESIDUE_STRUCTURE_INDEX = 1
 RESIDUE_INDEX = 2
 POCKET_INDEX = 6
 
@@ -39,7 +40,7 @@ def read_residues(residues_result_file):
         seq_index = 0
         for index, line in enumerate(file):
             row = [item.strip() for item in line.strip().split(',')]
-            chain, residue, pocket = row[CHAIN_INDEX], row[RESIDUE_INDEX], int(row[POCKET_INDEX])
+            chain, structure_index, residue, pocket = row[CHAIN_INDEX], row[RESIDUE_STRUCTURE_INDEX], row[RESIDUE_INDEX], int(row[POCKET_INDEX])
             if is_amino_acid(residue):
                 if curr_chain is None or curr_chain != chain:
                     seq_index = 0
@@ -49,7 +50,12 @@ def read_residues(residues_result_file):
                 if pocket != 0:
                     if pocket not in grouped_data[chain]["pockets"]:
                         grouped_data[chain]["pockets"][pocket] = {'indices': [], 'probability': None}
-                    grouped_data[chain]["pockets"][pocket]['indices'].append(seq_index)
+                    grouped_data[chain]["pockets"][pocket]['indices'].append(
+                        Residue(
+                            sequenceIndex=seq_index, 
+                            structureIndex=int(structure_index)
+                            )
+                        )
 
                 grouped_data[chain]["residues"] += index_to_one(three_to_index(residue))
                 seq_index += 1
@@ -82,7 +88,7 @@ def process_p2rank_output(id, result_folder, query_file, pdb_url):
             binding_site = BindingSite(
                 id=f"pocket_{pocket}", 
                 confidence=data['probability'], 
-                residues=data['indices']
+                residues=sorted(data['indices'], key=lambda x: x.sequenceIndex)
             )
             protein_data_builder.add_binding_site(binding_site)
 
