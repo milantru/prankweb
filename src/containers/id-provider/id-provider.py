@@ -42,7 +42,7 @@ def get_or_generate():
         return jsonify({"id": existing_id.decode('utf-8'), "stored_value": key, "existed" : True}) 
 
     generated_id = (
-        f'{InputMethods(input_method).name.lower()}_input_protein'
+        f'{InputMethods(input_method).name.lower()}_{input_protein}'
         if input_method in (InputMethods.PDB.value, InputMethods.UNIPROT.value)
         else f'{InputMethods(input_method).name.lower()}_{hex(redis_client.incr("id_counter"))[2:]}'
     )

@@ -35,18 +35,24 @@ def read_residues(residues_result_file):
     grouped_data = {}
     with open(residues_result_file, 'r') as file:
         file.readline()  # Skip header
+        curr_chain = None
+        seq_index = 0
         for index, line in enumerate(file):
             row = [item.strip() for item in line.strip().split(',')]
             chain, residue, pocket = row[CHAIN_INDEX], row[RESIDUE_INDEX], int(row[POCKET_INDEX])
             if is_amino_acid(residue):
+                if curr_chain is None or curr_chain != chain:
+                    seq_index = 0
+                    curr_chain = chain
                 if chain not in grouped_data:
                     grouped_data[chain] = {"pockets" : {}, "residues" : ""}
                 if pocket != 0:
                     if pocket not in grouped_data[chain]["pockets"]:
                         grouped_data[chain]["pockets"][pocket] = {'indices': [], 'probability': None}
-                    grouped_data[chain]["pockets"][pocket]['indices'].append(index)
+                    grouped_data[chain]["pockets"][pocket]['indices'].append(seq_index)
 
                 grouped_data[chain]["residues"] += index_to_one(three_to_index(residue))
+                seq_index += 1
     return grouped_data
 
 def update_pocket_probabilities(pocket_prediction_result_file, grouped_data):
