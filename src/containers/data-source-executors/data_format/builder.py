@@ -3,12 +3,19 @@ from typing import List, Optional, overload
 from datetime import datetime
 
 @dataclass
+class Residue:
+    sequenceIndex: int
+    """Index of amino acid in the sequence; ***0-indexed***"""
+    structureIndex: int
+    """Index of amino acid in the structure"""
+
+@dataclass
 class BindingSite:
     id: str
     confidence: float
     """Interval [0,1]; confidence is 1 for experimentally determined binding sites"""
-    residues: List[int]
-    """Indices of amino acids in the sequence; ***0-indexed***"""
+    residues: List[Residue]
+    """List of residues in the binding site; """
 
 @dataclass
 class SimilarSequenceAlignmentData:

@@ -5,7 +5,7 @@ import requests
 from typing import List, Tuple
 from Bio.PDB import PDBParser, PDBIO, NeighborSearch
 from Bio.PDB.Polypeptide import three_to_index, index_to_one, is_aa
-from data_format.builder import ProteinDataBuilder, SimilarProteinBuilder, BindingSite
+from data_format.builder import ProteinDataBuilder, SimilarProteinBuilder, BindingSite, Residue
 from dataclasses import asdict
 
 
@@ -74,14 +74,19 @@ def extract_binding_sites_for_chain(pdb_id, pdb_file_path, input_chain) -> Tuple
                                 if ligand_id not in ligand_binding_sites:
                                     ligand_binding_sites[ligand_id] = []
                                 if residue_dict.get(nearby_residue_index, None) != None:
-                                    ligand_binding_sites[ligand_id].append(residue_dict[nearby_residue_index])
+                                    ligand_binding_sites[ligand_id].append(
+                                        Residue(
+                                            sequenceIndex=residue_dict[nearby_residue_index],
+                                            structureIndex=nearby_residue_index
+                                            )
+                                        )
             
             for ligand_id, residues in ligand_binding_sites.items():
                 binding_sites.append(
                     BindingSite(
                         id=ligand_id[0], # Get ligand name from tuple e.g. ('H_ADP', 704, ' ')
                         confidence=1,
-                        residues=sorted(residues)
+                        residues=sorted(residues, key=lambda r: r.sequenceIndex)
                     )
                 )
     return binding_sites, chain_seq

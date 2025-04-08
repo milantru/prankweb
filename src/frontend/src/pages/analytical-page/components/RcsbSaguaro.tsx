@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { RcsbFv, RcsbFvTrackDataElementInterface, RcsbFvBoardConfigInterface, RcsbFvRowExtendedConfigInterface } from "@rcsb/rcsb-saguaro";
-import { BindingSite, ChainResult, Conservation } from "../AnalyticalPage";
+import { BindingSite, ChainResult, Conservation, Residue } from "../AnalyticalPage";
 import chroma from "chroma-js";
 
 type Props = {
@@ -162,22 +162,22 @@ function RcsbSaguaro({ chainResult, squashBindingSites }: Props) {
         return getUniqueColorForEachString(dataSourceNames, opacities);
     }
 
-    function toTrackDataItem(residues: number[], color: string): RcsbFvTrackDataElementInterface {
+    function toTrackDataItem(residues: Residue[], color: string): RcsbFvTrackDataElementInterface {
         if (residues.length === 0) {
             return {};
         }
         if (residues.length === 1) {
-            return { begin: residues[0], end: residues[0], gaps: [], color: color };
+            return { begin: residues[0].sequenceIndex, end: residues[0].sequenceIndex, gaps: [], color: color };
         }
 
-        residues.sort((a, b) => a - b);
-        const min = residues[0];
-        const max = residues[residues.length - 1];
+        residues.sort((a, b) => a.sequenceIndex - b.sequenceIndex);
+        const min = residues[0].sequenceIndex;
+        const max = residues[residues.length - 1].sequenceIndex;
 
         const gaps = [];
         for (let i = 1; i < residues.length; i++) {
-            const curr = residues[i];
-            const prev = residues[i - 1];
+            const curr = residues[i].sequenceIndex;
+            const prev = residues[i - 1].sequenceIndex;
 
             if ((curr - prev) === 1) { // No gap
                 continue;
@@ -261,7 +261,7 @@ function RcsbSaguaro({ chainResult, squashBindingSites }: Props) {
     function createBlockRowForResidues(
         id: string,
         title: string,
-        residues: number[],
+        residues: Residue[],
         color: string,
         trackColor: string,
         titleFlagColor: string | undefined = undefined
