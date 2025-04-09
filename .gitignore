@@ -11,6 +11,7 @@ node_modules
 
 *.pdb
 *.fasta
+*.cif
 
 # C extensions
 *.so
