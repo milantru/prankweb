@@ -1,0 +1,62 @@
+openapi: 3.0.0
+info:
+  title: "PlankWeb: Ligand Binding Site Analysis"
+  version: 1.0.0
+
+servers:
+  - url: http://localhost
+    description: Local development server
+  - url: https://plankweb.cz
+    description: Coming soon...
+
+paths:
+  /get_id:
+    get:
+      summary: Get ID for protein based on the input method
+      description: |
+        This endpoint returns an ID for a protein based on the input method.
+        Supported input methods are `pdb`, `uniprot`, and `sequence`.
+      parameters:
+        - name: input_method
+          in: query
+          required: true
+          schema:
+            type: string
+            enum:
+              - pdb
+              - uniprot
+              - sequence
+          example: pdb
+        - name: protein
+          in: query
+          required: true
+          description: |
+            The identifiers for the proteins, which can be one or more of the following:
+            - PDB ID
+            - Uniprot ID
+            - Sequence string (max. 400 chars)
+          schema:
+            type: string
+          example: 2src
+      responses:
+        '200':
+          description: Successful response with the protein ID.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    description: The ID associated with the protein.
+                    example: "pdb_2src"
+        '400':
+          description: Bad request due to invalid input method or missing protein identifier.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Error message describing the problem.
