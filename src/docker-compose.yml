@@ -85,6 +85,8 @@ services:
         condition: service_healthy
       http-server:
         condition: service_started
+      swagger-ui:
+        condition: service_started
     ports:
       - 8081:8081
 
@@ -236,6 +238,14 @@ services:
     ports:
       - 5555:5555
     command: celery flower --url_prefix=service/flower
+  swagger-ui:
+      image: swaggerapi/swagger-ui
+      container_name: openapi
+      environment:
+        SWAGGER_JSON: /app/swagger.yaml
+      volumes:
+        - ./swagger.yaml:/app/swagger.yaml
+
 
 volumes:
   rabbitmq:
