@@ -7,4 +7,5 @@
 | Gateway (Nginx)            | 12708 |
 | ID Database (Redis)        | 763   |
 | Message Broker (RabbitMQ)  | 10991 |
+| Logging (Vector + Loki)    | 18042 |
 
