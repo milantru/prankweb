@@ -1,8 +1,15 @@
-FROM python:3.10.7
+FROM python:3.13-slim
+
+# Create user
+ARG UID
+ARG GID
+RUN addgroup --gid ${GID} user \
+  && useradd --uid ${UID} --gid ${GID} user
 
 WORKDIR /app
 
-COPY requirements.txt ./
+# Copy Python source code and install needed modules
+COPY --chown=user:user . .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
+USER ${UID}:${GID}
