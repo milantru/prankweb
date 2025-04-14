@@ -32,7 +32,7 @@ def get_or_generate():
     key = (
         f'{input_method}:{input_protein}'
         if input_method != InputMethods.CUSTOM_STR.value
-        else f'{input_method}:{str(time()[-6])}'
+        else f'{input_method}:{str(time())[-6]}'
     )
         
     existing_id = check(key)
@@ -60,18 +60,18 @@ def get_id():
     input_protein = request.args.get('protein')
 
     if input_method not in (
-        InputMethods.PDB.name.lower(),
-        InputMethods.UNIPROT.name.lower(),
-        InputMethods.SEQUENCE.name.lower()
+        InputMethods.PDB.name, InputMethods.PDB.name.lower(),
+        InputMethods.UNIPROT.name, InputMethods.UNIPROT.name.lower(),
+        InputMethods.SEQUENCE.name, InputMethods.SEQUENCE.name.lower()
     ):
         return jsonify({'error': f'Input method {input_method} not supported'}), 400
     
     if not input_protein:
         return jsonify({'error': 'Input protein not specified'}), 400
     
-    id = check(f'{InputMethods[input_method.upper()].value}:{input_protein}').decode()
+    id = check(f'{InputMethods[input_method.upper()].value}:{input_protein}')
     
-    return jsonify({'id': id})
+    return jsonify({'id': id.decode() if id else None})
 
 
 if __name__ == '__main__':

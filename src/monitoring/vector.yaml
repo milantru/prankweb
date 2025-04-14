@@ -1,0 +1,27 @@
+sources:
+  docker:
+    type: docker_logs
+    include_containers:
+
+transforms:
+  clean_logs:
+    type: remap
+    inputs: ["docker"]
+    source: |
+      . = {
+        "container_name": .container_name,
+        "container_id": .container_id,
+        "time": format_timestamp!(.timestamp, format: "%d.%m.%Y %H:%M:%S.%3f", timezone: "Europe/Prague"),
+        "message": .message
+      }
+
+
+sinks:
+  loki:
+    type: loki
+    inputs: ["clean_logs"]
+    endpoint: http://loki:3100
+    encoding:
+      codec: json
+    labels:
+      container: "{{ container_name }}"
