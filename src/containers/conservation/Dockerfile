@@ -32,7 +32,13 @@ RUN wget https://ftp.expasy.org/databases/uniprot/current_release/knowledgebase/
     && gunzip uniprot_sprot.fasta.gz
 
 # Copy Python source code and install needed modules
-COPY --chown=user:user requirements.txt ./
+COPY --chown=user:user requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# COPY --chown=user:user . .
+# RUN chmod u+x celery_worker.py
+
+RUN chown user:user /app
 USER ${UID}:${GID}
+
+RUN mkdir -p results

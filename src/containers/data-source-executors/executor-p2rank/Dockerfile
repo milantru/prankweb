@@ -31,6 +31,7 @@ RUN pip install -e data_format/
 
 COPY --chown=user:user executor-p2rank/. .
 
-RUN mkdir -p results
-
+RUN chown -R user:user /app
 USER ${UID}:${GID}
+
+RUN mkdir -p results

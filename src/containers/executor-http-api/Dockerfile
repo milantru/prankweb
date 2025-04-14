@@ -16,6 +16,7 @@ RUN chmod 755 /usr/local/apache2/
 
 COPY --chown=user:user httpd.conf /usr/local/apache2/conf/httpd.conf
 
+USER ${UID}:${GID}
+
 RUN mkdir -p /usr/local/apache2/htdocs/data
 
-USER ${UID}:${GID}

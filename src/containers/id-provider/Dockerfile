@@ -14,4 +14,5 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY --chown=user:user . .
 
+RUN chown -R user:user /app
 USER ${UID}:${GID}

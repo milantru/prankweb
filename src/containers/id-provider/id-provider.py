@@ -32,7 +32,7 @@ def get_or_generate():
     key = (
         f'{input_method}:{input_protein}'
         if input_method != InputMethods.CUSTOM_STR.value
-        else f'{input_method}:{str(time()[-6])}'
+        else f'{input_method}:{str(time())[-6]}'
     )
         
     existing_id = check(key)
