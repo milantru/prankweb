@@ -21,14 +21,29 @@ COPY ./frontend/ ./
 RUN npm run build
 
 #
+# Prepare passwords.
+#
+FROM debian:bookworm-slim as htpasswd
+
+RUN apt-get update && apt-get -y install apache2-utils
+
+ARG WEB_SERVICE_USER
+ARG WEB_SERVICE_PASS
+
+WORKDIR /opt/htpasswd
+# https://docs.nginx.com/nginx/admin-guide/security-controls/configuring-http-basic-authentication/
+RUN htpasswd -b -c /opt/htpasswd/.htpasswd ${WEB_SERVICE_USER} ${WEB_SERVICE_PASS}
+
+#
 #
 #
 FROM nginx:1.25-alpine
 
 RUN rm /etc/nginx/conf.d/default.conf
 
-COPY --from=build /opt/frontend/dist /opt/prankweb-frontend
+COPY --from=build /opt/frontend/dist /opt/plankweb-frontend
+COPY --from=htpasswd /opt/htpasswd/.htpasswd /etc/apache2/.htpasswd
 
 COPY ./containers/gateway/nginx/gateway.conf /etc/nginx/conf.d/
 COPY ./containers/gateway/nginx/cors.conf /etc/nginx/
-#COPY ./gateway/nginx/restricted.conf /etc/nginx/
+COPY ./containers/gateway/nginx/restricted.conf /etc/nginx/

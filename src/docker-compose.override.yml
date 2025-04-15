@@ -86,6 +86,9 @@ services:
     build:
       context: ./
       dockerfile: ./containers/gateway/Dockerfile
+      args:
+        WEB_SERVICE_USER: ${PLANKWEB_SERVICE_USER:-guest}
+        WEB_SERVICE_PASS: ${PLANKWEB_SERVICE_PASS:-guest}
     container_name: gateway
     restart: unless-stopped
     depends_on:
@@ -277,8 +280,6 @@ services:
         condition: service_healthy
     environment:
       CELERY_BROKER_URL: amqp://${PLANKWEB_SERVICE_USER:-guest}:${PLANKWEB_SERVICE_PASS:-guest}@message-broker:5672//
-    ports:
-      - 5555:5555
     command: celery flower --url_prefix=service/flower --prometheus
 
   gateway-exporter:
@@ -344,18 +345,18 @@ services:
     command: -config.file=/etc/loki/local-config.yaml
 
   grafana:
-    image: grafana/grafana:latest
+    image: grafana/grafana:11.6.0
     container_name: grafana
     depends_on:
       - prometheus
     environment:
-      - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=admin
+      GF_SECURITY_ADMIN_USER: ${PLANKWEB_SERVICE_USER:-guest}
+      GF_SECURITY_ADMIN_PASSWORD: ${PLANKWEB_SERVICE_PASS:-guest}
+      GF_SERVER_ROOT_URL: http://localhost/service/grafana
     volumes:
       - grafana:/var/lib/grafana
     ports:
-      - 3210:3000
-
+      - 3000:3000
 
 volumes:
   rabbitmq:

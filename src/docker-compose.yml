@@ -86,6 +86,9 @@ services:
     build:
       context: ./
       dockerfile: ./containers/gateway/Dockerfile
+      args:
+        WEB_SERVICE_USER: ${PLANKWEB_SERVICE_USER:-guest}
+        WEB_SERVICE_PASS: ${PLANKWEB_SERVICE_PASS:-guest}
     container_name: gateway
     restart: unless-stopped
     depends_on:
@@ -277,8 +280,6 @@ services:
         condition: service_healthy
     environment:
       CELERY_BROKER_URL: amqp://${PLANKWEB_SERVICE_USER:-guest}:${PLANKWEB_SERVICE_PASS:-guest}@message-broker:5672//
-    ports:
-      - 5555:5555
     command: celery flower --url_prefix=service/flower --prometheus
 
 volumes:
