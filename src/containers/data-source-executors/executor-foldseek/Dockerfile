@@ -1,5 +1,6 @@
 FROM python:3.13-slim
 
+# Create user
 ARG UID
 ARG GID
 RUN addgroup --gid ${GID} user \
@@ -12,6 +13,7 @@ RUN apt-get update \
 
 WORKDIR /app
 
+# Install foldseek
 RUN wget https://mmseqs.com/foldseek/foldseek-linux-avx2.tar.gz && \
     tar xvzf foldseek-linux-avx2.tar.gz && \
     rm foldseek-linux-avx2.tar.gz
@@ -23,13 +25,20 @@ RUN mkdir -p foldseek_db
 RUN foldseek databases PDB /app/foldseek_db/pdb /app/foldseek_db/tmp && \
     foldseek createindex /app/foldseek_db/pdb /app/foldseek_db/tmp
 
-COPY --chown=user:user executor-foldseek/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Copy Python source code and install needed modules
+COPY --chown=user:user \
+        ./shared/install-requirements.sh \
+        ./data-source-executors/executor-foldseek/requirements.in \
+        ./
 
-COPY data_format/ data_format/
+RUN chmod +x install-requirements.sh \
+    && ./install-requirements.sh \
+    && rm install-requirements.sh
+
+COPY ./data-source-executors/data_format/ data_format/
 RUN pip install -e data_format/
 
-COPY --chown=user:user executor-foldseek/. .
+COPY --chown=user:user ./data-source-executors/executor-foldseek/. .
 
 RUN chown user:user /app
 USER ${UID}:${GID}

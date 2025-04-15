@@ -4,8 +4,7 @@ from conservation import compute_conservation
 
 celery = Celery(
     os.getenv('CELERY_NAME'),
-    broker=os.getenv('CELERY_BROKER_URL'),
-    backend=os.getenv('CELERY_BACKEND_URL')
+    broker=os.getenv('CELERY_BROKER_URL')
 )
 
 @celery.task(name='conservation')

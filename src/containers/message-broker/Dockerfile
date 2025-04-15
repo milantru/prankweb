@@ -1,4 +1,4 @@
-FROM rabbitmq:4.0.8-management-alpine
+FROM rabbitmq:4.0.6-management-alpine
 
 COPY --chown=rabbitmq:rabbitmq ./rabbitmq/ /etc/rabbitmq/
 

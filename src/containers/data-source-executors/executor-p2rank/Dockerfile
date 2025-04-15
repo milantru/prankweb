@@ -23,15 +23,21 @@ RUN wget https://github.com/rdk/p2rank/releases/download/2.5/p2rank_2.5.tar.gz \
 ENV PATH="/app/p2rank_2.5:${PATH}"
 
 # Copy Python source code and install needed modules
-COPY --chown=user:user executor-p2rank/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY --chown=user:user \ 
+        ./shared/install-requirements.sh \
+        ./data-source-executors/executor-p2rank/requirements.in \
+        ./
 
-COPY --chown=user:user data_format/ data_format/
+RUN chmod +x install-requirements.sh \
+    && ./install-requirements.sh \
+    && rm install-requirements.sh
+
+COPY --chown=user:user ./data-source-executors/data_format/ data_format/
 RUN pip install -e data_format/
 
-COPY --chown=user:user executor-p2rank/. .
+COPY --chown=user:user ./data-source-executors/executor-p2rank/. .
 
-RUN chown -R user:user /app
+RUN chown user:user /app
 USER ${UID}:${GID}
 
 RUN mkdir -p results
