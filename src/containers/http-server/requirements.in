@@ -1,7 +1,6 @@
+biopython
 celery
 flask
+gunicorn
 pyhumps
 requests
-biopython
-gunicorn
-redis

@@ -1,3 +1,4 @@
+import os
 from enum import Enum
 from flask import Flask, request, jsonify
 import redis
@@ -12,7 +13,12 @@ class InputMethods(Enum):
     SEQUENCE = '3'
 
 # Connect to Redis
-redis_client = redis.StrictRedis(host='id-database', port=6379, db=0)
+redis_client = redis.StrictRedis(
+    host='id-database',
+    port=6379,
+    password=os.getenv('REDIS_PASS'),
+    db=0
+)
 
 def check(key):
     return redis_client.get(key)

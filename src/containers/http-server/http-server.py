@@ -17,8 +17,7 @@ from werkzeug.datastructures import FileStorage
 app = Flask(__name__)
 celery = Celery(
     os.getenv('CELERY_NAME'),
-    broker=os.getenv('CELERY_BROKER_URL'),
-    backend=os.getenv('CELERY_BACKEND_URL')
+    broker=os.getenv('CELERY_BROKER_URL')
 )
 celery.conf.update({
     'task_routes': {

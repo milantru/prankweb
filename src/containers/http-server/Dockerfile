@@ -1,5 +1,6 @@
 FROM python:3.13-slim
 
+# Create user
 ARG UID
 ARG GID
 RUN addgroup --gid ${GID} user \
@@ -9,11 +10,13 @@ ENV PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
-COPY --chown=user:user requirements.txt ./
+# Copy Python source code and install needed modules
+COPY --chown=user:user ./shared/install-requirements.sh ./http-server/requirements.in ./
+RUN chmod +x install-requirements.sh \
+    && ./install-requirements.sh \
+    && rm install-requirements.sh
 
-RUN pip install --no-cache-dir -r requirements.txt
+COPY --chown=user:user ./http-server/. .
 
-COPY --chown=user:user . .
-
-RUN chown -R user:user /app
+RUN chown user:user /app
 USER ${UID}:${GID}

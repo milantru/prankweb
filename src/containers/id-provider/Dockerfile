@@ -1,5 +1,6 @@
 FROM python:3.13-slim
 
+# Create user
 ARG UID
 ARG GID
 RUN addgroup --gid ${GID} user \
@@ -9,10 +10,13 @@ RUN apt-get update
 
 WORKDIR /app
 
-COPY --chown=user:user requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+# Copy Python source code and install needed modules
+COPY --chown=user:user ./shared/install-requirements.sh ./id-provider/requirements.in ./
+RUN chmod +x install-requirements.sh \
+    && ./install-requirements.sh \
+    && rm install-requirements.sh
 
-COPY --chown=user:user . .
+COPY --chown=user:user ./id-provider/ .
 
-RUN chown -R user:user /app
+RUN chown user:user /app
 USER ${UID}:${GID}
