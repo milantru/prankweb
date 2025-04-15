@@ -36,8 +36,9 @@ COPY --chown=user:user ./data-source-executors/data_format/ data_format/
 RUN pip install -e data_format/
 
 COPY --chown=user:user ./data-source-executors/executor-p2rank/. .
+RUN chmod u+x celery_worker.py \
+    && chown user:user /app
 
-RUN chown user:user /app
 USER ${UID}:${GID}
 
 RUN mkdir -p results

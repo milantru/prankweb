@@ -9,14 +9,18 @@ RUN addgroup --gid ${GID} user \
 WORKDIR /app
 
 # Copy Python source code and install needed modules
-COPY --chown=user:user ./shared/install-requirements.sh ./metatask/requirements.in ./
+COPY --chown=user:user \
+        ./shared/install-requirements.sh \
+        ./metatask/requirements.in \
+        ./
+
 RUN chmod +x install-requirements.sh \
     && ./install-requirements.sh \
     && rm install-requirements.sh
 
 COPY --chown=user:user ./metatask/ .
-
-RUN chown user:user /app
+RUN chmod u+x metatask.py \
+    && chown user:user /app
 
 USER ${UID}:${GID}
 

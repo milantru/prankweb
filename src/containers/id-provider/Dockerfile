@@ -11,12 +11,17 @@ RUN apt-get update
 WORKDIR /app
 
 # Copy Python source code and install needed modules
-COPY --chown=user:user ./shared/install-requirements.sh ./id-provider/requirements.in ./
+COPY --chown=user:user \
+        ./shared/install-requirements.sh \
+        ./id-provider/requirements.in \
+        ./
+
 RUN chmod +x install-requirements.sh \
     && ./install-requirements.sh \
     && rm install-requirements.sh
 
 COPY --chown=user:user ./id-provider/ .
+RUN chmod u+x id-provider.py \
+    && chown user:user /app
 
-RUN chown user:user /app
 USER ${UID}:${GID}

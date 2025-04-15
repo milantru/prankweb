@@ -11,12 +11,17 @@ ENV PYTHONUNBUFFERED=1
 WORKDIR /app
 
 # Copy Python source code and install needed modules
-COPY --chown=user:user ./shared/install-requirements.sh ./http-server/requirements.in ./
+COPY --chown=user:user \
+        ./shared/install-requirements.sh \
+        ./http-server/requirements.in \
+        ./
+
 RUN chmod +x install-requirements.sh \
     && ./install-requirements.sh \
     && rm install-requirements.sh
 
 COPY --chown=user:user ./http-server/. .
+RUN chmod u+x http-server.py \
+    && chown user:user /app
 
-RUN chown user:user /app
 USER ${UID}:${GID}

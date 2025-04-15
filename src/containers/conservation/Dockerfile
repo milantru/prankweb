@@ -32,7 +32,11 @@ RUN wget https://ftp.expasy.org/databases/uniprot/current_release/knowledgebase/
     && gunzip uniprot_sprot.fasta.gz
 
 # Copy Python source code and install needed modules
-COPY --chown=user:user ./shared/install-requirements.sh ./conservation/requirements.in ./
+COPY --chown=user:user \
+        ./shared/install-requirements.sh \
+        ./conservation/requirements.in \
+        ./
+
 RUN chmod +x install-requirements.sh \
     && ./install-requirements.sh \
     && rm install-requirements.sh
