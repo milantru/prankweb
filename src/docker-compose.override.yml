@@ -352,11 +352,10 @@ services:
     environment:
       GF_SECURITY_ADMIN_USER: ${PLANKWEB_SERVICE_USER:-guest}
       GF_SECURITY_ADMIN_PASSWORD: ${PLANKWEB_SERVICE_PASS:-guest}
-      GF_SERVER_ROOT_URL: http://localhost/service/grafana
+      GF_SERVER_ROOT_URL: http://localhost/service/grafana/
+      GF_SERVER_SERVE_FROM_SUB_PATH: true
     volumes:
       - grafana:/var/lib/grafana
-    ports:
-      - 3000:3000
 
 volumes:
   rabbitmq:

@@ -23,7 +23,7 @@ RUN npm run build
 #
 # Prepare passwords.
 #
-FROM debian:bookworm-slim as htpasswd
+FROM debian:bookworm-slim AS htpasswd
 
 RUN apt-get update && apt-get -y install apache2-utils
 
