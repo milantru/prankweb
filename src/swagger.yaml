@@ -60,6 +60,41 @@ paths:
                   error:
                     type: string
                     description: Error message describing the problem.
+  /data/inputs/{inputId}/chains.json:
+    get:
+      parameters:
+        - in: path
+          name: inputId
+          required: true
+          description: The generated ID of a protein
+          schema:
+            type: string
+            example: "pdb_6xez"
+      responses:
+        '200':
+          description: A list of available chains and their corresponding FASTA files
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  chains:
+                    type: array
+                    items:
+                      type: string
+                    example: ["A", "B", "D", "C", "E", "F"]
+                  fasta:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                    example:
+                      sequence_1.fasta: ["A"]
+                      sequence_2.fasta: ["B", "D"]
+                      sequence_3.fasta: ["C"]
+                      sequence_4.fasta: ["E", "F"]
+
   /data/conservation/{inputId}/status.json:
     get:
       parameters:
