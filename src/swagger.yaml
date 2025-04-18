@@ -60,3 +60,34 @@ paths:
                   error:
                     type: string
                     description: Error message describing the problem.
+  /data/conservation/{inputId}/status.json:
+    get:
+      parameters:
+        - in: path
+          name: inputId
+          required: true
+          description: The generated ID of a protein
+          schema:
+            type: string
+            example: "pdb_2src"
+      responses:
+        '200':
+          description:
+            JSON object with status code and error messages.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: integer
+                    description: |
+                      The status of the conservation computation.
+                        - 0: Started
+                        - 1: Completed
+                        - 2: Failed
+                    example: 1
+                  errorMessages:
+                    type: string
+                    description: Error message(s) if the computation failed.
+                    example: ""
