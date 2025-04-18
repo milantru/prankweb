@@ -287,7 +287,7 @@ services:
     container_name: gateway-exporter
     depends_on:
       - gateway
-    command: -nginx.scrape-uri=http://gateway:8081/nginx_status
+    command: -nginx.scrape-uri=http://gateway:80/nginx_status
 
   id-database-exporter: 
     image: oliver006/redis_exporter:latest
@@ -295,7 +295,7 @@ services:
     depends_on:
       - id-database
     environment:
-      - REDIS_ADDR=redis://id-database:6379
+      - REDIS_ADDR=redis://:${PLANKWEB_DEFAULT_PASS:-guest}@id-database:6379
 
   celery-backend-exporter:
     image: oliver006/redis_exporter:latest
@@ -303,7 +303,7 @@ services:
     depends_on:
       - celery-backend
     environment:
-      - REDIS_ADDR=redis://celery-backend:6379
+      - REDIS_ADDR=redis://:${PLANKWEB_DEFAULT_PASS:-guest}celery-backend:6379
 
   executor-http-api-exporter:
     image: bitnami/apache-exporter:latest
@@ -313,25 +313,27 @@ services:
     command: --scrape_uri=http://apache:80/server-status?auto
 
   prometheus:
-    image: prom/prometheus:latest
+    image: prom/prometheus:v3.3.0
     container_name: prometheus
+    restart: unless-stopped
     depends_on:
       - gateway-exporter
       - id-database-exporter
       - celery-backend-exporter
       - executor-http-api-exporter
       - message-broker
-      - flower
     volumes:
-      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-    ports:
-      - 9090:9090
+      - ./containers/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --web.external-url=http://localhost/service/prometheus/
 
   vector:
     image: timberio/vector:0.45.0-debian
     container_name: vector
     volumes:
-      - ./monitoring/vector.yaml:/etc/vector/vector.yaml:ro
+      - ./containers/monitoring/vector.yaml:/etc/vector/vector.yaml:ro
       - /var/run/docker.sock:/var/run/docker.sock
     network_mode: host  # allow access to Docker logs
     restart: unless-stopped
