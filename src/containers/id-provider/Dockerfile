@@ -8,6 +8,8 @@ RUN addgroup --gid ${GID} user \
 
 RUN apt-get update
 
+ENV PYTHONUNBUFFERED=1
+
 WORKDIR /app
 
 # Copy Python source code and install needed modules

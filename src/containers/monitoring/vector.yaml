@@ -1,7 +1,7 @@
 sources:
   docker:
     type: docker_logs
-    include_containers:
+    include_containers: ["converter"]
 
 transforms:
   clean_logs:

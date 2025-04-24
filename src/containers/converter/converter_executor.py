@@ -2,12 +2,15 @@ import os
 import requests
 from Bio.PDB import PDBParser, Polypeptide, is_aa
 import tempfile
+from tasks_logger import create_logger
 
 ESMFOLD_URL = "https://api.esmatlas.com/foldSequence/v1/pdb/"
 INPUTS_URL = os.getenv('INPUTS_URL')
 
+logger = create_logger('converter')
+
 def run_structure_to_sequence(id):
-    
+    logger.info("Task started")
     pdb_url = os.path.join(INPUTS_URL, f"{id}/structure.pdb")
     query_structure_file = ""
 
@@ -32,6 +35,8 @@ def run_structure_to_sequence(id):
             
             if seq != "":
                 chains.setdefault(seq, []).append(chain.id)
+
+    logger.info("Task finished, returning chains")
     
     return chains
 

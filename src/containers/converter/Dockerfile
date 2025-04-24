@@ -8,9 +8,12 @@ RUN addgroup --gid ${GID} user \
 
 WORKDIR /app 
 
+ENV PYTHONUNBUFFERED=1
+
 # Copy Python source code and install needed modules
 COPY --chown=user:user \
         ./shared/install-requirements.sh \
+        ./shared/tasks_logger.py \
         ./converter/requirements.in \
         ./
 

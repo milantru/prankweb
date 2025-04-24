@@ -3,7 +3,7 @@
 To successfully deploy Plankweb project, please follow these steps:
 
 1. Create external docker volumes - TODO: How?
-2. Create `.env` file and put it to the directory where `docker-compose.override.yml` is. Plankweb works also without the .env file but uses default usernames and passwords which is a big security threat. The `.env` file should contain:
+2. Create `.env` file and put it into the directory where `docker-compose.override.yml` is located. Plankweb works also without the `.env` file but uses default usernames and passwords which is a big security threat. The `.env` file should contain:
    - COMPOSE_PROJECT_NAME
    - PLANKWEB_CELERY_NAME
    - PLANKWEB_DEFAULT_UID
