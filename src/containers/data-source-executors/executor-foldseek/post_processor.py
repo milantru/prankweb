@@ -1,6 +1,5 @@
 import json
 import os
-import tempfile
 import requests
 from typing import List, Tuple
 from Bio.PDB import PDBParser, PDBIO, NeighborSearch

@@ -8,8 +8,6 @@ RUN addgroup --gid ${GID} user \
 
 WORKDIR /app 
 
-ENV PYTHONUNBUFFERED=1
-
 # Copy Python source code and install needed modules
 COPY --chown=user:user \
         ./shared/install-requirements.sh \
@@ -24,5 +22,7 @@ RUN chmod +x install-requirements.sh \
 COPY --chown=user:user ./converter/. .
 RUN chmod u+x celery_worker.py \
     && chown user:user /app
+
+ENV PYTHONUNBUFFERED=1
 
 USER ${UID}:${GID}

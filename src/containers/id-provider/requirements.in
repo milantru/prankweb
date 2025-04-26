@@ -1,3 +1,6 @@
 flask
 gunicorn
 redis
+
+# logger requirements
+pytz

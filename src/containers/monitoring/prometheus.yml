@@ -22,3 +22,7 @@ scrape_configs:
     static_configs:
       - targets: ['apache-exporter:9117']
 
+  - job_name: 'flower'
+    metrics_path: /service/flower/metrics
+    static_configs:
+      - targets: ['flower:5555']

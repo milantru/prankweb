@@ -1,6 +1,5 @@
 import os
 import subprocess
-import tempfile
 import json
 import requests
 from enum import Enum

@@ -7,6 +7,8 @@ import requests
 from celery import Celery
 from celery.result import AsyncResult
 
+from tasks_logger import create_logger
+
 ################################ Celery setup ##################################
 
 celery = Celery(
@@ -32,6 +34,8 @@ class StatusType(Enum):
     STARTED = 0
     COMPLETED = 1
     FAILED = 2
+
+logger = create_logger('metatask')
 
 ############################## Private functions ###############################
 
@@ -137,7 +141,7 @@ def _run_task(
         output_folder = os.path.join(APACHE_URL, task_name, id)
     
     if not id_existed or not _is_task_running_or_completed(output_folder):
-        print(f'SENDING {task_name.upper()}')
+        logger.info(f'Sending {task_name}')
         task = celery.send_task(
             task_name,
             args=[id, task_args] if task_args else [id],
@@ -202,7 +206,7 @@ def _run_conservation(id: str, id_existed: bool) -> AsyncResult | None:
 @celery.task(name='metatask_SEQ')
 def metatask_seq(input_data: dict) -> None:
     
-    print('METATASK_SEQ')
+    logger.info(f'metatask_SEQ started, id: {input_data["id"]}')
 
     id           = input_data['id']
     id_existed   = bool(input_data['id_existed'])
@@ -217,16 +221,19 @@ def metatask_seq(input_data: dict) -> None:
     conservation = _run_conservation(id, id_existed)
     
     if not id_existed or not _inputs_exist(input_folder):
+        logger.info('Sending converter_seq_to_str')
         converter = celery.send_task(
             'converter_seq_to_str',
             args=[id],
         )
 
         # wait for converter
+        logger.info('Waiting for converter result...')
         while not converter.ready():
             time.sleep(0.1)
 
         converter_result = converter.result
+        logger.info('Converter result received')
 
         # store results
         _save_converter_str_result(input_folder, converter_result)
@@ -236,16 +243,21 @@ def metatask_seq(input_data: dict) -> None:
     _run_p2rank(id, id_existed, input_model=p2rank_model, use_conservation=False)
 
     if conservation:
+        logger.info('Waiting for conservation worker to finish...')
         while not conservation.ready():
             time.sleep(5)
+        
+        logger.info('Conservation worker finished')
 
     _run_p2rank(id, id_existed, input_model=p2rank_model, use_conservation=True)
+
+    logger.info('metatask_SEQ finished')
 
 
 @celery.task(name='metatask_STR')
 def metatask_str(input_data: dict) -> None:
     
-    print('METATASK_STR')
+    logger.info("metatask_STR started")
 
     id           = input_data['id']
     id_existed   = bool(input_data['id_existed'])
@@ -260,16 +272,19 @@ def metatask_str(input_data: dict) -> None:
     _run_p2rank(id, id_existed, input_model=p2rank_model, use_conservation=False)
 
     if not id_existed or not _inputs_exist(input_folder):
+        logger.info('Sending converter_str_to_seq')
         converter = celery.send_task(
             'converter_str_to_seq',
             args=[id],
         )
 
         # wait for converter
+        logger.info('Waiting for converter result...')
         while not converter.ready():
             time.sleep(0.1)
 
         converter_result = converter.result
+        logger.info('Converter result received')
 
         # store results
         _save_converter_seq_result(input_folder, converter_result)
@@ -279,7 +294,11 @@ def metatask_str(input_data: dict) -> None:
     conservation = _run_conservation(id, id_existed)
 
     if conservation:
+        logger.info('Waiting for conservation worker to finish...')
         while not conservation.ready():
             time.sleep(5)
+        logger.info('Conservation worker finished')
     
     _run_p2rank(id, id_existed, input_model=p2rank_model, use_conservation=True)
+
+    logger.info('metatask_STR finished')
