@@ -6,6 +6,8 @@ from enum import Enum
 import post_processor
 import glob
 
+from tasks_logger import create_logger
+
 RESULTS_FOLDER = "results"
 INPUTS_URL = os.getenv('INPUTS_URL')
 CONSERVATION_FILES_URL = os.getenv('CONSERVATION_URL')
@@ -15,15 +17,20 @@ class StatusType(Enum):
     COMPLETED = 1
     FAILED = 2
 
+logger = create_logger('ds-p2rank')
+
 
 os.makedirs(RESULTS_FOLDER, exist_ok=True)
 
 def update_status(status_file_path, id, status, message=""):
     try:
+        logger.info(f'{id} Opening status file: {status_file_path}')
         with open(status_file_path, "w") as f:
+            logger.info(f'{id} Changing status to {status}, msg: {message}')
             json.dump({"status": status, "errorMessages": message}, f)
+        logger.info(f'{id} Status changed')
     except Exception as e:
-        print(f"Error updating status for {id}: {e}")
+        logger.error(f'{id} Status change failed: {str(e)}')
 
 def prepare_hom_files(id, eval_folder):
     chains_json = os.path.join(INPUTS_URL, id, "chains.json")
@@ -46,16 +53,17 @@ def prepare_hom_files(id, eval_folder):
 
 
 def run_p2rank(id, params):
-    print("P2RANK")
-    print(id)
+    logger.info(f'{id} ds_p2rank started')
     
     use_conservation = params['use_conservation']
     input_model = params['input_model']
+    logger.info(f'Params: use_conservation: {use_conservation}, input_model: {input_model}')
 
     eval_folder = os.path.join(RESULTS_FOLDER, f"{id}")
     if use_conservation:
         eval_folder = os.path.join(eval_folder, "conservation")
     os.makedirs(eval_folder, exist_ok=True)
+    logger.info(f'{id} Evaluation folder created: {eval_folder}')
     status_file_path = os.path.join(eval_folder, "status.json")
     update_status(status_file_path, id, StatusType.STARTED.value)
 

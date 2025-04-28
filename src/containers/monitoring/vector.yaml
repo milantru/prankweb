@@ -1,7 +1,7 @@
 sources:
   docker:
     type: docker_logs
-    include_containers: ["id-provider", "metatask", "converter"]
+    include_containers: ["http-server", "id-provider", "metatask", "converter", "conservation", "ds-foldseek", "ds-p2rank"]
 
 transforms:
   clean_logs:

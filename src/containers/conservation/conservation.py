@@ -7,6 +7,8 @@ from requests.exceptions import HTTPError
 import json
 from enum import Enum
 
+from tasks_logger import create_logger
+
 PHMMER_DIR = "./hmmer-3.4/src/"
 ESL_DIR = "./hmmer-3.4/easel/miniapps/"
 DATABASE = "./uniprot_sprot.fasta" # TODO: DOWNLOAD uniref50.fasta AND USE IT
@@ -20,6 +22,8 @@ class StatusType(Enum):
     COMPLETED = 1
     FAILED = 2
 
+logger = create_logger('conservation')
+
 def update_status(status_file_path, id, status, message=""):
     try:
         with open(status_file_path, "w") as f:
@@ -28,21 +32,27 @@ def update_status(status_file_path, id, status, message=""):
         print(f"Error updating status for {id}: {e}")
 
 def compute_conservation(id):
+    logger.info(f'{id} conservation started')
     result_folder = RESULT_FOLDER.format(id=id)
     os.makedirs(result_folder, exist_ok=True)
+    logger.info(f'{id} Result folder created: {result_folder}')
     status_file_path = os.path.join(result_folder, "status.json")
     update_status(status_file_path, id, StatusType.STARTED.value)
 
     try:
         json_url = os.path.join(INPUTS_URL, f"{id}/chains.json")
+        logger.info(f'{id} Downloading chains file from apache url: {json_url}')
         response = requests.get(json_url)
         response.raise_for_status()
+        logger.info(f'{id} Chains file downloaded successfully {response.status_code}')
         files_metadata = response.json()
 
         for file, chains in files_metadata["fasta"].items():
             file_url = os.path.join(INPUTS_URL, f"{id}/{file}")
+            logger.info(f'{id} Downloading FASTA file from apache url: {file_url}')
             response = requests.get(file_url, stream=True)
             response.raise_for_status()
+            logger.info(f'{id} FASTA file downloaded successfully {response.status_code}')
 
             hom_file_name = file.split('.')[0]
             result_file = os.path.join(result_folder, hom_file_name)

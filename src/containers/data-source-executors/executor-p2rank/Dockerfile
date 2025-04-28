@@ -25,6 +25,7 @@ ENV PATH="/app/p2rank_2.5:${PATH}"
 # Copy Python source code and install needed modules
 COPY --chown=user:user \ 
         ./shared/install-requirements.sh \
+        ./shared/tasks_logger.py \
         ./data-source-executors/executor-p2rank/requirements.in \
         ./
 

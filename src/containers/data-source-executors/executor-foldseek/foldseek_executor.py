@@ -22,18 +22,21 @@ os.makedirs(RESULTS_FOLDER, exist_ok=True)
 
 def update_status(status_file_path, id, status, message=""):
     try:
-        logger.info(f'{id} Changing status to {status}, msg: {message}')
+        logger.info(f'{id} Opening status file: {status_file_path}')
         with open(status_file_path, "w") as f:
+            logger.info(f'{id} Changing status to {status}, msg: {message}')
             json.dump({"status": status, "errorMessages": message}, f)
         logger.info(f'{id} Status changed')
     except Exception as e:
-        logger.error(f'{id} Status change failed: {e}')
+        logger.error(f'{id} Status change failed: {str(e)}')
 
 def run_foldseek(id):
     logger.info(f'{id} ds_foldseek started')
+    log_ex_caught = True
 
     eval_folder = os.path.join(RESULTS_FOLDER, f"{id}")
     os.makedirs(eval_folder, exist_ok=True)
+    logger.info(f'{id} Evaluation folder created: {eval_folder}')
     status_file_path = os.path.join(eval_folder, "status.json")
     update_status(status_file_path, id, StatusType.STARTED.value)
 
@@ -66,19 +69,18 @@ def run_foldseek(id):
 
         update_status(status_file_path, id, StatusType.COMPLETED.value)
 
-        logger.info(f'{id} ds_foldseek finished')
+        log_ex_caught = False
 
     except requests.RequestException as e:
         logger.error(f'{id} PDB file download failed {response.status_code}: {str(e)}')
         update_status(status_file_path, id, StatusType.FAILED.value, f"Failed to download PDB file: {str(e)}")
-        logger.info(f'{id} ds_foldseek finished with an error')
     except subprocess.CalledProcessError as e:
         err_msg = e.stderr.decode()
         logger.error(f'{id} Foldseek subprocess crashed: {err_msg}')
         update_status(status_file_path, id, StatusType.FAILED.value, f"Foldseek crashed: {err_msg}")
-        logger.info(f'{id} ds_foldseek finished with an error')
     except Exception as e:
         logger.error(f'{id} An unexpected error occurred -> ({type(e).__name__}): {str(e)}')
         update_status(status_file_path, id, StatusType.FAILED.value, f"An unexpected error occurred: {str(e)}")
-        logger.info(f'{id} ds_foldseek finished with an error')
+
+    logger.info(f'{id} ds_foldseek finished {"with an error" if log_ex_caught else ""}')
 

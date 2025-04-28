@@ -7,6 +7,8 @@ from Bio.PDB.Polypeptide import three_to_index, index_to_one, is_aa
 from data_format.builder import ProteinDataBuilder, SimilarProteinBuilder, BindingSite, Residue
 from dataclasses import asdict
 
+from tasks_logger import create_logger
+
 
 #   - OUTPUT FORMAT - columns in result file [MORE](https://github.com/soedinglab/MMseqs2/wiki#custom-alignment-format-with-convertalis)
 #   - `query` - Query sequence identifier
@@ -26,6 +28,8 @@ PDB_FILE_URL = "https://files.rcsb.org/download/{}.pdb"
 INPUTS_URL = os.getenv('INPUTS_URL')
 APACHE_URL = os.getenv('APACHE_URL')
 RESULT_FILE = "{}_chain_result.json"
+
+logger = create_logger('ds-foldseek')
 
 
 def extract_binding_sites_for_chain(pdb_id, pdb_file_path, input_chain) -> Tuple[List[BindingSite], str]:

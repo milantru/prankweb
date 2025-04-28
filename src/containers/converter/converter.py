@@ -24,14 +24,12 @@ def run_structure_to_sequence(id):
         logger.info(f'{id} converter_str_to_seq finished, returning no sequence')
         return {}
 
-    with tempfile.NamedTemporaryFile(mode="wb", suffix=".pdb", delete=False) as struct_file:
+    with tempfile.NamedTemporaryFile(mode="w+", suffix=".pdb", delete=True) as struct_file:
         for chunk in response.iter_content(chunk_size=8192):
-            struct_file.write(chunk)
-        query_structure_file = struct_file.name
-    
-    with open(query_structure_file, "r") as file:
+            struct_file.write(chunk.decode())
+        struct_file.seek(0)
         # should be fine, parsing structure was already tried by http-server
-        pdb = PDBParser().get_structure(id, file) 
+        pdb = PDBParser().get_structure(id, struct_file) 
 
     logger.info(f'{id} Starting the extraction of chains')
     chains = {}

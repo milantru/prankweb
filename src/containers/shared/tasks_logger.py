@@ -19,7 +19,7 @@ def create_logger(worker: str) -> logging.Logger:
     logger = logging.getLogger(worker.lower())
     logger.setLevel(logging.INFO)
     handler = logging.StreamHandler()
-    formatter = PlankwebLogFormatter(
+    formatter = logging.Formatter(
         '(%(name)s) %(asctime)s [%(levelname)s] [%(filename)s:%(funcName)s] %(message)s',
         datefmt='%d.%m.%Y %H:%M:%S'
     )
