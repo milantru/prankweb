@@ -8,7 +8,6 @@ services:
     environment:
       RABBITMQ_DEFAULT_USER: ${PLANKWEB_SERVICE_USER:-guest}
       RABBITMQ_DEFAULT_PASS: ${PLANKWEB_SERVICE_PASS:-guest}
-      TZ: ${PLANKWEB_TIMEZONE:-Europe/Prague}
     volumes:
       - rabbitmq:/var/lib/rabbitmq
     healthcheck:
@@ -21,8 +20,6 @@ services:
     image: redis:7.4.2
     container_name: id-database
     restart: unless-stopped
-    environment:
-      TZ: ${PLANKWEB_TIMEZONE:-Europe/Prague}
     volumes:
       - redis:/data
     healthcheck:
@@ -42,8 +39,6 @@ services:
     container_name: celery-backend
     hostname: celery-backend
     restart: unless-stopped
-    environment:
-      TZ: ${PLANKWEB_TIMEZONE:-Europe/Prague}
     volumes:
       - celery:/data
     healthcheck:
@@ -56,7 +51,7 @@ services:
       redis-server
         --requirepass ${PLANKWEB_SERVICE_PASS:-guest}
         --save 300 1
-        --loglevel debug
+        --loglevel warning
 
   executor-http-api:
     build:
@@ -66,8 +61,6 @@ services:
         GID: ${PLANKWEB_DEFAULT_GID:-1453}
     container_name: apache
     restart: unless-stopped
-    environment:
-      TZ: ${PLANKWEB_TIMEZONE:-Europe/Prague}
     volumes:
       - foldseek:/usr/local/apache2/htdocs/data/ds_foldseek
       - p2rank:/usr/local/apache2/htdocs/data/ds_p2rank
@@ -95,7 +88,7 @@ services:
         condition: service_healthy
     environment:
       REDIS_PASS: ${PLANKWEB_SERVICE_PASS:-guest}
-      TZ: ${PLANKWEB_TIMEZONE:-Europe/Prague}
+      LOGGING_TZ: ${PLANKWEB_TIMEZONE:-Europe/Prague}
     volumes:
       - ./containers/id-provider/id-provider.py:/app/id-provider.py
     command: gunicorn -b :5000 id-provider:app --log-level warning
@@ -114,8 +107,6 @@ services:
         condition: service_healthy
       http-server:
         condition: service_started
-    environment:
-      TZ: ${PLANKWEB_TIMEZONE:-Europe/Prague}
     ports:
       - 80:80
 
@@ -144,7 +135,7 @@ services:
       CELERY_BROKER_URL: amqp://${PLANKWEB_SERVICE_USER:-guest}:${PLANKWEB_SERVICE_PASS:-guest}@message-broker:5672// 
       APACHE_URL: http://apache:80/data
       ID_PROVIDER_URL: http://id-provider:5000/generate
-      TZ: ${PLANKWEB_TIMEZONE:-Europe/Prague}
+      LOGGING_TZ: ${PLANKWEB_TIMEZONE:-Europe/Prague}
     volumes:
       - tmp:/tmp
       - ./containers/http-server/http-server.py:/app/http-server.py
@@ -171,7 +162,7 @@ services:
       CELERY_BROKER_URL: amqp://${PLANKWEB_SERVICE_USER:-guest}:${PLANKWEB_SERVICE_PASS:-guest}@message-broker:5672// 
       APACHE_URL: http://apache:80/data
       INPUTS_URL: http://apache:80/data/inputs
-      TZ: ${PLANKWEB_TIMEZONE:-Europe/Prague}
+      LOGGING_TZ: ${PLANKWEB_TIMEZONE:-Europe/Prague}
     volumes:
       - foldseek:/app/results
       - ./containers/data-source-executors/executor-foldseek/foldseek_executor.py:/app/foldseek_executor.py
@@ -200,7 +191,7 @@ services:
       CELERY_BROKER_URL: amqp://${PLANKWEB_SERVICE_USER:-guest}:${PLANKWEB_SERVICE_PASS:-guest}@message-broker:5672//
       INPUTS_URL: http://apache:80/data/inputs
       CONSERVATION_URL: http://apache:80/data/conservation
-      TZ: ${PLANKWEB_TIMEZONE:-Europe/Prague}
+      LOGGING_TZ: ${PLANKWEB_TIMEZONE:-Europe/Prague}
     volumes:
       - p2rank:/app/results
       - ./containers/data-source-executors/executor-p2rank/p2rank_executor.py:/app/p2rank_executor.py
@@ -227,7 +218,7 @@ services:
       CELERY_BROKER_URL: amqp://${PLANKWEB_SERVICE_USER:-guest}:${PLANKWEB_SERVICE_PASS:-guest}@message-broker:5672//
       CELERY_BACKEND_URL: redis://:${PLANKWEB_SERVICE_PASS:-guest}@celery-backend:6379/0
       INPUTS_URL: http://apache:80/data/inputs
-      TZ: ${PLANKWEB_TIMEZONE:-Europe/Prague}
+      LOGGING_TZ: ${PLANKWEB_TIMEZONE:-Europe/Prague}
     volumes:
       - conservation:/app/results
       - ./containers/conservation/celery_worker.py:/app/celery_worker.py
@@ -255,7 +246,7 @@ services:
       CELERY_BROKER_URL: amqp://${PLANKWEB_SERVICE_USER:-guest}:${PLANKWEB_SERVICE_PASS:-guest}@message-broker:5672// 
       CELERY_BACKEND_URL: redis://:${PLANKWEB_SERVICE_PASS:-guest}@celery-backend:6379/0
       INPUTS_URL: http://apache:80/data/inputs
-      TZ: ${PLANKWEB_TIMEZONE:-Europe/Prague}
+      LOGGING_TZ: ${PLANKWEB_TIMEZONE:-Europe/Prague}
     volumes:
       - ./containers/converter/converter_executor.py:/app/converter_executor.py
     command: celery --app=celery_worker worker --queues=converter --hostname=converter_worker --loglevel=warning --events
@@ -289,7 +280,7 @@ services:
       CELERY_BROKER_URL: amqp://${PLANKWEB_SERVICE_USER:-guest}:${PLANKWEB_SERVICE_PASS:-guest}@message-broker:5672// 
       CELERY_BACKEND_URL: redis://:${PLANKWEB_SERVICE_PASS:-guest}@celery-backend:6379/0
       APACHE_URL: http://apache:80/data
-      TZ: ${PLANKWEB_TIMEZONE:-Europe/Prague}
+      LOGGING_TZ: ${PLANKWEB_TIMEZONE:-Europe/Prague}
     volumes:
       - inputs:/app/inputs
       - ./containers/metatask/metatask.py:/app/metatask.py
@@ -411,7 +402,6 @@ services:
       GF_SECURITY_ADMIN_PASSWORD: ${PLANKWEB_SERVICE_PASS:-guest}
       GF_SERVER_ROOT_URL: http://localhost/service/grafana/
       GF_SERVER_SERVE_FROM_SUB_PATH: true
-      TZ: ${PLANKWEB_TIMEZONE:-Europe/Prague}
     volumes:
       - grafana:/var/lib/grafana
 

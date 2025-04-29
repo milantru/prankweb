@@ -4,3 +4,6 @@ flask
 gunicorn
 pyhumps
 requests
+
+# logger requirements
+pytz
