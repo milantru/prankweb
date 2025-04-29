@@ -297,7 +297,6 @@ services:
         condition: service_started
     environment:
       CELERY_BROKER_URL: amqp://${PLANKWEB_SERVICE_USER:-guest}:${PLANKWEB_SERVICE_PASS:-guest}@message-broker:5672//
-      TZ: ${PLANKWEB_TIMEZONE:-Europe/Prague}
     command: celery flower --url_prefix=service/flower
 
   gateway-exporter:
