@@ -40,10 +40,10 @@ def get_or_generate():
 
     input_method = request.json.get('input_method')
     input_protein = request.json.get('input_protein')
-    logger.info(f'generate HTTP POST received: input_method -> {input_method}, input_protein -> {input_protein}')
+    logger.info(f'generate POST request received: input_method -> {input_method}, input_protein -> {input_protein}')
 
     if input_method is None or (input_protein is None and input_method != InputMethods.CUSTOM_STR.value):
-        logger.info('Wrong input from user, returning 400 as status code with an error message')
+        logger.info('Wrong input from a user, status code 400')
         return jsonify({"error": "input type or input string is missing"}), 400
 
     key = (
@@ -56,8 +56,8 @@ def get_or_generate():
     existing_id = _check(key)
 
     if existing_id:
-        logger.info(f'{key} Key already existed, returning ID: {existing_id}, status code 200')
-        return jsonify({"id": existing_id.decode('utf-8'), "stored_value": key, "existed" : True}) 
+        logger.info(f'{key} Key already existed, returning ID: {existing_id.decode()}')
+        return jsonify({"id": existing_id.decode(), "stored_value": key, "existed" : True}) 
 
     generated_id = (
         f'{InputMethods(input_method).name.lower()}_{input_protein}'
@@ -68,9 +68,9 @@ def get_or_generate():
 
     if input_method != InputMethods.CUSTOM_STR.value:
         redis_client.set(key, generated_id)
-        logger.info(f'{key} New Key-ID pair stored in redis database')
+        logger.info(f'{key} New (Key, ID) pair ({key}, {generated_id}) stored in redis database')
 
-    logger.info(f'{key} Key and ID created, returning ID: {generated_id}, status code 200')
+    logger.info(f'{key} Key and ID created, returning ID: {generated_id}')
     return jsonify({"id": generated_id, "stored_value": key, "existed" : False})
 
 
@@ -78,31 +78,31 @@ def get_or_generate():
 def get_id():
     input_method = request.args.get('input_method')
     input_protein = request.args.get('input_protein')
-    logger.info(f'get_id HTTP GET received: input_method -> {input_method}, input_protein -> {input_protein}')
+    logger.info(f'get_id GET request received: input_method -> {input_method}, input_protein -> {input_protein}')
 
     key = f'{InputMethods[input_method.upper()].value}:{input_protein}'
+    logger.info(f'Key for database search created from input: {key}')
 
     if input_method not in (
         InputMethods.PDB.name, InputMethods.PDB.name.lower(),
         InputMethods.UNIPROT.name, InputMethods.UNIPROT.name.lower(),
         InputMethods.SEQUENCE.name, InputMethods.SEQUENCE.name.lower()
     ):
-        logger.info(f'{key} Given input method ({input_method}) is not supported, returning status code 400')
+        logger.info(f'{key} Unsupported input method ({input_method}), status code 400')
         return jsonify({'error': f'Input method {input_method} not supported'}), 400
     
     if not input_protein:
-        logger.info(f'{key} Input protein not specified, returning status code 400')
+        logger.info(f'{key} Input protein not specified, status code 400')
         return jsonify({'error': 'Input protein not specified'}), 400
     
     id = _check(key)
 
-    if id:
-        logger.info(f'{key} ID found, returning {id}, status code 200')
-        return jsonify({'id': id.decode()})
-    else:
-        logger.info(f'{key} ID not found, returning None, status code 200')
+    if not id:
+        logger.info(f'{key} ID not found, returning None')
         return jsonify({'id': None})
 
+    logger.info(f'{key} ID found, returning {id.decode()}')
+    return jsonify({'id': id.decode()})
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
