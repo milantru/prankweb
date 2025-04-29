@@ -43,7 +43,7 @@ def get_or_generate():
     logger.info(f'generate HTTP POST received: input_method -> {input_method}, input_protein -> {input_protein}')
 
     if input_method is None or (input_protein is None and input_method != InputMethods.CUSTOM_STR.value):
-        logger.info('Wrong input from user, returning 400 as status code with error message')
+        logger.info('Wrong input from user, returning 400 as status code with an error message')
         return jsonify({"error": "input type or input string is missing"}), 400
 
     key = (

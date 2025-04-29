@@ -15,14 +15,16 @@ def run_structure_to_sequence(id):
 
     pdb_url = os.path.join(INPUTS_URL, f"{id}/structure.pdb")
 
-    logger.info(f'{id} Downloading PDB file from apache url: {pdb_url}')
-    response = requests.get(pdb_url, stream=True)
-    if response.status_code == 200:
-        logger.info(f'{id} PDB file downloaded successfully {response.status_code}')
-    else:
-        logger.error(f'{id} PDB file download failed {response.status_code}')
-        logger.info(f'{id} converter_str_to_seq finished, returning no sequence')
-        return {}
+    logger.info(f'{id} Downloading PDB file from: {pdb_url}')
+    try:
+        response = requests.get(pdb_url, stream=True, timeout=10)
+        response.raise_for_status()
+    except requests.RequestException as e:
+        logger.error(f'{id} PDB file download failed {str(e)}')
+        logger.info(f'{id} converter_str_to_seq finished, returning None')
+        return None
+
+    logger.info(f'{id} PDB file downloaded successfully')
 
     with tempfile.NamedTemporaryFile(mode="w+", suffix=".pdb", delete=True) as struct_file:
         for chunk in response.iter_content(chunk_size=8192):
@@ -45,9 +47,10 @@ def run_structure_to_sequence(id):
 
     if len(chains) == 0:
         logger.warning(f'{id} converter_str_to_seq did not find any sequence')
+        logger.info(f'{id} converter_str_to_seq finished, returning None')
+        return None
     
     logger.info(f'{id} converter_str_to_seq finished, returning {len(chains)} unique sequences')
-    
     return chains
 
 def run_sequence_to_structure(id):
@@ -56,26 +59,35 @@ def run_sequence_to_structure(id):
     # get input
     fasta_url = os.path.join(INPUTS_URL, f"{id}/sequence_1.fasta")
 
-    logger.info(f'{id} Downloading FASTA file from apache url: {fasta_url}')
-    response = requests.get(fasta_url)
-    if response.status_code == 200:
-        logger.info(f'{id} FASTA file downloaded successfully {response.status_code}')
-    else:
-        logger.error(f'{id} FASTA file download failed {response.status_code}')
-        logger.info(f'{id} converter_seq_to_str finished, returning an empty string')
-        return ""
+    logger.info(f'{id} Downloading FASTA file from: {fasta_url}')
+    try:
+        response = requests.get(fasta_url, timeout=10)
+        response.raise_for_status()
+    except requests.RequestException as e:
+        logger.error(f'{id} FASTA file download failed {str(e)}')
+        logger.info(f'{id} converter_seq_to_str finished, returning None')
+        return None
 
+    logger.info(f'{id} FASTA file downloaded successfully')
+    
     # should be fine, http-server prepared sequence properly
     sequence = response.text.split('\n')[1]
 
-    logger.info(f'{id} Sending HTTP POST to {ESMFOLD_URL} to get predicted structure')
-    response = requests.post(ESMFOLD_URL, data=sequence)
-    if response.status_code == 200:
-        logger.info(f'{id} Structure received {response.status_code}')
-        logger.info(f'{id} converter_seq_to_str finished, returning structure')
-        return response.text
-    else:
-        logger.error(f'{id} Structure not received {response.status_code}')
-        logger.info(f'{id} converter_seq_to_str finished, returning an empty string')
-        return ""
+    logger.info(f'{id} Sending POST request to {ESMFOLD_URL} for structure prediction')
+    try:
+        response = requests.post(ESMFOLD_URL, data=sequence, timeout=20)
+        response.raise_for_status()
+    except requests.RequestException as e:
+        logger.error(f'{id} Structure not received: {str(e)}')
+        logger.info(f'{id} converter_seq_to_str finished, returning None')
+        return None
+    
+    if not response.text:
+        logger.warning(f'{id} No text received')
+        logger.info(f'{id} converter_seq_to_str finished, returning None')
+        return None
+        
+    logger.info(f'{id} Structure received')
+    logger.info(f'{id} converter_seq_to_str finished, returning text of POST response')
+    return response.text
     
