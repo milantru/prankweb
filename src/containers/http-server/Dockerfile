@@ -13,6 +13,7 @@ WORKDIR /app
 # Copy Python source code and install needed modules
 COPY --chown=user:user \
         ./shared/install-requirements.sh \
+        ./shared/tasks_logger.py \
         ./http-server/requirements.in \
         ./
 

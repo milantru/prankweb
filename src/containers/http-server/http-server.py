@@ -12,6 +12,8 @@ from flask import Flask, request, jsonify, Response
 from humps import decamelize
 from werkzeug.datastructures import FileStorage
 
+from tasks_logger import create_logger
+
 ########################### Flask and Celery setup #############################
 
 app = Flask(__name__)
@@ -25,6 +27,8 @@ celery.conf.update({
         'metatask_STR': 'metatask'
     }
 })
+
+logger = create_logger('http-server')
 
 ################################## Constants ###################################
 
