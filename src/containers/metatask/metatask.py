@@ -262,7 +262,8 @@ def metatask_seq(input_data: dict) -> None:
     
     # prepare input
     if not _prepare_seq_input(id, input_data['input_url']):
-        logger.error(f'{id} Input sequence could not be prepared, all tasks are skipped')
+        # should not happen, downloading form apache container
+        logger.critical(f'{id} Input sequence could not be prepared, all tasks are skipped')
         return
 
     # _run_plm(id, id_existed)
@@ -317,7 +318,8 @@ def metatask_str(input_data: dict) -> None:
 
     # prepare input
     if not _prepare_str_input(id, input_data['input_url']):
-        logger.error(f'{id} Input structure could not be prepared, all tasks are skipped')
+        # should not happen, downloading form apache container
+        logger.critical(f'{id} Input structure could not be prepared, all tasks are skipped')
         return
     
     _run_foldseek(id, id_existed)

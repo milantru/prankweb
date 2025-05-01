@@ -21,10 +21,9 @@ logger = create_logger('ds-foldseek')
 os.makedirs(RESULTS_FOLDER, exist_ok=True)
 
 def update_status(status_file_path, id, status, message=""):
+    logger.info(f'{id} Changing status in {status_file_path} to: {status}')
     try:
-        logger.info(f'{id} Opening status file: {status_file_path}')
         with open(status_file_path, "w") as f:
-            logger.info(f'{id} Changing status to {status}, msg: {message}')
             json.dump({"status": status, "errorMessages": message}, f)
         logger.info(f'{id} Status changed')
     except Exception as e:
