@@ -8,7 +8,6 @@ import { FadeLoader } from "react-spinners";
 import { MolStarWrapper } from "./components/MolstarWrapper";
 import { toastWarning } from "../../shared/helperFunctions/toasts";
 import ErrorMessageBox from "./components/ErrorMessageBox";
-import { sanitizeCode, sanitizeSequence } from "../../shared/helperFunctions/validation";
 import Select from 'react-select';
 
 const POLLING_INTERVAL = 1000 * 5; // every 5 seconds
@@ -475,8 +474,8 @@ function AnalyticalPage() {
 				continue;
 			}
 			similarProteins[dataSourceName] = result.similarProteins.map<SimilarProtein>(simProt => ({
-				pdbId: sanitizeCode(simProt.pdbId),
-				chain: sanitizeSequence(simProt.chain),
+				pdbId: simProt.pdbId,
+				chain: simProt.chain,
 				bindingSites: simProt.bindingSites,
 				sequence: "" // will be set later when aligning
 			}));
