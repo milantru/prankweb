@@ -14,7 +14,7 @@ import { Conservation, UnprocessedResult } from "../../pages/analytical-page/Ana
 export async function uploadDataAPI(
 	inputMethod: InputMethods,
 	inputBlockData: InputBlockData
-): Promise<{ id: number, userFriendlyErrorMessage: string }> {
+): Promise<{ id: string, userFriendlyErrorMessage: string }> {
 	const url = `${apiBaseUrl}/upload-data`;
 	const errorMessage = "Failed to upload data to the server.";
 
@@ -30,20 +30,20 @@ export async function uploadDataAPI(
 		console.log(pair[0] + ": " + pair[1]);
 	}
 	try {
-		const response = await axios.post<number>(url, formData, {
+		const response = await axios.post<string>(url, formData, {
 			headers: {
 				"Content-Type": "multipart/form-data"
 			}
 		});
 		console.log("GOT data: " + response.data);
-		const id = response.data as number;
+		const id = response.data;
 		return { id: id, userFriendlyErrorMessage: "" };
 	}
 	catch (error) {
 		const errMsgs = getErrorMessages(error);
 		errMsgs.forEach(errMsg => console.error(errMsg));
 
-		return { id: 0, userFriendlyErrorMessage: errorMessage };
+		return { id: "", userFriendlyErrorMessage: errorMessage };
 	}
 }
 

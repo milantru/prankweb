@@ -234,6 +234,7 @@ function AnalyticalPage() {
 			const { chains: chainsTmp, userFriendlyErrorMessage: allChainsFetchingErrorMessage } = await getAllChainsAPI(id);
 			if (allChainsFetchingErrorMessage.length > 0) {
 				toastWarning(allChainsFetchingErrorMessage + "\nRetrying...");
+				isFetching[dataSourceIndex] = false;
 				return;
 			}
 			setChains(chainsTmp);

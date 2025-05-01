@@ -55,8 +55,7 @@ function InputSequenceBlock({ data, setData, setErrorMessage, maxSequenceLength 
                         // If data.sequence.length > 0, then placeholder is displayed and we want to decrease opacity
                         color: data.sequence.length > 0 ? "#495057" : "#49505780"
                     }}
-                    // TODO title is true, or...?
-                    title="PlankWeb will use AlphaFold predicted structure."
+                    title="PlankWeb will use ESMFold predicted structure."
                     onInput={updateHighlight}
                     onFocus={() => setIsSequenceInputFocused(true)}
                     onBlur={() => setIsSequenceInputFocused(false)}>

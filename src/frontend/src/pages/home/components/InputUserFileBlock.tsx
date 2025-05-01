@@ -27,7 +27,7 @@ function InputUserFileBlock({ data, setData, setErrorMessage }: Props) {
         <div id="input-user-file-block">
             <div className="mb-3">
                 <label htmlFor="user-file" className="form-label">
-                    Structure file (PDB/mmCIF) with biologically relevant unit
+                    Structure file (PDB) with biologically relevant unit
                 </label>
                 <input className="form-control" type="file" id="user-file" onChange={handleFileChange} />
             </div>
