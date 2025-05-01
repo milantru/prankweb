@@ -1,7 +1,7 @@
 #
 # Build web-application.
 #
-FROM node:19.7-bullseye AS frontend
+FROM node:18-alpine AS frontend
 
 WORKDIR /opt/frontend
 
@@ -23,7 +23,7 @@ RUN npm run build
 #
 #
 #
-FROM nginx:1.25.2
+FROM nginx:1.25-alpine
 
 RUN rm /etc/nginx/conf.d/default.conf
 

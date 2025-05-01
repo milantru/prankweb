@@ -22,7 +22,8 @@ celery = Celery(
 )
 celery.conf.update({
     'task_routes': {
-        'metatask': 'metatask',
+        'metatask_SEQ': 'metatask',
+        'metatask_STR': 'metatask'
     }
 })
 
@@ -291,7 +292,7 @@ def upload_data() -> Response:
     input_data['useConservation'] = use_conservation
 
     id_payload = {
-        'input_type': input_method,
+        'input_method': input_method,
         'input_protein': protein
     }
 
@@ -315,21 +316,10 @@ def upload_data() -> Response:
     metatask_payload['id'] = response_data['id']
     metatask_payload['id_existed'] = response_data['existed']
 
-    try:
-        # send task
-        result = celery.send_task(
-            f'metatask_{metatask_payload["input_method"]}',
-            args=[metatask_payload],
-            queue='metatask'
-        )
-
-        # TODO: replace by logs
-        print(f'Metatask submitted successfully. Task ID: {result.id}')
-        print(f'Status: {result.status}')
-
-    except Exception as e:
-        # TODO: replace by logs
-        print(f'Error submitting task: {e}')
+    celery.send_task(
+        f'metatask_{metatask_payload["input_method"]}',
+        args=[metatask_payload]
+    )
     
     return jsonify(response_data['id'])
 

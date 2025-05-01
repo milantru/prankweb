@@ -4,3 +4,4 @@ pyhumps
 requests
 biopython
 gunicorn
+redis
