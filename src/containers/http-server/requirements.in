@@ -1,0 +1,9 @@
+biopython
+celery
+flask
+gunicorn
+pyhumps
+requests
+
+# logger requirements
+pytz

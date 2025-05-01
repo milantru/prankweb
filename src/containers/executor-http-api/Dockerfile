@@ -11,8 +11,8 @@ RUN apt-get update \
     && apt-get install -y curl \
     && rm -rf /var/lib/apt/lists/*
 
-RUN chown -R user:user /usr/local/apache2/
-RUN chmod 755 /usr/local/apache2/
+RUN chown -R user:user /usr/local/apache2/ \
+    && chmod 755 /usr/local/apache2/
 
 COPY --chown=user:user httpd.conf /usr/local/apache2/conf/httpd.conf
 

@@ -12,13 +12,14 @@ from flask import Flask, request, jsonify, Response
 from humps import decamelize
 from werkzeug.datastructures import FileStorage
 
+from tasks_logger import create_logger
+
 ########################### Flask and Celery setup #############################
 
 app = Flask(__name__)
 celery = Celery(
     os.getenv('CELERY_NAME'),
-    broker=os.getenv('CELERY_BROKER_URL'),
-    backend=os.getenv('CELERY_BACKEND_URL')
+    broker=os.getenv('CELERY_BROKER_URL')
 )
 celery.conf.update({
     'task_routes': {
@@ -26,6 +27,8 @@ celery.conf.update({
         'metatask_STR': 'metatask'
     }
 })
+
+logger = create_logger('http-server')
 
 ################################## Constants ###################################
 
@@ -235,8 +238,8 @@ def _validate_seq(input_data: dict) -> ValidationResult:
     if len(sequence) > 400:
         return 'Too long sequence (more than 400 characters)', None
     
-    if len(sequence) < 16:
-        return 'Too short sequence (less than 16 characters)', None
+    if len(sequence) < 1:
+        return 'Too short sequence (less than 16 characters)', None 
 
     if not sequence.startswith('>'): sequence = '>PLANKWEB_SEQ\n' + sequence
     if not _text_is_fasta_format(sequence):
@@ -325,4 +328,4 @@ def upload_data() -> Response:
 
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=3000)
+    app.run(host='0.0.0.0', port=3000)

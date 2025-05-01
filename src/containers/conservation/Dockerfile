@@ -1,8 +1,8 @@
 FROM python:3.13-slim
 
 # Create user
-ARG UID=1453
-ARG GID=1453
+ARG UID
+ARG GID
 RUN addgroup --gid ${GID} user \
   && useradd --uid ${UID} --gid ${GID} user
 
@@ -32,13 +32,22 @@ RUN wget https://ftp.expasy.org/databases/uniprot/current_release/knowledgebase/
     && gunzip uniprot_sprot.fasta.gz
 
 # Copy Python source code and install needed modules
-COPY --chown=user:user requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY --chown=user:user \
+        ./shared/install-requirements.sh \
+        ./shared/tasks_logger.py \
+        ./conservation/requirements.in \
+        ./
 
-# COPY --chown=user:user . .
-# RUN chmod u+x celery_worker.py
+RUN chmod +x install-requirements.sh \
+    && ./install-requirements.sh \
+    && rm install-requirements.sh
 
-RUN chown user:user /app
+COPY --chown=user:user ./conservation/. .
+RUN chmod u+x celery_worker.py \
+    && chown user:user /app
+
+ENV PYTHONUNBUFFERED=1
+
 USER ${UID}:${GID}
 
 RUN mkdir -p results

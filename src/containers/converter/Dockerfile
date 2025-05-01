@@ -9,11 +9,20 @@ RUN addgroup --gid ${GID} user \
 WORKDIR /app 
 
 # Copy Python source code and install needed modules
-COPY --chown=user:user requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY --chown=user:user \
+        ./shared/install-requirements.sh \
+        ./shared/tasks_logger.py \
+        ./converter/requirements.in \
+        ./
 
-COPY --chown=user:user . .
-RUN chmod u+x celery_worker.py
+RUN chmod +x install-requirements.sh \
+    && ./install-requirements.sh \
+    && rm install-requirements.sh
 
-RUN chown -R user:user /app
+COPY --chown=user:user ./converter/. .
+RUN chmod u+x celery_worker.py \
+    && chown user:user /app
+
+ENV PYTHONUNBUFFERED=1
+
 USER ${UID}:${GID}
