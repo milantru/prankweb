@@ -286,9 +286,9 @@ def metatask_seq(input_data: dict) -> None:
 
         if not converter_result:
             logger.warning(f'{id} Converter returned None')
-
-        # store results
-        _save_converter_str_result(id, converter_result)
+        else:
+            # store results
+            _save_converter_str_result(id, converter_result)
 
     _run_foldseek(id, id_existed)
 
@@ -341,9 +341,9 @@ def metatask_str(input_data: dict) -> None:
 
         if not converter_result:
             logger.warning(f'{id} Converter returned None')
-
-        # store results
-        _save_converter_seq_result(id, converter_result)
+        else:
+            # store results
+            _save_converter_seq_result(id, converter_result)
 
     # _run_plm(id, id_existed)
     

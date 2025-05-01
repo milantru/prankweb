@@ -2,7 +2,6 @@ sources:
   docker:
     type: docker_logs
     include_containers:
-      - http-server
       - id-provider
       - metatask
       - converter
