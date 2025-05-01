@@ -3,6 +3,7 @@ import subprocess
 import random
 import typing
 import requests
+import shutil
 from requests.exceptions import HTTPError
 import json
 from enum import Enum
@@ -25,64 +26,83 @@ class StatusType(Enum):
 logger = create_logger('conservation')
 
 def update_status(status_file_path, id, status, message=""):
+    logger.info(f'{id} Changing status in {status_file_path} to: {status}')
     try:
         with open(status_file_path, "w") as f:
             json.dump({"status": status, "errorMessages": message}, f)
+        logger.info(f'{id} Status changed')
     except Exception as e:
-        print(f"Error updating status for {id}: {e}")
+        logger.error(f'{id} Status change failed: {str(e)}')
+
 
 def compute_conservation(id):
     logger.info(f'{id} conservation started')
     result_folder = RESULT_FOLDER.format(id=id)
     os.makedirs(result_folder, exist_ok=True)
-    logger.info(f'{id} Result folder created: {result_folder}')
+    logger.info(f'{id} Result folder prepared: {result_folder}')
     status_file_path = os.path.join(result_folder, "status.json")
     update_status(status_file_path, id, StatusType.STARTED.value)
 
     try:
         json_url = os.path.join(INPUTS_URL, f"{id}/chains.json")
-        logger.info(f'{id} Downloading chains file from apache url: {json_url}')
+        logger.info(f'{id} Downloading chains file from: {json_url}')
         response = requests.get(json_url)
         response.raise_for_status()
-        logger.info(f'{id} Chains file downloaded successfully {response.status_code}')
+        logger.info(f'{id} Chains file downloaded successfully')
         files_metadata = response.json()
+
+        os.makedirs(id, exist_ok=True)
+        logger.info(f'{id} Input folder prepared: {id}')
+        
+        temp_folder = TEMP.format(id=id)
+        os.makedirs(temp_folder, exist_ok=True)
+        logger.info(f'{id} Temporary folder prepared: {temp_folder}')
 
         for file, chains in files_metadata["fasta"].items():
             file_url = os.path.join(INPUTS_URL, f"{id}/{file}")
-            logger.info(f'{id} Downloading FASTA file from apache url: {file_url}')
+            logger.info(f'{id} Downloading FASTA file from: {file_url}')
             response = requests.get(file_url, stream=True)
             response.raise_for_status()
-            logger.info(f'{id} FASTA file downloaded successfully {response.status_code}')
+            logger.info(f'{id} FASTA file downloaded successfully')
 
             hom_file_name = file.split('.')[0]
             result_file = os.path.join(result_folder, hom_file_name)
-            os.makedirs(id, exist_ok=True)
             input_file_path = f"./{id}/{file}"
 
             with open(input_file_path, "wb") as seq_file:
                 for chunk in response.iter_content(chunk_size=8192):
                     seq_file.write(chunk)
+            logger.info(f'{id} Downloaded file saved to: {input_file_path}')
 
-            temp_folder = TEMP.format(id=id)
-            os.makedirs(temp_folder, exist_ok=True)
-
+            logger.info(f'{id} Computing conservation...')
             compute_conservation_for_chain(input_file_path, result_file, temp_folder)
+            logger.info(f'{id} Conservation computed')
 
             for chain in chains:
-                os.symlink(hom_file_name + ".hom", f"{result_folder}/input{chain}.hom")
-                os.symlink(hom_file_name + ".json", f"{result_folder}/input{chain}.json")
+                result_file_name = os.path.join(result_folder, f'input{chain}')
+                os.symlink(hom_file_name + ".hom", result_file_name + ".hom")
+                logger.info(f'{id} Symlink created: {hom_file_name + ".hom"} -> {result_file_name + ".hom"}')
+                os.symlink(hom_file_name + ".json", result_file_name + ".json")
+                logger.info(f'{id} Symlink created: {hom_file_name + ".json"} -> {result_file_name + ".json"}')
 
             # cleanup
             os.remove(input_file_path)
+            logger.info(f'{id} Input file {input_file_path} removed (it was no longer needed)')
+
+        shutil.rmtree(temp_folder)
+        logger.info(f'{id} Temporary folder removed: {temp_folder}')
 
         update_status(status_file_path, id, StatusType.COMPLETED.value)
 
     except HTTPError as e:
-        update_status(status_file_path, id, StatusType.FAILED.value, e)
-        print(f"HTTP error occurred: {e}") #TODO LOG
+        update_status(status_file_path, id, StatusType.FAILED.value, str(e))
+        logger.error(f'{id} HTTP error occurred: {str(e)}')
     except Exception as e:
         update_status(status_file_path, id, StatusType.FAILED.value, str(e))
-        print(f"Error computing conservation for {id}: {e}")
+        logger.error(f'{id} Error computing conservation: {str(e)}')
+ 
+    logger.info(f'{id} conservation finished')
+
 
 def _default_execute_command(command: str):
     # We do not check return code here.
@@ -232,6 +252,7 @@ def _write_tsv(target_file: str, fasta_file_sequence: str, feature):
     with open(target_file, mode="w", newline="") as stream:
         for (i, j), value in zip(enumerate(fasta_file_sequence), feature):
             stream.write("\t".join((str(i), value, j)) + "\n")
+
 
 def _write_json(target_file: str, fasta_file_sequence: str, feature):
     with open(target_file, mode="w", newline="") as stream:

@@ -7,9 +7,9 @@ import pytz
 class PlankwebLogFormatter(logging.Formatter):
     """override logging.Formatter to use correct timezone"""
     def converter(self, timestamp):
-        dt = datetime.fromtimestamp(timestamp)
+        dt = datetime.fromtimestamp(timestamp, tz=pytz.utc)
         tzinfo = pytz.timezone(os.getenv('LOGGING_TZ'))
-        return tzinfo.localize(dt)
+        return dt.astimezone(tzinfo)
         
     def formatTime(self, record, datefmt=None):
         dt = self.converter(record.created)
