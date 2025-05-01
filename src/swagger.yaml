@@ -95,6 +95,58 @@ paths:
                       sequence_3.fasta: ["C"]
                       sequence_4.fasta: ["E", "F"]
 
+  /data/inputs/{inputId}/{chain_fasta_file}:
+    get:
+      parameters:
+        - in: path
+          name: inputId
+          required: true
+          description: The generated ID of a protein
+          schema:
+            type: string
+            example: "pdb_6xez"
+        - in: path
+          required: true
+          name: chain_fasta_file
+          description: The FASTA file obtained from endpoint /data/inputs/{inputId}/chains.json
+          schema:
+            type: string
+            example: "sequence_1.fasta"
+      responses:
+        '200':
+          description: A FASTA file containing the sequence of the specified chain.
+          content:
+            application/json:
+              schema:
+                type: string
+                example: |
+                  > Chains: ['A']
+                  QSFLNRVCGVSAARLTPCGTGTSTDVVYRAFD
+        '404':
+          description: Not Found.
+
+  /data/inputs/{inputId}/structure.pdb:
+    get:
+      parameters:
+        - in: path
+          name: inputId
+          required: true
+          description: The generated ID of a protein
+          schema:
+            type: string
+            example: "pdb_6xez"
+      responses:
+        '200':
+          description: A PDB file containing the structure of the specified protein.
+          content:
+            .pdb:
+              schema:
+                type: string
+                example: |
+                  PDB FILE
+        '404':
+          description: Not Found.
+
   /data/conservation/{inputId}/status.json:
     get:
       parameters:
