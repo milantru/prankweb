@@ -238,8 +238,8 @@ def _validate_seq(input_data: dict) -> ValidationResult:
     if len(sequence) > 400:
         return 'Too long sequence (more than 400 characters)', None
     
-    if len(sequence) < 16:
-        return 'Too short sequence (less than 16 characters)', None
+    # if len(sequence) < 16:
+    #     return 'Too short sequence (less than 16 characters)', None 
 
     if not sequence.startswith('>'): sequence = '>PLANKWEB_SEQ\n' + sequence
     if not _text_is_fasta_format(sequence):

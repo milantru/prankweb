@@ -285,8 +285,7 @@ def metatask_seq(input_data: dict) -> None:
         logger.info(f'{id} Converter result received')
 
         if not converter_result:
-            logger.error(f'{id} Converter result is None, tasks with structure as an input are skipped')
-            return
+            logger.warning(f'{id} Converter returned None')
 
         # store results
         _save_converter_str_result(id, converter_result)
@@ -341,8 +340,7 @@ def metatask_str(input_data: dict) -> None:
         logger.info(f'{id} Converter result received')
 
         if not converter_result:
-            logger.error(f'{id} Converter result is None, tasks with sequence as an input are skipped')
-            return
+            logger.warning(f'{id} Converter returned None')
 
         # store results
         _save_converter_seq_result(id, converter_result)
