@@ -40,6 +40,8 @@ COPY --chown=user:user ./data-source-executors/executor-p2rank/. .
 RUN chmod u+x celery_worker.py \
     && chown user:user /app
 
+ENV PYTHONUNBUFFERED=1
+
 USER ${UID}:${GID}
 
 RUN mkdir -p results

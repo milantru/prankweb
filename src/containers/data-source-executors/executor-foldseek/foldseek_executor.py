@@ -19,6 +19,7 @@ class StatusType(Enum):
 logger = create_logger('ds-foldseek')
 
 os.makedirs(RESULTS_FOLDER, exist_ok=True)
+logger.info(f'{id} Results folder prepared: {RESULTS_FOLDER}')
 
 def update_status(status_file_path, id, status, message=""):
     logger.info(f'{id} Changing status in {status_file_path} to: {status}')
@@ -31,7 +32,6 @@ def update_status(status_file_path, id, status, message=""):
 
 def run_foldseek(id):
     logger.info(f'{id} ds_foldseek started')
-    log_ex_caught = True
 
     eval_folder = os.path.join(RESULTS_FOLDER, f"{id}")
     os.makedirs(eval_folder, exist_ok=True)
@@ -43,14 +43,15 @@ def run_foldseek(id):
         pdb_url = os.path.join(INPUTS_URL, id, "structure.pdb")
         query_structure_file = os.path.join(eval_folder, "input.pdb")
 
-        logger.info(f'{id} Downloading PDB file from apache url: {pdb_url}')
+        logger.info(f'{id} Downloading PDB file from: {pdb_url}')
         response = requests.get(pdb_url, stream=True)
         response.raise_for_status()
-        logger.info(f'{id} PDB file downloaded successfully {response.status_code}')
+        logger.info(f'{id} PDB file downloaded successfully')
 
         with open(query_structure_file, "wb") as struct_file:
             for chunk in response.iter_content(chunk_size=8192):
                 struct_file.write(chunk)
+        logger.info(f'{id} Downloaded file saved to: {query_structure_file}')
 
         foldseek_result_file = os.path.join(eval_folder, f"aln_res_{id}")
 
@@ -68,18 +69,16 @@ def run_foldseek(id):
 
         update_status(status_file_path, id, StatusType.COMPLETED.value)
 
-        log_ex_caught = False
-
     except requests.RequestException as e:
-        logger.error(f'{id} PDB file download failed {response.status_code}: {str(e)}')
+        logger.error(f'{id} PDB file download failed: {str(e)}')
         update_status(status_file_path, id, StatusType.FAILED.value, f"Failed to download PDB file: {str(e)}")
     except subprocess.CalledProcessError as e:
-        err_msg = e.stderr.decode()
+        err_msg = e.stderr.decode() # error message is from subprocess, needs different treatment
         logger.error(f'{id} Foldseek subprocess crashed: {err_msg}')
         update_status(status_file_path, id, StatusType.FAILED.value, f"Foldseek crashed: {err_msg}")
     except Exception as e:
-        logger.error(f'{id} An unexpected error occurred -> ({type(e).__name__}): {str(e)}')
+        logger.error(f'{id} An unexpected error occurred ({type(e).__name__}): {str(e)}')
         update_status(status_file_path, id, StatusType.FAILED.value, f"An unexpected error occurred: {str(e)}")
 
-    logger.info(f'{id} ds_foldseek finished {"with an error" if log_ex_caught else ""}')
+    logger.info(f'{id} ds_foldseek finished')
 

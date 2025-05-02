@@ -100,10 +100,11 @@ def save_results(result_folder: str, file_name: str, builder: ProteinDataBuilder
     final_data = builder.build()
 
     result_file = os.path.join(result_folder, file_name)
+    logger.info(f'{id} Saving post-processor results to: {result_file}')
     with open(result_file, "w") as f:
         json.dump(asdict(final_data), f, indent=4)
 
-    print("saved", result_file)
+    logger.info(f'{id} Results saved')
 
 def process_similar_protein(result_folder: str, fields: List[str], curr_chain: str, id: str) -> SimilarProteinBuilder:
     sim_protein_pdb_id, sim_protein_chain = fields[1][:4], fields[1].split("_")[1]
@@ -123,16 +124,19 @@ def process_similar_protein(result_folder: str, fields: List[str], curr_chain: s
     )
     try:
         if not os.path.exists(pdb_filename):
+            logger.info(f'{id} Downloading similar protein: {sim_protein_pdb_id}')
             response = requests.get(PDB_FILE_URL.format(sim_protein_pdb_id))
             response.raise_for_status()
+            logger.info(f'{id} Similar protein {sim_protein_pdb_id} downloaded successfully')
             with open(pdb_filename, "wb") as f:
                 f.write(response.content)
+            logger.info(f'{id} Similar protein {sim_protein_pdb_id} saved to: {pdb_filename}')
         
         binding_sites, _ = extract_binding_sites_for_chain(id, pdb_filename, curr_chain)
         for binding_site in binding_sites:
             sim_builder.add_binding_site(binding_site)
     except:
-        print(f"Failed to download or process PDB file for {sim_protein_pdb_id}.")
+        logger.error(f"Failed to download or process PDB file for {sim_protein_pdb_id}.")
         return None
     return sim_builder
 
@@ -143,14 +147,21 @@ def process_foldseek_output(result_folder, foldseek_result_file, id, query_struc
         builder = None
 
         chains_json = os.path.join(INPUTS_URL, id, "chains.json")
-
-        response = requests.get(chains_json, stream=True)
-        response.raise_for_status()
+        logger.info(f'{id} Downloading chains file from: {chains_json}') 
+        try:
+            response = requests.get(chains_json, stream=True)
+            response.raise_for_status()
+        except requests.RequestException as e:
+            logger.critical(f'{id} Failed to download chains file')
+            return
+        
+        logger.info(f'{id} Chains file downloaded successfully')
 
         metadata = response.json()
 
         remaining_chains = metadata["chains"]
 
+        logger.info(f'{id} Starting processing result file: {foldseek_result_file}')
         for line in f:  
             fields = line.strip().split("\t")
             input_name = fields[0]
@@ -185,6 +196,7 @@ def process_foldseek_output(result_folder, foldseek_result_file, id, query_struc
         if builder != None:
             save_results(result_folder, RESULT_FILE.format(curr_chain), builder)
 
+        logger.info(f'{id} Chains with no similar results: {" ".join(remaining_chains)}')
         for chain in remaining_chains:
             binding_sites, chain_seq = extract_binding_sites_for_chain(id, query_structure_file, chain)
             builder = ProteinDataBuilder(id, chain, chain_seq, query_structure_file_url)

@@ -7,8 +7,9 @@ sources:
       - converter
       - conservation
       - ds-foldseek
+      - ds-p2rank
     
-    # ["http-server", "ds-foldseek", "ds-p2rank"]
+    # ["http-server"]
 
 transforms:
   clean_logs:
