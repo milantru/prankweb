@@ -107,6 +107,8 @@ services:
         condition: service_healthy
       http-server:
         condition: service_started
+      swagger-ui:
+        condition: service_started
     ports:
       - 80:80
 
@@ -433,7 +435,13 @@ services:
       GF_SERVER_SERVE_FROM_SUB_PATH: true
     volumes:
       - grafana:/var/lib/grafana
-
+  swagger-ui:
+    image: swaggerapi/swagger-ui
+    container_name: openapi
+    environment:
+      SWAGGER_JSON: /app/swagger.yaml
+    volumes:
+      - ./swagger.yaml:/app/swagger.yaml
 volumes:
   rabbitmq:
   redis:
