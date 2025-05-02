@@ -46,6 +46,14 @@ def read_residues(residues_result_file):
         for index, line in enumerate(file):
             row = [item.strip() for item in line.strip().split(',')]
             chain, structure_index, residue, pocket = row[CHAIN_INDEX], row[RESIDUE_STRUCTURE_INDEX], row[RESIDUE_INDEX], int(row[POCKET_INDEX])
+            if not is_amino_acid(residue):
+                with open("mapping.json", "r") as infile:
+                    mapping_dict = json.load(infile)
+                if residue in mapping_dict:
+                    residue = mapping_dict[residue]
+                else:
+                    raise ValueError(f"Residue {residue} not found in mapping.json")
+                
             if is_amino_acid(residue):
                 if curr_chain is None or curr_chain != chain:
                     seq_index = 0
