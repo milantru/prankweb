@@ -85,8 +85,6 @@ export async function getDataSourceExecutorResultStatusAPI(
 		if (error?.status === 404) {
 			console.warn(`Status for ${dataSourceName} and ${id} is missing. Maybe just not created yet?`);
 		} else {
-			console.log('aaaaaaaaaaaaaaaaaa')
-			console.log(error)
 			const errMsgs = getErrorMessages(error);
 			errMsgs.forEach(errMsg => console.error(errMsg));
 		}
