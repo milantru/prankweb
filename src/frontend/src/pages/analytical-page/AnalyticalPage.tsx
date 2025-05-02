@@ -8,7 +8,7 @@ import { FadeLoader } from "react-spinners";
 import { MolStarWrapper } from "./components/MolstarWrapper";
 import { toastWarning } from "../../shared/helperFunctions/toasts";
 import ErrorMessageBox from "./components/ErrorMessageBox";
-import Select from 'react-select';
+import SettingsPanel from "./components/SettingsPanel";
 
 const POLLING_INTERVAL = 1000 * 5; // every 5 seconds
 
@@ -41,6 +41,7 @@ export type BindingSite = {
 
 type UnprocessedSimilarProtein = {
 	pdbId: string; // pdb id of the similar sequence
+	pdbUrl: string;
 	sequence: string;
 	chain: string;
 	bindingSites: BindingSite[];
@@ -71,7 +72,7 @@ type DataSourceExecutor = {
 
 type SimilarProtein = {
 	pdbId: string;
-	// pdbUrl: string; // TODO tu netreba?
+	pdbUrl: string;
 	sequence: string;
 	chain: string;
 	bindingSites: BindingSite[];
@@ -122,6 +123,7 @@ function AnalyticalPage() {
 	const [chainResults, setChainResults] = useState<ChainResults | null>(null);
 	const [selectedChain, setSelectedChain] = useState<string | null>(null); // Will be set when chain results are set
 	const [squashBindingSites, setSquashBindingSites] = useState<boolean>(false);
+	const [selectedStructureUrls, setSelectedStructureUrls] = useState<string[]>([]);
 	let lock = useMemo<boolean>(() => false, []);
 
 	useEffect(() => {
@@ -169,32 +171,12 @@ function AnalyticalPage() {
 					{chainResults && selectedChain ? (
 						<div className="d-flex flex-column align-items-center">
 							{/* Settings/Filter panel */}
-							<div className="w-75 d-flex flex-wrap align-items-center border rounded px-3 py-2">
-								<div className="d-flex align-items-center mr-2">
-									<div className="mr-1 font-weight-bold">Chains:</div>
-									<Select
-										defaultValue={{ label: Object.keys(chainResults)[0], chain: Object.keys(chainResults)[0] }}
-										onChange={(selectedOption: any) => setSelectedChain(selectedOption.value)}
-										/* as any is used here to silence error message which seems to be irrelevant, it says
-										* the type is wrong but according to the official GitHub repo README of the package,
-										* this is how options should look like, so it should be OK. */
-										options={Object.keys(chainResults).map(chain => ({
-											label: chain,
-											value: chain
-										})) as any} />
-								</div>
-								<div className="form-check mb-0">
-									<input
-										type="checkbox"
-										id="squash-binding-sites"
-										className="form-check-input"
-										checked={squashBindingSites}
-										onChange={() => setSquashBindingSites(prevState => !prevState)}
-									/>
-									<label className="form-check-label" htmlFor="squash-binding-sites">
-										Squash binding sites
-									</label>
-								</div>
+							<div className="w-90 d-flex flex-wrap align-items-center border rounded px-5 py-2 mx-5">
+								<SettingsPanel chainResults={chainResults}
+									onChainSelect={setSelectedChain}
+									squashBindingSites={squashBindingSites}
+									onBindingSitesSquashClick={() => setSquashBindingSites(prevState => !prevState)}
+									onStructuresSelect={selectedStructureUrls => setSelectedStructureUrls(selectedStructureUrls)} />
 							</div>
 
 							<div className="w-100 mt-2">
@@ -209,8 +191,15 @@ function AnalyticalPage() {
 					)}
 				</div>
 				<div id="visualization-molstar" className="col-xs-12 col-md-6 col-xl-6">
-					<MolStarWrapper />
-					<div id="visualization-toolbox">TODO Toolbox</div>
+					{chainResults && selectedChain ? (<>
+						<MolStarWrapper chainResult={chainResults[selectedChain]}
+							selectedStructureUrls={selectedStructureUrls} />
+						<div id="visualization-toolbox">TODO Toolbox</div>
+					</>) : (
+						<div className="d-flex py-2 justify-content-center align-items-center">
+							<FadeLoader color="#c3c3c3" />
+						</div>
+					)}
 				</div>
 			</div>
 		</div>
@@ -480,6 +469,7 @@ function AnalyticalPage() {
 			}
 			similarProteins[dataSourceName] = result.similarProteins.map<SimilarProtein>(simProt => ({
 				pdbId: simProt.pdbId,
+				pdbUrl: simProt.pdbUrl,
 				chain: simProt.chain,
 				bindingSites: simProt.bindingSites,
 				sequence: "" // will be set later when aligning
