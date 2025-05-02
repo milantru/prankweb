@@ -5,6 +5,9 @@ services:
     container_name: message-broker
     hostname: message-broker
     restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${PLANKWEB_SERVICE_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${PLANKWEB_SERVICE_PASS:-guest}
     volumes:
       - rabbitmq:/var/lib/rabbitmq
     healthcheck:
@@ -24,7 +27,7 @@ services:
       interval: 30s
       timeout: 30s
       retries: 3
-    command: redis-server --save 600 1 --loglevel verbose
+    command: redis-server --requirepass ${PLANKWEB_SERVICE_PASS:-guest} --save 300 1 --loglevel warning
 
   celery-backend:
     image: redis:7.4.2
@@ -38,7 +41,7 @@ services:
       interval: 30s
       timeout: 30s
       retries: 3
-    command: redis-server --save 300 1 --loglevel warning
+    command: redis-server --requirepass ${PLANKWEB_SERVICE_PASS:-guest} --save 300 1 --loglevel warning
 
   executor-http-api:
     build:
@@ -63,7 +66,8 @@ services:
 
   id-provider:
     build:
-      context: ./containers/id-provider/
+      context: ./containers
+      dockerfile: ./id-provider/Dockerfile
       args:
         UID: ${PLANKWEB_DEFAULT_UID:-1453}
         GID: ${PLANKWEB_DEFAULT_GID:-1453}
@@ -72,6 +76,8 @@ services:
     depends_on:
       id-database:
         condition: service_healthy
+    environment:
+      REDIS_PASS: ${PLANKWEB_SERVICE_PASS:-guest}
     volumes:
       - ./containers/id-provider/id-provider.py:/app/id-provider.py
     command: python -u id-provider.py
@@ -80,6 +86,9 @@ services:
     build:
       context: ./
       dockerfile: ./containers/gateway/Dockerfile
+      args:
+        WEB_SERVICE_USER: ${PLANKWEB_SERVICE_USER:-guest}
+        WEB_SERVICE_PASS: ${PLANKWEB_SERVICE_PASS:-guest}
     container_name: gateway
     restart: unless-stopped
     depends_on:
@@ -92,7 +101,8 @@ services:
 
   http-server:
     build:
-      context: ./containers/http-server/
+      context: ./containers
+      dockerfile: ./http-server/Dockerfile
       args:
         UID: ${PLANKWEB_DEFAULT_UID:-1453}
         GID: ${PLANKWEB_DEFAULT_GID:-1453}
@@ -109,8 +119,11 @@ services:
         condition: service_healthy
       metatask:
         condition: service_started
-    env_file:
-      - .env
+    environment:
+      CELERY_NAME: ${PLANKWEB_CELERY_NAME:-plankweb_tasks}
+      CELERY_BROKER_URL: amqp://${PLANKWEB_SERVICE_USER:-guest}:${PLANKWEB_SERVICE_PASS:-guest}@message-broker:5672// 
+      APACHE_URL: http://apache:80/data
+      ID_PROVIDER_URL: http://id-provider:5000/generate
     volumes:
       - tmp:/tmp
       - ./containers/http-server/http-server.py:/app/http-server.py
@@ -118,8 +131,8 @@ services:
 
   ds-foldseek:
     build:
-      context: ./containers/data-source-executors/
-      dockerfile: ./executor-foldseek/Dockerfile
+      context: ./containers
+      dockerfile: ./data-source-executors/executor-foldseek/Dockerfile
       args:
         UID: ${PLANKWEB_DEFAULT_UID:-1453}
         GID: ${PLANKWEB_DEFAULT_GID:-1453}
@@ -132,8 +145,11 @@ services:
         condition: service_healthy
       executor-http-api:
         condition: service_healthy
-    env_file:
-      - .env
+    environment:
+      CELERY_NAME: ${PLANKWEB_CELERY_NAME:-plankweb_tasks}
+      CELERY_BROKER_URL: amqp://${PLANKWEB_SERVICE_USER:-guest}:${PLANKWEB_SERVICE_PASS:-guest}@message-broker:5672// 
+      APACHE_URL: http://apache:80/data
+      INPUTS_URL: http://apache:80/data/inputs
     volumes:
       - foldseek:/app/results
       - ./containers/data-source-executors/executor-foldseek/foldseek_executor.py:/app/foldseek_executor.py
@@ -141,10 +157,10 @@ services:
       - ./containers/data-source-executors/data_format/builder.py:/app/data_format/builder.py
     command: celery --app=celery_worker worker --queues=ds_foldseek --hostname=foldseek_worker --loglevel=info
 
-  ds-p2rank:
+  ds-p2rank: 
     build:
-      context: ./containers/data-source-executors/
-      dockerfile: ./executor-p2rank/Dockerfile
+      context: ./containers
+      dockerfile: ./data-source-executors/executor-p2rank/Dockerfile
       args:
         UID: ${PLANKWEB_DEFAULT_UID:-1453}
         GID: ${PLANKWEB_DEFAULT_GID:-1453}
@@ -157,8 +173,11 @@ services:
         condition: service_healthy
       executor-http-api:
         condition: service_healthy
-    env_file:
-      - .env
+    environment:
+      CELERY_NAME: ${PLANKWEB_CELERY_NAME:-plankweb_tasks}
+      CELERY_BROKER_URL: amqp://${PLANKWEB_SERVICE_USER:-guest}:${PLANKWEB_SERVICE_PASS:-guest}@message-broker:5672//
+      INPUTS_URL: http://apache:80/data/inputs
+      CONSERVATION_URL: http://apache:80/data/conservation
     volumes:
       - p2rank:/app/results
       - ./containers/data-source-executors/executor-p2rank/p2rank_executor.py:/app/p2rank_executor.py
@@ -168,7 +187,8 @@ services:
 
   conservation:
     build:
-      context: ./containers/conservation
+      context: ./containers
+      dockerfile: ./conservation/Dockerfile
       args:
         UID: ${PLANKWEB_DEFAULT_UID:-1453}
         GID: ${PLANKWEB_DEFAULT_GID:-1453}
@@ -177,12 +197,13 @@ services:
     depends_on:
       message-broker:
         condition: service_healthy
-      celery-backend:
-        condition: service_healthy
       executor-http-api:
         condition: service_healthy
-    env_file:
-      - .env
+    environment:
+      CELERY_NAME: ${PLANKWEB_CELERY_NAME:-plankweb_tasks}
+      CELERY_BROKER_URL: amqp://${PLANKWEB_SERVICE_USER:-guest}:${PLANKWEB_SERVICE_PASS:-guest}@message-broker:5672//
+      CELERY_BACKEND_URL: redis://:${PLANKWEB_SERVICE_PASS:-guest}@celery-backend:6379/0
+      INPUTS_URL: http://apache:80/data/inputs
     volumes:
       - conservation:/app/results
       - ./containers/conservation/celery_worker.py:/app/celery_worker.py
@@ -191,7 +212,8 @@ services:
 
   converter:
     build:
-      context: ./containers/converter/
+      context: ./containers
+      dockerfile: ./converter/Dockerfile
       args:
         UID: ${PLANKWEB_DEFAULT_UID:-1453}
         GID: ${PLANKWEB_DEFAULT_GID:-1453}
@@ -204,15 +226,19 @@ services:
         condition: service_healthy
       executor-http-api:
         condition: service_healthy
-    env_file:
-      - .env
+    environment:
+      CELERY_NAME: ${PLANKWEB_CELERY_NAME:-plankweb_tasks}
+      CELERY_BROKER_URL: amqp://${PLANKWEB_SERVICE_USER:-guest}:${PLANKWEB_SERVICE_PASS:-guest}@message-broker:5672// 
+      CELERY_BACKEND_URL: redis://:${PLANKWEB_SERVICE_PASS:-guest}@celery-backend:6379/0
+      INPUTS_URL: http://apache:80/data/inputs
     volumes:
       - ./containers/converter/converter_executor.py:/app/converter_executor.py
     command: celery --app=celery_worker worker --queues=converter --hostname=converter_worker --loglevel=info
 
   metatask:
     build:
-      context: ./containers/metatask/
+      context: ./containers
+      dockerfile: ./metatask/Dockerfile
       args:
         UID: ${PLANKWEB_DEFAULT_UID:-1453}
         GID: ${PLANKWEB_DEFAULT_GID:-1453}
@@ -233,8 +259,11 @@ services:
         condition: service_started
       ds-p2rank:
         condition: service_started
-    env_file:
-      - .env
+    environment:
+      CELERY_NAME: ${PLANKWEB_CELERY_NAME:-plankweb_tasks}
+      CELERY_BROKER_URL: amqp://${PLANKWEB_SERVICE_USER:-guest}:${PLANKWEB_SERVICE_PASS:-guest}@message-broker:5672// 
+      CELERY_BACKEND_URL: redis://:${PLANKWEB_SERVICE_PASS:-guest}@celery-backend:6379/0
+      APACHE_URL: http://apache:80/data
     volumes:
       - inputs:/app/inputs
       - ./containers/metatask/metatask.py:/app/metatask.py
@@ -250,9 +279,7 @@ services:
       celery-backend:
         condition: service_healthy
     environment:
-      CELERY_BROKER_URL: amqp://guest:guest@message-broker:5672
-    ports:
-      - 5555:5555
+      CELERY_BROKER_URL: amqp://${PLANKWEB_SERVICE_USER:-guest}:${PLANKWEB_SERVICE_PASS:-guest}@message-broker:5672//
     command: celery flower --url_prefix=service/flower --prometheus
 
 volumes:

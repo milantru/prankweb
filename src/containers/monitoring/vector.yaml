@@ -2,6 +2,13 @@ sources:
   docker:
     type: docker_logs
     include_containers:
+      - http-server
+      - id-provider
+      - metatask
+      - converter
+      - conservation
+      - ds-foldseek
+      - ds-p2rank
 
 transforms:
   clean_logs:
@@ -10,11 +17,8 @@ transforms:
     source: |
       . = {
         "container_name": .container_name,
-        "container_id": .container_id,
-        "time": format_timestamp!(.timestamp, format: "%d.%m.%Y %H:%M:%S.%3f", timezone: "Europe/Prague"),
         "message": .message
       }
-
 
 sinks:
   loki:
@@ -22,6 +26,7 @@ sinks:
     inputs: ["clean_logs"]
     endpoint: http://loki:3100
     encoding:
-      codec: json
+      codec: text
+      only_fields: ["message"]
     labels:
       container: "{{ container_name }}"
