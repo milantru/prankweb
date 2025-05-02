@@ -168,7 +168,13 @@ services:
       - ./containers/data-source-executors/executor-foldseek/foldseek_executor.py:/app/foldseek_executor.py
       - ./containers/data-source-executors/executor-foldseek/post_processor.py:/app/post_processor.py
       - ./containers/data-source-executors/data_format/builder.py:/app/data_format/builder.py
-    command: celery --app=celery_worker worker --queues=ds_foldseek --hostname=foldseek_worker --loglevel=warning --events
+    command: |
+      celery
+        --app=celery_worker worker
+        --queues=ds_foldseek
+        --hostname=foldseek_worker 
+        --loglevel=warning
+        --events
 
   ds-p2rank:
     build:
@@ -197,7 +203,13 @@ services:
       - ./containers/data-source-executors/executor-p2rank/p2rank_executor.py:/app/p2rank_executor.py
       - ./containers/data-source-executors/executor-p2rank/post_processor.py:/app/post_processor.py
       - ./containers/data-source-executors/data_format/builder.py:/app/data_format/builder.py
-    command: celery --app=celery_worker worker --queues=ds_p2rank --hostname=p2rank_worker --loglevel=warning --events
+    command: |
+      celery
+        --app=celery_worker worker
+        --queues=ds_p2rank
+        --hostname=p2rank_worker
+        --loglevel=warning
+        --events
 
   conservation:
     build:
@@ -223,7 +235,13 @@ services:
       - conservation:/app/results
       - ./containers/conservation/celery_worker.py:/app/celery_worker.py
       - ./containers/conservation/conservation.py:/app/conservation.py
-    command: celery --app=celery_worker worker --queues=conservation --hostname=conservation_worker --loglevel=warning --events
+    command: |
+      celery
+        --app=celery_worker worker
+        --queues=conservation
+        --hostname=conservation_worker
+        --loglevel=warning
+        --events
 
   converter:
     build:
@@ -249,7 +267,13 @@ services:
       LOGGING_TZ: ${PLANKWEB_TIMEZONE:-Europe/Prague}
     volumes:
       - ./containers/converter/converter_executor.py:/app/converter_executor.py
-    command: celery --app=celery_worker worker --queues=converter --hostname=converter_worker --loglevel=warning --events
+    command: |
+      celery
+        --app=celery_worker worker
+        --queues=converter
+        --hostname=converter_worker
+        --loglevel=warning
+        --events
 
   metatask:
     build:
@@ -284,7 +308,13 @@ services:
     volumes:
       - inputs:/app/inputs
       - ./containers/metatask/metatask.py:/app/metatask.py
-    command: celery --app=metatask worker --queues=metatask --hostname=metatask_worker --loglevel=warning --events
+    command: |
+      celery
+        --app=metatask worker
+        --queues=metatask
+        --hostname=metatask_worker
+        --loglevel=warning
+        --events
 
   flower:
     build: https://github.com/mher/flower.git
