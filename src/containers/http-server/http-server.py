@@ -1,3 +1,4 @@
+import json
 import os
 import time
 from enum import Enum
@@ -51,7 +52,7 @@ class InputModels(Enum):
 PDB_FORM_FIELDS = [ 'pdbCode', 'chains', 'useConservation' ]
 CUSTOM_STR_FORM_FIELDS = [ 'chains', 'userInputModel' ]
 UNIPROT_FORM_FIELDS = [ 'uniprotCode', 'useConservation' ]
-SEQUENCE_FORM_FIELDS = [ 'sequence', 'useConservation' ]  
+SEQUENCE_FORM_FIELDS = [ 'sequence', 'useConservation' ]
 
 
 ID_PROVIDER_URL = os.getenv('ID_PROVIDER_URL')
@@ -62,6 +63,9 @@ PDB_FILE_URL = 'https://files.rcsb.org/download/{}.pdb'
 
 UNIPROT_ID_URL = 'https://rest.uniprot.org/uniprotkb/{}'
 UNIPROT_FILE_URL = 'https://alphafold.ebi.ac.uk/files/AF-{}-F1-model_v4.pdb'
+
+
+logger = create_logger('http-server')
 
 ############################## Private functions ###############################
 
@@ -78,7 +82,7 @@ def _file_exists_at_url(url: str) -> bool:
         response = requests.head(url, allow_redirects=True, timeout=(3,5))
         return response.status_code == 200
     except requests.RequestException as e:
-        print(f'Error checking URL: {e}')
+        logger.error(f'Error checking URL: {e}')
         return False
 
 
@@ -104,10 +108,10 @@ def _try_parse_pdb(pdb_file: str, user_chains: list) -> ErrorStr | None:
                 file_chains.add(chain.get_id())
 
         if not (user_chains <= file_chains):
-            return 'Wrong chains selected'
+            return 'Wrong chains selected for parsing user file'
     
-    except Exception as e:
-        return 'Wrong file format'
+    except Exception:
+        return 'Wrong user file format'
     
     return None
 
@@ -147,7 +151,7 @@ def _validate_pdb(input_data: dict) -> ValidationResult:
         input_data['inputModel'] = 'default'
 
     except Exception as e:
-        print(e)
+        logger.error(str(e))
         return 'Unknown exception occured', None
 
     return None, pdb_id
@@ -181,6 +185,7 @@ def _validate_custom_str(input_data: dict, input_file: FileStorage | None) -> Va
     # try to parse pdb and check selected chains
     chains_str = input_data['chains']
     selected_chains = set((chains_str.split(',') if chains_str else []))
+
     err = _try_parse_pdb(tmp_file, selected_chains)
     
     # tmp_folder is mounted to volume tmp which is shared with apache
@@ -190,7 +195,9 @@ def _validate_custom_str(input_data: dict, input_file: FileStorage | None) -> Va
     input_data['inputModel'] = InputModels(model).name.split('_')[0].lower()     # result is default / alphafold
 
     # Delete tmp file after 15 minutes
-    Popen(f'sleep 900 && rm -f {tmp_file}', shell=True)
+    delete_cmd = f'sleep 900 && rm -f {tmp_file}'
+    logger.info(f'Starting process which deletes tmp file after 15 minutes: {delete_cmd}')
+    Popen(delete_cmd, shell=True)
     
     return err, None
 
@@ -257,7 +264,9 @@ def _validate_seq(input_data: dict) -> ValidationResult:
     input_data['inputModel'] = 'alphafold'
 
     # Delete tmp file after 15 minutes
-    Popen(f'sleep 900 && rm -f {tmp_file}', shell=True)
+    delete_cmd = f'sleep 900 && rm -f {tmp_file}'
+    logger.info(f'Starting process which deletes tmp file after 15 minutes: {delete_cmd}')
+    Popen(delete_cmd, shell=True)
     
     return None, sequence
 
@@ -268,27 +277,32 @@ def _is_input_valid(input_method: str, input_data: dict, input_file: FileStorage
         case InputMethods.CUSTOM_STR.value: return _validate_custom_str(input_data, input_file)
         case InputMethods.UNIPROT.value: return _validate_uniprot(input_data)
         case InputMethods.SEQUENCE.value: return _validate_seq(input_data)
-        case _: raise  Exception('Unexpected input method')
+        case _: return 'Unexpected input method', None
 
 ############################## Public functions ################################
 
 @app.route('/upload-data', methods=['POST'])
 def upload_data() -> Response:
+    logger.info(f'upload-data POST request received')
 
     input_method = request.form.get('inputMethod')
     if input_method is None:
-        print('inputMethod field not found in form')
-        return jsonify({'error': 'inputMethod field not found in form'}), 400
+        logger.info('inputMethod field not found in a form')
+        return jsonify({'error': 'inputMethod field not found in a form'}), 400
     
     input_data = request.form.to_dict()
+    logger.info(f'Input data:\n{json.dumps(input_data, indent=2)}')
+
     input_file = request.files.get('userFile') # returns None when not found
+    logger.info(f'userFile exists: {True if input_file else False}')
 
-    print('INPUT TYPE:', input_method) # TODO: replace by log
-
+    logger.info('Starting user input validation...')
     err, protein = _is_input_valid(input_method, input_data, input_file)
     if err:
-        print(err)
+        logger.info(err)
         return jsonify({'error': err}), 400
+    
+    logger.info('User input validation passed')
 
     # convert useConservation to Python friendly format
     use_conservation = input_data['useConservation'].lower() == 'true'
@@ -299,31 +313,42 @@ def upload_data() -> Response:
         'input_protein': protein
     }
 
-    print('ID PROVIDER REQUEST')
-    response = requests.post(ID_PROVIDER_URL, json=id_payload)
-
-    if response.status_code != 200:
-        return jsonify({'error': 'Failed to fetch data from id-provider'}), 500
+    logger.info(f'Sending POST request to id-provider: {ID_PROVIDER_URL}, payload:\n {json.dumps(id_payload, indent=2)}')
+    try:
+        response = requests.post(ID_PROVIDER_URL, json=id_payload)
+        response.raise_for_status()
+    except:
+        logger.error('Failed to get ID from id-provider')
+        return jsonify({'error': 'Failed to get ID from id-provider'}), 500
     
-    print('ID PROVIDER RESPONDED POSITIVELY')
-
-    # change input method to 'STR' or 'SEQ'
-    input_data['inputMethod'] = (
-        'SEQ' if input_method == InputMethods.SEQUENCE.value else 'STR'
-    )
-
     response_data = response.json()
 
+    logger.info(f'id-provider responded positively, response:\n{json.dumps(response_data, indent=2)}')
+
+    # change input method to 'STR' or 'SEQ'
+    new_input_method = (
+        'SEQ' if input_method == InputMethods.SEQUENCE.value else 'STR'
+    )
+    
+    input_data['inputMethod'] = new_input_method
+    logger.info(f'inputMethod changed from {input_method} to {new_input_method}')
+
     # convert keys to snake_case
+    logger.info('Preparing metatask payload...')
     metatask_payload = { decamelize(k):v for k,v in input_data.items() }
     metatask_payload['id'] = response_data['id']
     metatask_payload['id_existed'] = response_data['existed']
+    logger.info(f'Metatask payload prepared:\n{json.dumps(metatask_payload, indent=2)}')
 
+    metatask_task_name = f'metatask_{metatask_payload["input_method"]}'
+    logger.info(f'Sending {metatask_task_name}')
     celery.send_task(
-        f'metatask_{metatask_payload["input_method"]}',
+        metatask_task_name,
         args=[metatask_payload]
     )
     
+    logger.info(f'http-server finished, returning ID: {response_data["id"]}')
+
     return jsonify(response_data['id'])
 
 

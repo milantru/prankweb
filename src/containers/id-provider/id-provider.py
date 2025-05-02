@@ -74,11 +74,11 @@ def get_or_generate():
     return jsonify({"id": generated_id, "stored_value": key, "existed" : False})
 
 
-@app.route('/get_id', methods=['GET'])
+@app.route('/get-id', methods=['GET'])
 def get_id():
     input_method = request.args.get('input_method')
     input_protein = request.args.get('input_protein')
-    logger.info(f'get_id GET request received: input_method -> {input_method}, input_protein -> {input_protein}')
+    logger.info(f'get-id GET request received: input_method -> {input_method}, input_protein -> {input_protein}')
 
     key = f'{InputMethods[input_method.upper()].value}:{input_protein}'
     logger.info(f'Key for database search created from input: {key}')

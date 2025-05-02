@@ -2,14 +2,13 @@ sources:
   docker:
     type: docker_logs
     include_containers:
+      - http-server
       - id-provider
       - metatask
       - converter
       - conservation
       - ds-foldseek
       - ds-p2rank
-    
-    # ["http-server"]
 
 transforms:
   clean_logs:

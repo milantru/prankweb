@@ -6,8 +6,6 @@ ARG GID
 RUN addgroup --gid ${GID} user \
   && useradd --uid ${UID} --gid ${GID} user
 
-ENV PYTHONUNBUFFERED=1
-
 WORKDIR /app
 
 # Copy Python source code and install needed modules
@@ -24,5 +22,7 @@ RUN chmod +x install-requirements.sh \
 COPY --chown=user:user ./http-server/. .
 RUN chmod u+x http-server.py \
     && chown user:user /app
+
+ENV PYTHONUNBUFFERED=1
 
 USER ${UID}:${GID}
