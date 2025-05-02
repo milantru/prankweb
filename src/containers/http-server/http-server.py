@@ -79,7 +79,7 @@ def _check_form_fields(input_data: dict, form_fields: list) -> ErrorStr | None:
 
 def _file_exists_at_url(url: str) -> bool:
     try:
-        response = requests.head(url, allow_redirects=True, timeout=(3,5))
+        response = requests.head(url, allow_redirects=True, timeout=20)
         return response.status_code == 200
     except requests.RequestException as e:
         logger.error(f'Error checking URL: {e}')
