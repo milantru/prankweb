@@ -1,4 +1,0 @@
-celery
-requests
-biopython
-redis
