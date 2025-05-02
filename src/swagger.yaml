@@ -10,7 +10,91 @@ servers:
     description: Coming soon...
 
 paths:
-  /get_id:
+  /upload-data:
+    post:
+      summary: Upload protein data
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              oneOf:
+                - title: Method 0 - PDB Code
+                  required: [inputMethod, pdbCode, chains, useConservation]
+                  properties:
+                    inputMethod:
+                      type: integer
+                      example: 0
+                    pdbCode:
+                      type: string
+                      example: "2src"
+                    chains:
+                      type: string
+                      example: "A"
+                    useConservation:
+                      type: boolean
+                      example: true
+
+                - title: Method 1 - File Upload
+                  required: [inputMethod, uderFile, chains, userInputModel]
+                  properties:
+                    inputMethod:
+                      type: integer
+                      example: 1
+                    userFile:
+                      type: string
+                      format: binary
+                    chains:
+                      type: string
+                      example: "A"
+                    userInputModel:
+                      type: integer
+                      example: 0
+                - title: Method 2 - UniProt Code
+                  required: [inputMethod, uniprotCode, useConservation]
+                  properties:
+                    inputMethod:
+                      type: integer
+                      example: 2
+                    uniprotCode:
+                      type: string
+                      example: "P12345"
+                    useConservation:
+                      type: boolean
+                      example: true
+                - title: Method 3 - Sequence
+                  required: [inputMethod, sequence, useConservation]
+                  properties:
+                    inputMethod:
+                      type: integer
+                      example: 3
+                    sequence:
+                      type: string
+                      example: "TTFVALYDYESRTETDLSFKKGERLQIVNNTEGDWWL..."
+                    useConservation:
+                      type: boolean
+                      example: true
+
+      responses:
+        '200':
+          description: Successful upload
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: pdb_2src
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Unexpected input method
+
+  /get-id:
     get:
       summary: Get ID for protein based on the input method
       description: |
@@ -178,3 +262,150 @@ paths:
                     type: string
                     description: Error message(s) if the computation failed.
                     example: ""
+
+  /data/{dataSourceName}/{inputId}/{chainId}_chain_result.json:
+    get:
+      parameters:
+        - in: path
+          name: dataSourceName
+          required: true
+          description: |
+            The name of the data source, one of:
+            - ds_foldseek
+            - ds_p2rank
+            - ds_plm
+          schema:
+            type: string
+            example: "foldseek"
+        - in: path
+          name: inputId
+          required: true
+          description: The generated ID of a protein
+          schema:
+            type: string
+            example: "pdb_2src"
+        - in: path
+          name: chainId
+          required: true
+          description: The ID of the chain (e.g., "A"), which can be obtained from the /data/inputs/{inputId}/chains.json endpoint.
+          schema:
+            type: string
+            example: "A"
+      responses:
+        '200':
+          description: A JSON result in the shared format
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  result:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        example: pdb_2src
+                      chain:
+                        type: string
+                        example: A
+                      sequence:
+                        type: string
+                        example: TTFVALYDYESRTETDLSFKKGERLQIVNNTEGDWWL...
+                      pdbUrl:
+                        type: string
+                        format: uri
+                        example: http://localhost/data/inputs/pdb_2src/structure.pdb
+                      bindingSites:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                              example: pocket_1
+                            confidence:
+                              type: number
+                              format: float
+                              example: 0.916
+                            residues:
+                              type: array
+                              items:
+                                type: integer
+                              example: [189, 190, 191, 192, 193, 194, 195]
+                      similarProteins:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            pdbId:
+                              type: string
+                              example: 4k11
+                            chain:
+                              type: string
+                              example: A
+                            sequence:
+                              type: string
+                              example: TTFVALYDYESRTETDLSFKKGERLQIVNNTEGDWWL...
+                            pdbUrl:
+                              type: string
+                              format: uri
+                              example: http://localhost/data/ds_foldseek/pdb_2src/4k11.pdb
+                            bindingSites:
+                              type: array
+                              items:
+                                type: object
+                                properties:
+                                  id:
+                                    type: string
+                                    example: H_PTR
+                                  confidence:
+                                    type: number
+                                    format: float
+                                    example: 1.0
+                                  residues:
+                                    type: array
+                                    items:
+                                      type: object
+                                      properties:
+                                        sequenceIndex:
+                                          type: integer
+                                          example: 71
+                                        structureIndex:
+                                          type: integer
+                                          example: 155
+                            alignmentData:
+                              type: object
+                              properties:
+                                querySeqAlignedPartStartIdx:
+                                  type: integer
+                                  example: 0
+                                querySeqAlignedPartEndIdx:
+                                  type: integer
+                                  example: 447
+                                querySeqAlignedPart:
+                                  type: string
+                                  example: TTFVALYDYESRTETDLSFKKGERLQIVNNTEGDWWL...
+                                similarSequence:
+                                  type: string
+                                  example: TTFVALYDYESRTETDLSFKKGERLQIVNNTEGDWWL...
+                                similarSeqAlignedPartStartIdx:
+                                  type: integer
+                                  example: 0
+                                similarSeqAlignedPartEndIdx:
+                                  type: integer
+                                  example: 447
+                                similarSeqAlignedPart:
+                                  type: string
+                                  example: TTFVALYDYESRTETDLSFKKGERLQIVNNTEGDWWL...
+                      metadata:
+                        type: object
+                        properties:
+                          source:
+                            type: string
+                            example: foldseek
+                          timestamp:
+                            type: string
+                            format: date-time
+                            example: 2025-04-11T10:56:00.731529
+        '404':
+          description: Not Found.
