@@ -355,8 +355,11 @@ function RcsbSaguaro({ chainResult, squashBindingSites }: Props) {
             if (!result.similarProteins) {
                 continue;
             }
-            for (const simProt of result.similarProteins) {
-                const id = `${dataSourceName}-${simProt.pdbId}-${simProt.chain}`;
+            for (let i = 0; i < result.similarProteins.length; i++) {
+                const simProt = result.similarProteins[i];
+                /* index was added to the id because it seems there are proteins which have multiple similar proteins
+                 * with the same name, even exactly the same ligands, e.g. 1A3N chain D */
+                const id = `${dataSourceName}-${simProt.pdbId}-${simProt.chain}-${i}`;
                 const title = simProt.pdbId;
                 const simProtColor = similarProteinColors[simProt.pdbId];
                 const simProtColorTransparent = similarProteinColors[simProt.pdbId] + "80"; // Add alpha channel
@@ -367,7 +370,7 @@ function RcsbSaguaro({ chainResult, squashBindingSites }: Props) {
 
                 if (squashBindingSites) {
                     if (simProt.bindingSites.length > 0) {
-                        const id = `${dataSourceName}-${simProt.pdbId}-bindingSites`;
+                        const id = `${dataSourceName}-${simProt.pdbId}-${i}-bindingSites`;
                         const title = `${simProt.pdbId}'s binding sites`;
 
                         const bindingSitesRow = createBlockRowForBindingSites(
@@ -376,7 +379,7 @@ function RcsbSaguaro({ chainResult, squashBindingSites }: Props) {
                     }
                 } else {
                     simProt.bindingSites.forEach((bindingSite, idx) => {
-                        const id = `${dataSourceName}-${simProt.pdbId}-${bindingSite.id}-${idx}`;
+                        const id = `${dataSourceName}-${simProt.pdbId}-${i}-${bindingSite.id}-${idx}`;
                         const title = bindingSite.id;
 
                         const simProtBindingSiteRow = createBlockRowForResidues(
