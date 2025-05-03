@@ -122,7 +122,7 @@ export function MolStarWrapper({ chainResults, selectedChain, selectedStructureU
 
 	async function siteVisual(plugin: PluginContext, s: StateObjectRef<PSO.Molecule.Structure>, pivot: Expression, rest: Expression) {
 		const center = await plugin.builders.structure.tryCreateComponentFromExpression(s, pivot, "pivot");
-		if (center) await plugin.builders.structure.representation.addRepresentation(center, { type: "cartoon", color: "uniform" });
+		if (center) await plugin.builders.structure.representation.addRepresentation(center, { type: "cartoon", color: "model-index" });
 
 		const surr = await plugin.builders.structure.tryCreateComponentFromExpression(s, rest, "rest");
 		if (surr) await plugin.builders.structure.representation.addRepresentation(surr, { type: "ball-and-stick"/*, color: "uniform", size: "uniform", sizeParams: { value: 0.33 }*/ }); // TODO
@@ -182,7 +182,7 @@ export function MolStarWrapper({ chainResults, selectedChain, selectedStructureU
 		if (polymer) {
 			await plugin.builders.structure.representation.addRepresentation(polymer, {
 				type: "cartoon",
-				color: "uniform",
+				color: "model-index",
 			});
 		}
 
