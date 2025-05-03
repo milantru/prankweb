@@ -8,6 +8,18 @@ create-react-app should support this natively. */
 import "molstar/lib/mol-plugin-ui/skin/light.scss";
 import { DefaultPluginUISpec } from "molstar/lib/mol-plugin-ui/spec";
 import { ChainResult, ProcessedResult } from "../AnalyticalPage";
+import { StateObjectRef, StateObjectSelector } from "molstar/lib/mol-state";
+import { Asset } from "molstar/lib/mol-util/assets";
+import { MolScriptBuilder as MS } from "molstar/lib/mol-script/language/builder";
+import { QueryContext, StructureSelection } from "molstar/lib/mol-model/structure";
+import { compile } from "molstar/lib/mol-script/runtime/query/compiler";
+import { superpose } from "molstar/lib/mol-model/structure/structure/util/superposition";
+import { PluginContext } from "molstar/lib/mol-plugin/context";
+import { PluginStateObject as PSO } from "molstar/lib/mol-plugin-state/objects";
+import { Expression } from "molstar/lib/mol-script/language/expression";
+import { Mat4 } from "molstar/lib/mol-math/linear-algebra";
+import { StateTransforms } from "molstar/lib/mol-plugin-state/transforms";
+import { BuiltInTrajectoryFormat } from "molstar/lib/mol-plugin-state/formats/trajectory";
 
 declare global {
 	interface Window {
@@ -24,7 +36,6 @@ export function MolStarWrapper({ chainResult, selectedStructureUrls }: Props) {
 	const querySequenceUrl = getQuerySequenceUrl(chainResult);
 	let tmp = [querySequenceUrl, ...selectedStructureUrls]
 	const pdbUrls = tmp.map(x => x.replace("apache", "localhost")); // TODO: Delete map with replace
-
 	if (pdbUrls.length === 0) {
 		// At least one structure is always expected, but this check is added as a defensive programming measure.
 		return <div>No structures provided.</div>
@@ -55,14 +66,14 @@ export function MolStarWrapper({ chainResult, selectedStructureUrls }: Props) {
 						}
 					},
 					components: {
-						remoteState: 'none'
+						remoteState: "none"
 					}
 				}
 			});
 
 			window.molstar = plugin;
 
-			await visualiseStructures(plugin, pdbUrls);
+			loadNewStructures(plugin, pdbUrls, "pdb", "A");
 		}
 
 		init();
@@ -79,8 +90,8 @@ export function MolStarWrapper({ chainResult, selectedStructureUrls }: Props) {
 			return;
 		}
 
-		visualiseStructures(plugin, pdbUrls);
-	}, [/*chainResult, */selectedStructureUrls]); // TODO
+		loadNewStructures(plugin, pdbUrls, "pdb", "A");
+	}, [/*chainResult, */selectedStructureUrls]); // TODO is not dependant on chainResult because query seq should not change
 
 	return (
 		<div ref={parent} style={{ position: "relative", height: "70vh", width: "45vw" }}></div>
@@ -98,18 +109,96 @@ export function MolStarWrapper({ chainResult, selectedStructureUrls }: Props) {
 		return querySequenceUrl;
 	}
 
-	async function visualiseStructures(plugin: PluginUIContext, pdbUrls: string[]) {
+	function transform(plugin: PluginContext, s: StateObjectRef<PSO.Molecule.Structure>, matrix: Mat4) {
+		const b = plugin.state.data.build().to(s)
+			.insert(StateTransforms.Model.TransformStructureConformation, { transform: { name: "matrix", params: { data: matrix, transpose: false } } });
+		return plugin.runTask(plugin.state.data.updateTree(b));
+	}
+
+	async function siteVisual(plugin: PluginContext, s: StateObjectRef<PSO.Molecule.Structure>, pivot: Expression, rest: Expression) {
+		const center = await plugin.builders.structure.tryCreateComponentFromExpression(s, pivot, "pivot");
+		if (center) await plugin.builders.structure.representation.addRepresentation(center, { type: "cartoon", color: "uniform" });
+
+		const surr = await plugin.builders.structure.tryCreateComponentFromExpression(s, rest, "rest");
+		if (surr) await plugin.builders.structure.representation.addRepresentation(surr, { type: "ball-and-stick"/*, color: "uniform", size: "uniform", sizeParams: { value: 0.33 }*/ }); // TODO
+	}
+
+	async function _loadStructure(plugin: PluginContext, structureUrl: string, format: BuiltInTrajectoryFormat) {
+		const data = await plugin.builders.data.download({
+			url: Asset.Url(structureUrl),
+			isBinary: false
+		}, { state: { isGhost: true } });
+
+		const trajectory = await plugin.builders.structure.parseTrajectory(data, format);
+
+		const model = await plugin.builders.structure.createModel(trajectory);
+		const structure: StateObjectSelector = await plugin.builders.structure.createStructure(model, { name: "model", params: {} });
+
+		return structure;
+	}
+
+	function performDynamicSuperposition(plugin: PluginContext, structureUrls: string[], format: BuiltInTrajectoryFormat, chain: string) {
+		return plugin.dataTransaction(async () => {
+			for (const structureUrl of structureUrls) {
+				await _loadStructure(plugin, structureUrl, format);
+			}
+
+			const pivot = MS.struct.generator.atomGroups({
+				"chain-test": MS.core.rel.eq([MS.struct.atomProperty.macromolecular.auth_asym_id(), chain])
+			});
+
+			const rest = MS.struct.modifier.exceptBy({
+				0: MS.struct.modifier.includeSurroundings({
+					0: pivot,
+					radius: 5
+				}),
+				by: pivot
+			});
+
+			const query = compile<StructureSelection>(pivot);
+			const xs = plugin.managers.structure.hierarchy.current.structures;
+			const selections = xs.map(s => StructureSelection.toLociWithCurrentUnits(query(new QueryContext(s.cell.obj!.data))));
+
+			const transforms = superpose(selections);
+
+			await siteVisual(plugin, xs[0].cell, pivot, rest);
+			for (let i = 1; i < selections.length; i++) {
+				await transform(plugin, xs[i].cell, transforms[i - 1].bTransform);
+				await siteVisual(plugin, xs[i].cell, pivot, rest);
+			}
+		});
+	}
+
+	async function loadNewStructure(plugin: PluginContext, structureUrl: string, format: BuiltInTrajectoryFormat) {
+		const structure = await _loadStructure(plugin, structureUrl, format);
+
+		const polymer = await plugin.builders.structure.tryCreateComponentStatic(structure, "polymer");
+		if (polymer) {
+			await plugin.builders.structure.representation.addRepresentation(polymer, {
+				type: "cartoon",
+				color: "uniform",
+			});
+		}
+
+		const component = await plugin.builders.structure.tryCreateComponentStatic(structure, "ligand");
+		if (component) {
+			await plugin.builders.structure.representation.addRepresentation(component, {
+				type: "ball-and-stick"
+			});
+		}
+	}
+
+	async function loadNewStructures(plugin: PluginUIContext, structureUrls: string[], format: BuiltInTrajectoryFormat, chain: string) {
 		await plugin.clear();
 
-		for (const url of pdbUrls) {
-			const data = await window.molstar.builders.data.download(
-				{ url: url },
-				{ state: { isGhost: true } }
-			);
-
-			const trajectory = await window.molstar.builders.structure.parseTrajectory(data, "pdb");
-
-			await window.molstar.builders.structure.hierarchy.applyPreset(trajectory, "default");
+		if (structureUrls.length > 1) {
+			await performDynamicSuperposition(plugin, structureUrls, format, chain);
+		} else if (pdbUrls.length === 1) {
+			await loadNewStructure(plugin, structureUrls[0], format);
+		} else {
+			/* This should never happend, at least one structure is always expected.
+			* If it happens, we want to know wabout it. */
+			throw new Error("No structures to visualise.");
 		}
 	}
 }
