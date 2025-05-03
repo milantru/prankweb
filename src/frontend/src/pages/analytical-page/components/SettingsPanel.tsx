@@ -1,6 +1,6 @@
-import Select from 'react-select';
+import Select, { SelectInstance } from 'react-select';
 import { ChainResult, ChainResults } from "../AnalyticalPage";
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 type Props = {
     chainResults: ChainResults;
@@ -14,6 +14,7 @@ function SettingsPanel({ chainResults, onChainSelect, squashBindingSites, onBind
     const chains = Object.keys(chainResults);
     const [selectedChain, setSelectedChain] = useState<string>(chains[0]); // We can index to chains because each protein has at least 1 chain.
     const [structureLabels, setStructureLabels] = useState<string[]>([]); // Similar proteins which can be visualised
+    const structuresSelectRef = useRef<SelectInstance | null>(null);
 
     useEffect(() => {
         function getAllSimilarProteinPdbIds(chainResult: ChainResult) {
@@ -59,6 +60,8 @@ function SettingsPanel({ chainResults, onChainSelect, squashBindingSites, onBind
             return structureLabelsTmp;
         }
 
+        structuresSelectRef.current?.clearValue(); // TODO error in console occurs when this is here
+
         const chainResult = chainResults[selectedChain];
         const allSimilarProteinPdbIds = getAllSimilarProteinPdbIds(chainResult);
         const duplicatePdbIds = getNonUniqueValues(allSimilarProteinPdbIds);
@@ -96,10 +99,11 @@ function SettingsPanel({ chainResults, onChainSelect, squashBindingSites, onBind
         </div>
 
         <div className="w-100">
-            <div className="d-flex align-items-center mt-2 mr-2">
-                <div className="mr-1 font-weight-bold">Structures:</div>
+            {/* The pr-5 is here, otherwise when structure is selected, the settings window "jumps" in width. */}
+            <div className="d-flex align-items-center mt-2 mr-2 pr-5">
+                <div className="mr-1 font-weight-bold" title="Select similar structures to visualise them.">Structures:</div>
                 <Select
-                    placeholder="Select similar structures to visualise them"
+                    ref={structuresSelectRef}
                     isMulti
                     onChange={(selectedOption: any) => handleStructureSelect(selectedOption.map(x => x.value))}
                     closeMenuOnSelect={false}
@@ -130,11 +134,10 @@ function SettingsPanel({ chainResults, onChainSelect, squashBindingSites, onBind
     }
 
     function handleStructureSelect(selectedStructures: string[]) {
-
         const chainResult = chainResults[selectedChain];
         const pdbUrls: string[] = [];
 
-        for (const [dseName, dseResult] of Object.entries(chainResult.dataSourceExecutorResults)) {
+        for (const dseResult of Object.values(chainResult.dataSourceExecutorResults)) {
             if (!dseResult.similarProteins) {
                 continue;
             }

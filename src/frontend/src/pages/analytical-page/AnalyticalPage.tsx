@@ -192,7 +192,8 @@ function AnalyticalPage() {
 				</div>
 				<div id="visualization-molstar" className="col-xs-12 col-md-6 col-xl-6">
 					{chainResults && selectedChain ? (<>
-						<MolStarWrapper chainResult={chainResults[selectedChain]}
+						<MolStarWrapper chainResults={chainResults}
+							selectedChain={selectedChain}
 							selectedStructureUrls={selectedStructureUrls} />
 						<div id="visualization-toolbox">TODO Toolbox</div>
 					</>) : (

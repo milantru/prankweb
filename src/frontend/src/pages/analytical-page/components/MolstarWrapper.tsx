@@ -7,7 +7,7 @@ see https://webpack.js.org/loaders/sass-loader/ for example.
 create-react-app should support this natively. */
 import "molstar/lib/mol-plugin-ui/skin/light.scss";
 import { DefaultPluginUISpec } from "molstar/lib/mol-plugin-ui/spec";
-import { ChainResult, ProcessedResult } from "../AnalyticalPage";
+import { ChainResult, ChainResults, ProcessedResult } from "../AnalyticalPage";
 import { StateObjectRef, StateObjectSelector } from "molstar/lib/mol-state";
 import { Asset } from "molstar/lib/mol-util/assets";
 import { MolScriptBuilder as MS } from "molstar/lib/mol-script/language/builder";
@@ -28,11 +28,16 @@ declare global {
 }
 
 type Props = {
-	chainResult: ChainResult;
+	chainResults: ChainResults;
+	selectedChain: string;
 	selectedStructureUrls: string[];
 };
 
-export function MolStarWrapper({ chainResult, selectedStructureUrls }: Props) {
+export function MolStarWrapper({ chainResults, selectedChain, selectedStructureUrls }: Props) {
+	const chainResult = chainResults[selectedChain];
+	if (!chainResult) {
+		return <div>No data for the selected chain.</div>
+	}
 	const querySequenceUrl = getQuerySequenceUrl(chainResult);
 	let tmp = [querySequenceUrl, ...selectedStructureUrls]
 	const pdbUrls = tmp.map(x => x.replace("apache", "localhost")); // TODO: Delete map with replace
@@ -73,7 +78,7 @@ export function MolStarWrapper({ chainResult, selectedStructureUrls }: Props) {
 
 			window.molstar = plugin;
 
-			loadNewStructures(plugin, pdbUrls, "pdb", "A");
+			loadNewStructures(plugin, pdbUrls, "pdb", selectedChain);
 		}
 
 		init();
@@ -90,8 +95,8 @@ export function MolStarWrapper({ chainResult, selectedStructureUrls }: Props) {
 			return;
 		}
 
-		loadNewStructures(plugin, pdbUrls, "pdb", "A");
-	}, [/*chainResult, */selectedStructureUrls]); // TODO is not dependant on chainResult because query seq should not change
+		loadNewStructures(plugin, pdbUrls, "pdb", selectedChain);
+	}, [/*chainResult, */selectedStructureUrls, selectedChain]); // TODO is not dependant on chainResult because query seq should not change
 
 	return (
 		<div ref={parent} style={{ position: "relative", height: "70vh", width: "45vw" }}></div>
@@ -170,6 +175,7 @@ export function MolStarWrapper({ chainResult, selectedStructureUrls }: Props) {
 	}
 
 	async function loadNewStructure(plugin: PluginContext, structureUrl: string, format: BuiltInTrajectoryFormat) {
+		await plugin.clear()
 		const structure = await _loadStructure(plugin, structureUrl, format);
 
 		const polymer = await plugin.builders.structure.tryCreateComponentStatic(structure, "polymer");
@@ -189,9 +195,8 @@ export function MolStarWrapper({ chainResult, selectedStructureUrls }: Props) {
 	}
 
 	async function loadNewStructures(plugin: PluginUIContext, structureUrls: string[], format: BuiltInTrajectoryFormat, chain: string) {
-		await plugin.clear();
-
 		if (structureUrls.length > 1) {
+			await plugin.clear();
 			await performDynamicSuperposition(plugin, structureUrls, format, chain);
 		} else if (pdbUrls.length === 1) {
 			await loadNewStructure(plugin, structureUrls[0], format);
