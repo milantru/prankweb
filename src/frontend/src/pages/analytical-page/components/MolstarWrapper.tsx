@@ -11,7 +11,7 @@ import { ChainResult, ChainResults, ProcessedResult } from "../AnalyticalPage";
 import { StateObjectRef, StateObjectSelector } from "molstar/lib/mol-state";
 import { Asset } from "molstar/lib/mol-util/assets";
 import { MolScriptBuilder as MS } from "molstar/lib/mol-script/language/builder";
-import { QueryContext, StructureSelection } from "molstar/lib/mol-model/structure";
+import { QueryContext, StructureElement, StructureSelection } from "molstar/lib/mol-model/structure";
 import { compile } from "molstar/lib/mol-script/runtime/query/compiler";
 import { superpose } from "molstar/lib/mol-model/structure/structure/util/superposition";
 import { PluginContext } from "molstar/lib/mol-plugin/context";
@@ -20,6 +20,7 @@ import { Expression } from "molstar/lib/mol-script/language/expression";
 import { Mat4 } from "molstar/lib/mol-math/linear-algebra";
 import { StateTransforms } from "molstar/lib/mol-plugin-state/transforms";
 import { BuiltInTrajectoryFormat } from "molstar/lib/mol-plugin-state/formats/trajectory";
+import { MinimizeRmsd } from "molstar/lib/mol-math/linear-algebra/3d/minimize-rmsd";
 
 declare global {
 	interface Window {
@@ -162,48 +163,27 @@ export function MolStarWrapper({ chainResults, selectedChain, selectedStructureU
 
 			const query = compile<StructureSelection>(pivot);
 			const xs = plugin.managers.structure.hierarchy.current.structures;
-			const selections = xs.map(s => StructureSelection.toLociWithCurrentUnits(query(new QueryContext(s.cell.obj!.data))));
-
-			const transforms = superpose(selections);
+			if (xs.length === 0) {
+				console.warn("No structures to display.");
+				return;
+			}
+			let selections: StructureElement.Loci[] | null = null;
+			let transforms: MinimizeRmsd.Result[] = null!;
+			if (xs.length > 1) { // At least 1 similar protein structure selected (not only query protein is being visualised)
+				selections = xs.map(s => StructureSelection.toLociWithCurrentUnits(query(new QueryContext(s.cell.obj!.data))));
+				transforms = superpose(selections);
+			}
 
 			await siteVisual(plugin, xs[0].cell, pivot, rest);
-			for (let i = 1; i < selections.length; i++) {
+			for (let i = 1; i < (selections?.length ?? 1); i++) {
 				await transform(plugin, xs[i].cell, transforms[i - 1].bTransform);
 				await siteVisual(plugin, xs[i].cell, pivot, rest);
 			}
 		});
 	}
 
-	async function loadNewStructure(plugin: PluginContext, structureUrl: string, format: BuiltInTrajectoryFormat) {
-		await plugin.clear()
-		const structure = await _loadStructure(plugin, structureUrl, format);
-
-		const polymer = await plugin.builders.structure.tryCreateComponentStatic(structure, "polymer");
-		if (polymer) {
-			await plugin.builders.structure.representation.addRepresentation(polymer, {
-				type: "cartoon",
-				color: "model-index",
-			});
-		}
-
-		const component = await plugin.builders.structure.tryCreateComponentStatic(structure, "ligand");
-		if (component) {
-			await plugin.builders.structure.representation.addRepresentation(component, {
-				type: "ball-and-stick"
-			});
-		}
-	}
-
 	async function loadNewStructures(plugin: PluginUIContext, structureUrls: string[], format: BuiltInTrajectoryFormat, chain: string) {
-		if (structureUrls.length > 1) {
-			await plugin.clear();
-			await performDynamicSuperposition(plugin, structureUrls, format, chain);
-		} else if (pdbUrls.length === 1) {
-			await loadNewStructure(plugin, structureUrls[0], format);
-		} else {
-			/* This should never happend, at least one structure is always expected.
-			* If it happens, we want to know wabout it. */
-			throw new Error("No structures to visualise.");
-		}
+		await plugin.clear();
+		await performDynamicSuperposition(plugin, structureUrls, format, chain);
 	}
 }
