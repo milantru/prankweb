@@ -9,6 +9,7 @@ import { MolStarWrapper } from "./components/MolstarWrapper";
 import { toastWarning } from "../../shared/helperFunctions/toasts";
 import ErrorMessageBox from "./components/ErrorMessageBox";
 import SettingsPanel from "./components/SettingsPanel";
+import LigandToggler from "./components/LigandToggler";
 
 const POLLING_INTERVAL = 1000 * 5; // every 5 seconds
 
@@ -125,6 +126,7 @@ function AnalyticalPage() {
 	const [squashBindingSites, setSquashBindingSites] = useState<boolean>(false);
 	const [selectedStructureUrls, setSelectedStructureUrls] = useState<string[]>([]);
 	let lock = useMemo<boolean>(() => false, []);
+	const [ligandTogglerProps, setLigandTogglerProps] = useState<Record<string, Record<string, Record<string, Record<string, boolean>>>>>(null!);
 
 	useEffect(() => {
 		if (isPollingFinished.every(x => x)) {
@@ -196,6 +198,24 @@ function AnalyticalPage() {
 							selectedChain={selectedChain}
 							selectedStructureUrls={selectedStructureUrls} />
 						<div id="visualization-toolbox">TODO Toolbox</div>
+						{ligandTogglerProps && (
+							<LigandToggler data={ligandTogglerProps}
+								onToggle={(dataSourceName, pdbCode, chain, ligandId, newValue) =>
+									setLigandTogglerProps(prev => ({
+										...prev,
+										[dataSourceName]: {
+											...prev[dataSourceName],
+											[pdbCode]: {
+												...prev[dataSourceName][pdbCode],
+												[chain]: {
+													...prev[dataSourceName][pdbCode][chain],
+													[ligandId]: newValue
+												}
+											}
+										}
+									}))
+								} />
+						)}
 					</>) : (
 						<div className="d-flex py-2 justify-content-center align-items-center">
 							<FadeLoader color="#c3c3c3" />
@@ -307,6 +327,9 @@ function AnalyticalPage() {
 			}
 			setSelectedChain(chainsLocal[0]) // Every protein has at least 1 chain
 			setChainResults(chainResultsTmp);
+
+			const ligandTogglerPropsTmp = toLigandTogglerProps(chainResultsTmp[chainsLocal[0]]);
+			setLigandTogglerProps(ligandTogglerPropsTmp);
 			lock = false;
 		}
 		isFetching[dataSourceIndex] = false;
@@ -600,6 +623,33 @@ function AnalyticalPage() {
 
 	function clearErrorMessages() {
 		setErrorMessages(new Array(dataSourceExecutors.length).fill(""));
+	}
+
+	function toLigandTogglerProps(chainResult: ChainResult) {
+		const res: Record<string, Record<string, Record<string, Record<string, boolean>>>> = {};
+
+		for (const [dataSourceName, result] of Object.entries(chainResult.dataSourceExecutorResults)) {
+			if (!result.similarProteins) {
+				continue;
+			}
+
+			for (const simProt of result.similarProteins) {
+				for (const bindingSite of simProt.bindingSites) {
+					if (!(dataSourceName in res)) {
+						res[dataSourceName] = {};
+					}
+					if (!(simProt.pdbId in res[dataSourceName])) {
+						res[dataSourceName][simProt.pdbId] = {};
+					}
+					if (!(simProt.chain in res[dataSourceName][simProt.pdbId])) {
+						res[dataSourceName][simProt.pdbId][simProt.chain] = {};
+					}
+					res[dataSourceName][simProt.pdbId][simProt.chain][bindingSite.id] = false;
+				}
+			}
+		}
+
+		return res;
 	}
 }
 
