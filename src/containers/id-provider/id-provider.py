@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import os
 from enum import Enum
 from flask import Flask, request, jsonify

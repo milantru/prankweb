@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import os
 from celery import Celery
 from converter import run_structure_to_sequence, run_sequence_to_structure
