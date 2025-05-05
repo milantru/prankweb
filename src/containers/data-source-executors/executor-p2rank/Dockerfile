@@ -29,6 +29,8 @@ COPY --chown=user:user \
         ./data-source-executors/executor-p2rank/requirements.in \
         ./
 
+COPY --chown=user:user ./shared/mapping.json .
+
 RUN chmod +x install-requirements.sh \
     && ./install-requirements.sh \
     && rm install-requirements.sh

@@ -15,6 +15,8 @@ COPY --chown=user:user \
         ./converter/requirements.in \
         ./
 
+COPY --chown=user:user ./shared/mapping.json .
+
 RUN chmod +x install-requirements.sh \
     && ./install-requirements.sh \
     && rm install-requirements.sh
