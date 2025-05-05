@@ -51,6 +51,8 @@ class InputModels(Enum):
     ALPHAFOLD = '2'
     ALPHAFOLD_CONSERVATION_HMM = '3'
 
+TMP_FOLDER = 'tmp/'
+
 PDB_FORM_FIELDS = [ 'pdbCode', 'chains', 'useConservation' ]
 CUSTOM_STR_FORM_FIELDS = [ 'chains', 'userInputModel' ]
 UNIPROT_FORM_FIELDS = [ 'uniprotCode', 'useConservation' ]
@@ -79,13 +81,29 @@ def _check_form_fields(input_data: dict, form_fields: list) -> ErrorStr | None:
     return None
 
 
-def _file_exists_at_url(url: str) -> bool:
+# def _file_exists_at_url(url: str) -> bool:
+#     try:
+#         response = requests.head(url, allow_redirects=True, timeout=20)
+#         return response.status_code == 200
+#     except requests.RequestException as e:
+#         logger.error(f'Error checking URL: {e}')
+#         return False
+
+
+def _download_file_from_url(url: str, filename: str) -> bool:
+    logger.info(f'Downloading file from: {url}')
     try:
-        response = requests.head(url, allow_redirects=True, timeout=20)
-        return response.status_code == 200
+        response = requests.get(url)
+        response.raise_for_status()
     except requests.RequestException as e:
-        logger.error(f'Error checking URL: {e}')
+        logger.error(f'File download failed {str(e)}')
         return False
+    
+    logger.info(f'File downloaded successfully')
+    with open(filename, 'w') as file:
+        file.write(response.text)
+    logger.info(f'File saved to: {filename}')
+    return True
 
 
 def _text_is_fasta_format(text: str) -> bool:
@@ -143,20 +161,25 @@ def _validate_pdb(input_data: dict) -> ValidationResult:
 
         # check whether pdb file exists
         url = PDB_FILE_URL.format(pdb_id)
-        if not _file_exists_at_url(url):
+        tmp_file = os.path.join({TMP_FOLDER}, f'{str(time.time())[-5:]}_{pdb_id}')
+        if not _download_file_from_url(url, tmp_file):
             return 'PDB ID found, but corresponding .pdb file not found', None
 
-        # append sequence to the dict
-        input_data['inputUrl'] = url
+        input_data['inputUrl'] = os.path.join(APACHE_URL, tmp_file)
         
         # input model setup for p2rank
         input_data['inputModel'] = 'default'
 
+        # Delete tmp file after 15 minutes
+        delete_cmd = f'sleep 900 && rm -f {tmp_file}'
+        logger.info(f'Starting process which deletes tmp file after 15 minutes: {delete_cmd}')
+        Popen(delete_cmd, shell=True)
+
+        return None, pdb_id
+
     except Exception as e:
         logger.error(str(e))
         return 'Unknown exception occured', None
-
-    return None, pdb_id
 
 
 def _validate_custom_str(input_data: dict, input_file: FileStorage | None) -> ValidationResult:
@@ -181,7 +204,7 @@ def _validate_custom_str(input_data: dict, input_file: FileStorage | None) -> Va
     )
 
     # save file to tmp folder
-    tmp_file = f'/tmp/{str(time.time())[-5:]}_{input_file.filename}'
+    tmp_file = os.path.join(TMP_FOLDER, f'{str(time.time())[-5:]}_{input_file.filename}')
     input_file.save(tmp_file)
 
     # try to parse pdb and check selected chains
@@ -191,7 +214,7 @@ def _validate_custom_str(input_data: dict, input_file: FileStorage | None) -> Va
     err = _try_parse_pdb(tmp_file, selected_chains)
     
     # tmp_folder is mounted to volume tmp which is shared with apache
-    input_data['inputUrl'] = os.path.join(APACHE_URL, tmp_file[1:]) # without /
+    input_data['inputUrl'] = os.path.join(APACHE_URL, tmp_file)
 
     # input model setup for p2rank
     input_data['inputModel'] = InputModels(model).name.split('_')[0].lower()     # result is default / alphafold
@@ -218,21 +241,27 @@ def _validate_uniprot(input_data: dict) -> ValidationResult:
         if response.status_code != 200:
             return f'Given Uniprot ID({uniprot_id}) not found in database', None
         
-        # check whether alphafold file exists
+        # download pdb file from alphafold database
         url = UNIPROT_FILE_URL.format(uniprot_id)
-        if not _file_exists_at_url(url):
+        tmp_file = os.path.join({TMP_FOLDER}, f'{str(time.time())[-5:]}_{uniprot_id}')
+        if not _download_file_from_url(url, tmp_file):
             return 'Uniprot ID found, but corresponding .pdb file not', None
-
+        
         # append sequence to the dict
-        input_data['inputUrl'] = url
+        input_data['inputUrl'] = os.path.join(APACHE_URL, tmp_file)
 
         # input model setup for p2rank
         input_data['inputModel'] = 'alphafold'
 
+        # Delete tmp file after 15 minutes
+        delete_cmd = f'sleep 900 && rm -f {tmp_file}'
+        logger.info(f'Starting process which deletes tmp file after 15 minutes: {delete_cmd}')
+        Popen(delete_cmd, shell=True)
+
+        return None, uniprot_id
+
     except Exception:
         return 'Unknown exception occured', None
-
-    return None, uniprot_id
 
 
 def _validate_seq(input_data: dict) -> ValidationResult:
@@ -256,11 +285,12 @@ def _validate_seq(input_data: dict) -> ValidationResult:
     del input_data['sequence']
     
     # save sequence to tmp folder
-    tmp_file = f'/tmp/{str(time.time())[-5:]}_seq'
-    with open(tmp_file, 'w') as f: f.write(sequence)
+    tmp_file = os.path.join({TMP_FOLDER}, f'{str(time.time())[-5:]}_seq')
+    with open(tmp_file, 'w') as f:
+        f.write(sequence)
 
     # tmp_folder is mounted to volume tmp which is shared with apache
-    input_data['inputUrl'] = os.path.join(APACHE_URL, tmp_file[1:]) # without /
+    input_data['inputUrl'] = os.path.join(APACHE_URL, tmp_file)
 
     # input model setup for p2rank
     input_data['inputModel'] = 'alphafold'
@@ -355,4 +385,6 @@ def upload_data() -> Response:
 
 
 if __name__ == '__main__':
+    os.makedirs(TMP_FOLDER, exist_ok=True)
+    logger.info(f'Temporary folder prepared: {TMP_FOLDER}')
     app.run(host='0.0.0.0', port=3000)

@@ -26,3 +26,5 @@ RUN chmod u+x http-server.py \
 ENV PYTHONUNBUFFERED=1
 
 USER ${UID}:${GID}
+
+RUN mkdir -p tmp
