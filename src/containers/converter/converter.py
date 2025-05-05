@@ -1,12 +1,18 @@
+import json
 import os
 import requests
 from Bio.PDB import PDBParser, Polypeptide, is_aa
+from Bio.Data.IUPACData import protein_letters_3to1
 import tempfile
 
 from tasks_logger import create_logger
 
 ESMFOLD_URL = 'https://api.esmatlas.com/foldSequence/v1/pdb/'
 INPUTS_URL = os.getenv('INPUTS_URL')
+MAPPING_FILE = "mapping.json"
+
+def is_standard_aa(code):
+    return code.capitalize() in protein_letters_3to1
 
 logger = create_logger('converter')
 
@@ -39,8 +45,18 @@ def run_structure_to_sequence(id):
         for chain in model:
             seq = ""
             for residue in chain:
-                if (residue.id[0] == " " or residue.id[0] == "") and is_aa(residue, standard=True): 
-                    seq += Polypeptide.index_to_one(Polypeptide.three_to_index(residue.resname))
+                if is_aa(residue, standard=False): 
+                    residue = residue.resname
+                    if not is_standard_aa(residue):
+                        with open(MAPPING_FILE, "r") as infile:
+                            mapping_dict = json.load(infile)
+                        if residue in mapping_dict:
+                            print("UPDATE")
+                            residue = mapping_dict[residue]
+                        else:
+                            raise ValueError(f"Residue {residue} not found in {MAPPING_FILE}")                        
+                        
+                    seq += Polypeptide.index_to_one(Polypeptide.three_to_index(residue))
             
             if seq != "":
                 chains.setdefault(seq, []).append(chain.id)

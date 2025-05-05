@@ -12,6 +12,7 @@ WORKDIR /app
 COPY --chown=user:user \
         ./shared/install-requirements.sh \
         ./shared/tasks_logger.py \
+        ./shared/mapping.json \
         ./converter/requirements.in \
         ./
 
