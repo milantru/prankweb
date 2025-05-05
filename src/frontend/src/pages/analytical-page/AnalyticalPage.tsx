@@ -160,21 +160,6 @@ function AnalyticalPage() {
 		}
 	}, pollingInterval);
 
-	function handleStructuresSelect(selectedStructureOptions: StructureOption[]) {
-		const ligandTogglerPropsTmp = toLigandTogglerProps(chainResults[selectedChain], selectedStructureOptions);
-		setLigandTogglerProps(ligandTogglerPropsTmp);
-
-		molstarWrapperRef.current?.hideAllProteinStructures();
-		for (const option of selectedStructureOptions) {
-			molstarWrapperRef.current?.toggleProteinStructure(
-				option.value.dataSourceName,
-				option.value.pdbId,
-				option.value.chain,
-				true
-			);
-		}
-	}
-
 	return (
 		<div>
 			{errorMessages.some(errMsg => errMsg.length > 0) && (
@@ -218,8 +203,8 @@ function AnalyticalPage() {
 							onStructuresLoadingEnd={() => setIsSettingsPanelDisabled(false)} />
 						<div id="visualization-toolbox">TODO Toolbox</div>
 						{ligandTogglerProps && (
-							<LigandToggler data={ligandTogglerProps}
-								onToggle={handleLigandToggle} />
+							<LigandToggler similarProteinsData={ligandTogglerProps}
+								onLigandToggle={handleLigandToggle} />
 						)}
 					</>) : (
 						<div className="d-flex py-2 justify-content-center align-items-center">
@@ -679,6 +664,23 @@ function AnalyticalPage() {
 		}));
 
 		molstarWrapperRef.current?.toggleLigand(dataSourceName, pdbCode, chain, ligandId, show);
+	}
+
+	function handleStructuresSelect(selectedStructureOptions: StructureOption[]) {
+		const ligandTogglerPropsTmp = toLigandTogglerProps(chainResults[selectedChain], selectedStructureOptions);
+		setLigandTogglerProps(ligandTogglerPropsTmp);
+
+		// User selected some structures, we hide them all, and then display only the selected ones
+		molstarWrapperRef.current?.hideAllProteinStructures();
+
+		for (const option of selectedStructureOptions) {
+			molstarWrapperRef.current?.toggleProteinStructure(
+				option.value.dataSourceName,
+				option.value.pdbId,
+				option.value.chain,
+				true
+			);
+		}
 	}
 }
 
