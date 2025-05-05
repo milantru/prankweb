@@ -1,4 +1,4 @@
-import { useEffect, createRef, useState, forwardRef, useImperativeHandle } from "react";
+import { useEffect, createRef, forwardRef, useImperativeHandle, useRef } from "react";
 import { createPluginUI } from "molstar/lib/mol-plugin-ui";
 import { renderReact18 } from "molstar/lib/mol-plugin-ui/react18";
 import { PluginUIContext } from "molstar/lib/mol-plugin-ui/context";
@@ -26,8 +26,8 @@ import { setSubtreeVisibility } from 'molstar/lib/mol-plugin/behavior/static/sta
 export type MolStarWrapperHandle = {
 	toggleQueryProteinLigand: (dataSourceName: string, chain: string, ligandId: string, show: boolean) => void;
 	toggleSimilarProteinLigand: (dataSourceName: string, pdbCode: string, chain: string, ligandId: string, show: boolean) => void;
-	toggleProteinStructure: (dataSourceName: string, pdbCode: string, chain: string, show: boolean) => void;
-	hideAllProteinStructures: () => void;
+	toggleSimilarProteinStructure: (dataSourceName: string, pdbCode: string, chain: string, show: boolean) => void;
+	hideAllSimilarProteinStructures: () => void;
 };
 
 declare global {
@@ -35,6 +35,11 @@ declare global {
 		molstar?: PluginUIContext;
 	}
 }
+
+type VisibleObject = {
+	object: StateObjectSelector;
+	isVisible: boolean;
+};
 
 type Props = {
 	chainResults: ChainResults;
@@ -49,16 +54,16 @@ export const MolStarWrapper = forwardRef(({ chainResults, selectedChain, onStruc
 		return <div>No data for the selected chain.</div>
 	}
 	const parent = createRef<HTMLDivElement>();
-	const [queryStructure, setQueryStructure] = useState<StateObjectSelector>(null!);
-	const [structures, setStructures] = useState<Record<string, Record<string, Record<string, StateObjectSelector>>>>({});
-	const [queryProteinLigands, setQueryProteinLigands] = useState<Record<string, Record<string, Record<string, StateObjectSelector>>>>({});
-	const [similarProteinLigands, setSimilarProteinLigands] = useState<Record<string, Record<string, Record<string, Record<string, StateObjectSelector>>>>>({});
+	const queryStructure = useRef<VisibleObject>(null!);
+	const structures = useRef<Record<string, Record<string, Record<string, VisibleObject>>>>({});
+	const queryProteinLigands = useRef<Record<string, Record<string, Record<string, VisibleObject>>>>({});
+	const similarProteinLigands = useRef<Record<string, Record<string, Record<string, Record<string, VisibleObject>>>>>({});
 
 	useImperativeHandle(ref, () => ({
 		toggleQueryProteinLigand,
 		toggleSimilarProteinLigand,
-		toggleProteinStructure,
-		hideAllProteinStructures
+		toggleSimilarProteinStructure,
+		hideAllSimilarProteinStructures
 	}));
 
 	// In debug mode of react's strict mode, this code will
@@ -136,39 +141,54 @@ export const MolStarWrapper = forwardRef(({ chainResults, selectedChain, onStruc
 
 	async function createLigandsRepresentationForStruct(
 		plugin: PluginContext,
-		struct: StateObjectSelector,
+		struct: VisibleObject,
 		key: string,
-		ligandsQueryExpression: Expression
+		ligandsQueryExpression: Expression,
+		showRepresentationWhenCreated: boolean
 	) {
-		const l = await plugin.builders.structure.tryCreateComponentFromExpression(struct, ligandsQueryExpression, key);
+		const l = await plugin.builders.structure.tryCreateComponentFromExpression(struct.object, ligandsQueryExpression, key);
 		if (!l) {
 			return null;
+		} else {
+			console.warn("Failed to create ligand representation for struct. Key: ", key);
 		}
 
 		await plugin.builders.structure.representation.addRepresentation(l, { type: "ball-and-stick" });
-		setVisibility(l, false);
+		setSubtreeVisibility(plugin.state.data, l.ref, !showRepresentationWhenCreated);
 
 		return l;
 	}
 
 	async function createLigandsRepresentationForStructs(
 		plugin: PluginContext,
-		structs: Record<string, Record<string, Record<string, StateObjectSelector>>>,
-		ligandsExpression: Record<string, Record<string, Record<string, Record<string, Expression>>>>
+		structs: Record<string, Record<string, Record<string, VisibleObject>>>,
+		ligandsExpression: Record<string, Record<string, Record<string, Record<string, Expression>>>>,
+		showRepresentationsWhenCreated: boolean
 	) {
-		const ls: Record<string, Record<string, Record<string, Record<string, StateObjectSelector>>>> = {};
+		const ls: Record<string, Record<string, Record<string, Record<string, VisibleObject>>>> = {};
 		for (const [dataSourceName, result] of Object.entries(chainResult.dataSourceExecutorResults)) {
 			if (!result.similarProteins) {
 				continue;
 			}
 
 			for (const simProt of result.similarProteins) {
+				if (simProt.bindingSites.length === 0) {
+					if (!(dataSourceName in ls)) {
+						ls[dataSourceName] = {};
+					}
+					if (!(simProt.pdbId in ls[dataSourceName])) {
+						ls[dataSourceName][simProt.pdbId] = {};
+					}
+					if (!(simProt.chain in ls[dataSourceName][simProt.pdbId])) {
+						ls[dataSourceName][simProt.pdbId][simProt.chain] = {};
+					}
+				}
 				for (const bindingSite of simProt.bindingSites) {
 					const struct = structs[dataSourceName][simProt.pdbId][simProt.chain];
 					const key = `${dataSourceName}-${simProt.pdbId}-${simProt.chain}-${bindingSite.id}`;
 					const ligandsOfOneType = ligandsExpression[dataSourceName][simProt.pdbId][simProt.chain][bindingSite.id];
 
-					const l = await createLigandsRepresentationForStruct(plugin, struct, key, ligandsOfOneType);
+					const l = await createLigandsRepresentationForStruct(plugin, struct, key, ligandsOfOneType, showRepresentationsWhenCreated);
 					if (l) {
 						if (!(dataSourceName in ls)) {
 							ls[dataSourceName] = {};
@@ -179,14 +199,14 @@ export const MolStarWrapper = forwardRef(({ chainResults, selectedChain, onStruc
 						if (!(simProt.chain in ls[dataSourceName][simProt.pdbId])) {
 							ls[dataSourceName][simProt.pdbId][simProt.chain] = {};
 						}
-						ls[dataSourceName][simProt.pdbId][simProt.chain][bindingSite.id] = l;
+						ls[dataSourceName][simProt.pdbId][simProt.chain][bindingSite.id] = { object: l, isVisible: false };
 					} else {
-						console.warn("Failed to create ligand representation. Data: ", dataSourceName, simProt.pdbId, selectedChain, bindingSite.id);
+						console.warn("Failed to create ligand representation. Key: ", key);
 					}
 				}
 			}
 		}
-		setSimilarProteinLigands(ls);
+		similarProteinLigands.current = ls;
 	}
 
 	async function createStructureRepresentation(
@@ -194,13 +214,15 @@ export const MolStarWrapper = forwardRef(({ chainResults, selectedChain, onStruc
 		stateObjectRef: StateObjectRef<PSO.Molecule.Structure>,
 		pivotExpression: Expression,
 		restExpression: Expression,
-		show: boolean
+		showRepresentationWhenCreated: boolean
 	) {
 		// Pivot
 		const center = await plugin.builders.structure.tryCreateComponentFromExpression(stateObjectRef, pivotExpression, "pivot");
 		if (center) {
 			await plugin.builders.structure.representation.addRepresentation(center, { type: "cartoon", color: "model-index" });
-			setVisibility(center, show);
+			setSubtreeVisibility(plugin.state.data, center.ref, !showRepresentationWhenCreated);
+		} else {
+			console.warn("Failed to create structure representation.");
 		}
 
 		// TODO
@@ -220,18 +242,18 @@ export const MolStarWrapper = forwardRef(({ chainResults, selectedChain, onStruc
 		const model = await plugin.builders.structure.createModel(trajectory);
 		const structure: StateObjectSelector = await plugin.builders.structure.createStructure(model, { name: "model", params: {} });
 
-		return structure;
+		return { object: structure, isVisible: false };
 	}
 
-	function setVisibility(selector: StateObjectSelector, show: boolean, plugin: PluginContext | null = null) {
+	function setVisibility(visibleObject: VisibleObject, show: boolean) {
+		const plugin = window.molstar;
 		if (!plugin) {
-			plugin = window.molstar;
-			if (!plugin) {
-				return;
-			}
+			console.warn("Tried to set visibility, but the plugin is missing.");
+			return;
 		}
 
-		setSubtreeVisibility(plugin.state.data, selector.ref, !show);
+		setSubtreeVisibility(plugin.state.data, visibleObject.object.ref, !show);
+		visibleObject.isVisible = show;
 	}
 
 	function performDynamicSuperposition(plugin: PluginContext, format: BuiltInTrajectoryFormat, chain: string) {
@@ -239,7 +261,7 @@ export const MolStarWrapper = forwardRef(({ chainResults, selectedChain, onStruc
 			// Load query protein structure
 			const querySequenceUrl = getQuerySequenceUrl(chainResult);
 			const queryStructureTmp = await _loadStructure(plugin, querySequenceUrl, format);
-			setQueryStructure(queryStructureTmp);
+			queryStructure.current = queryStructureTmp;
 
 			const queryProteinLigandsExpression: Record<string, Record<string, Record<string, Expression>>> = {};
 			const dseResult = chainResult.dataSourceExecutorResults
@@ -264,7 +286,7 @@ export const MolStarWrapper = forwardRef(({ chainResults, selectedChain, onStruc
 			}
 
 			// Load similar proteins structures
-			const structuresTmp: Record<string, Record<string, Record<string, StateObjectSelector>>> = {};
+			const structuresTmp: Record<string, Record<string, Record<string, VisibleObject>>> = {};
 			for (const [dataSourceName, result] of Object.entries(chainResult.dataSourceExecutorResults)) {
 				if (!result.similarProteins) {
 					continue;
@@ -281,7 +303,7 @@ export const MolStarWrapper = forwardRef(({ chainResults, selectedChain, onStruc
 					structuresTmp[dataSourceName][simProt.pdbId][simProt.chain] = structure;
 				}
 			}
-			setStructures(structuresTmp);
+			structures.current = structuresTmp;
 
 			const similarProteinLigandsExpression: Record<string, Record<string, Record<string, Record<string, Expression>>>> = {};
 			for (const [dataSourceName, result] of Object.entries(chainResult.dataSourceExecutorResults)) {
@@ -290,6 +312,17 @@ export const MolStarWrapper = forwardRef(({ chainResults, selectedChain, onStruc
 				}
 
 				for (const simProt of result.similarProteins) {
+					if (simProt.bindingSites.length === 0) {
+						if (!(dataSourceName in similarProteinLigandsExpression)) {
+							similarProteinLigandsExpression[dataSourceName] = {};
+						}
+						if (!(simProt.pdbId in similarProteinLigandsExpression[dataSourceName])) {
+							similarProteinLigandsExpression[dataSourceName][simProt.pdbId] = {};
+						}
+						if (!(simProt.chain in similarProteinLigandsExpression[dataSourceName][simProt.pdbId])) {
+							similarProteinLigandsExpression[dataSourceName][simProt.pdbId][simProt.chain] = {};
+						}
+					}
 					for (const bindingSite of simProt.bindingSites) {
 						const ligandLabel = bindingSite.id.substring(bindingSite.id.indexOf("_") + 1); // e.g. "H_SO4" -> "SO4"
 						const ligandsOfOneType = MS.struct.generator.atomGroups({
@@ -349,13 +382,21 @@ export const MolStarWrapper = forwardRef(({ chainResults, selectedChain, onStruc
 			await createStructureRepresentation(plugin, xs[0].cell, pivot, rest, true);
 
 			// Create representations of query protein ligands
-			const queryProteinLigandsTmp: Record<string, Record<string, Record<string, StateObjectSelector>>> = {};
+			const queryProteinLigandsTmp: Record<string, Record<string, Record<string, VisibleObject>>> = {};
 			for (const [dataSourceName, result] of Object.entries(dseResult)) {
+				if (result.bindingSites.length === 0) {
+					if (!(dataSourceName in queryProteinLigandsTmp)) {
+						queryProteinLigandsTmp[dataSourceName] = {};
+					}
+					if (!(selectedChain in queryProteinLigandsTmp[dataSourceName])) {
+						queryProteinLigandsTmp[dataSourceName][selectedChain] = {};
+					}
+				}
 				for (const bindingSite of result.bindingSites) {
 					const key = `${dataSourceName}-${selectedChain}-${bindingSite.id}`;
 					const ligandOfOneTypeExpr = queryProteinLigandsExpression[dataSourceName][selectedChain][bindingSite.id];
 
-					const l = await createLigandsRepresentationForStruct(plugin, queryStructureTmp, key, ligandOfOneTypeExpr);
+					const l = await createLigandsRepresentationForStruct(plugin, queryStructureTmp, key, ligandOfOneTypeExpr, false);
 					if (l) {
 						if (!(dataSourceName in queryProteinLigandsTmp)) {
 							queryProteinLigandsTmp[dataSourceName] = {};
@@ -363,13 +404,13 @@ export const MolStarWrapper = forwardRef(({ chainResults, selectedChain, onStruc
 						if (!(selectedChain in queryProteinLigandsTmp[dataSourceName])) {
 							queryProteinLigandsTmp[dataSourceName][selectedChain] = {};
 						}
-						queryProteinLigandsTmp[dataSourceName][selectedChain][bindingSite.id] = l;
+						queryProteinLigandsTmp[dataSourceName][selectedChain][bindingSite.id] = { object: l, isVisible: false };
 					} else {
 						console.warn("Failed to create ligand representation. Data: ", dataSourceName, selectedChain, bindingSite.id);
 					}
 				}
 			}
-			setQueryProteinLigands(queryProteinLigandsTmp);
+			queryProteinLigands.current = queryProteinLigandsTmp;
 
 			// Create representations of similar protein structures
 			for (let i = 1; i < (selections?.length ?? 1); i++) {
@@ -378,7 +419,7 @@ export const MolStarWrapper = forwardRef(({ chainResults, selectedChain, onStruc
 			}
 
 			// Create representations of similar protein ligands
-			await createLigandsRepresentationForStructs(plugin, structuresTmp, similarProteinLigandsExpression);
+			await createLigandsRepresentationForStructs(plugin, structuresTmp, similarProteinLigandsExpression, false);
 		});
 	}
 
@@ -390,41 +431,52 @@ export const MolStarWrapper = forwardRef(({ chainResults, selectedChain, onStruc
 	}
 
 	function toggleQueryProteinLigand(dataSourceName: string, chain: string, ligandId: string, show: boolean) {
-		const ligand = queryProteinLigands[dataSourceName][chain][ligandId];
-		if (ligand) {
-			setVisibility(ligand, show);
-		} else {
+		const ligand = queryProteinLigands.current[dataSourceName][chain][ligandId];
+		if (!ligand) {
 			console.warn(`Failed to toggle ligand... Data: `, dataSourceName, chain, ligandId, show);
+			return;
 		}
+
+		setVisibility(ligand, show);
 	}
 
 	function toggleSimilarProteinLigand(dataSourceName: string, pdbCode: string, chain: string, ligandId: string, show: boolean) {
-		const ligand = similarProteinLigands[dataSourceName][pdbCode][chain][ligandId];
-		if (ligand) {
-			setVisibility(ligand, show);
-		} else {
+		const ligand = similarProteinLigands.current[dataSourceName][pdbCode][chain][ligandId];
+		if (!ligand) {
 			console.warn(`Failed to toggle ligand... Data: `, dataSourceName, pdbCode, chain, ligandId, show);
+			return;
 		}
+
+		setVisibility(ligand, show);
 	}
 
-	function toggleProteinStructure(dataSourceName: string, pdbCode: string, chain: string, show: boolean) {
-		const struct = structures[dataSourceName][pdbCode][chain];
-		if (struct) {
-			setVisibility(struct, show);
-			// When protein structure is displayed, the ligands are as well, so we hide them
-			for (const ligand of Object.values(similarProteinLigands[dataSourceName][pdbCode][chain])) {
-				setVisibility(ligand, false);
-			}
-		} else {
+	function toggleSimilarProteinStructure(dataSourceName: string, pdbCode: string, chain: string, show: boolean) {
+		const struct = structures.current[dataSourceName][pdbCode][chain];
+		if (!struct) {
 			console.warn(`Failed to toggle struct... Data: `, dataSourceName, pdbCode, chain, show);
+			return;
+		}
+
+		setVisibility(struct, show);
+		/* When protein structure is displayed, all ligands are as well, so we fix it by
+		 * displaying only those that should be dispalyed and hiding those that should be hidden. */
+		for (const ligand of Object.values(similarProteinLigands.current[dataSourceName][pdbCode][chain])) {
+			setVisibility(ligand, ligand.isVisible);
 		}
 	}
 
-	function hideAllProteinStructures() {
-		for (const dataSourceRecord of Object.values(structures)) {
-			for (const chainRecord of Object.values(dataSourceRecord)) {
-				for (const structure of Object.values(chainRecord)) {
+	function hideAllSimilarProteinStructures() {
+		for (const [dataSourceName, dataSourceRecord] of Object.entries(structures.current)) {
+			for (const [pdbCode, proteinRecord] of Object.entries(dataSourceRecord)) {
+				for (const [chain, structure] of Object.entries(proteinRecord)) {
+					// Hide similar protein structure
 					setVisibility(structure, false);
+
+					// Hide also its ligands
+					const similarProteinLigandsRecord = similarProteinLigands.current[dataSourceName][pdbCode][chain];
+					for (const ligand of Object.values(similarProteinLigandsRecord)) {
+						setVisibility(ligand, false);
+					}
 				}
 			}
 		}

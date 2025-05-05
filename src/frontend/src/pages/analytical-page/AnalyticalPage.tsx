@@ -90,7 +90,7 @@ export type ProcessedResult = {
 	similarProteins: SimilarProtein[] | undefined | null;
 };
 
-type DataSourceExecutorResult = Record<string, ProcessedResult>;
+type DataSourceExecutorResult = Record<string, ProcessedResult>; // key is data source name
 
 export type ChainResult = {
 	querySequence: string,
@@ -177,7 +177,7 @@ function AnalyticalPage() {
 							{/* Settings/Filter panel */}
 							<div className="w-100 d-flex flex-wrap align-items-center border rounded ml-5 mr-3 px-3 py-2">
 								<SettingsPanel chainResults={chainResults}
-									onChainSelect={setSelectedChain}
+									onChainSelect={selectedChain => handleChainSelect(chainResults[selectedChain], selectedChain)}
 									squashBindingSites={squashBindingSites}
 									onBindingSitesSquashClick={() => setSquashBindingSites(prevState => !prevState)}
 									onStructuresSelect={handleStructuresSelect}
@@ -203,7 +203,7 @@ function AnalyticalPage() {
 							onStructuresLoadingStart={() => setIsSettingsPanelDisabled(true)}
 							onStructuresLoadingEnd={() => setIsSettingsPanelDisabled(false)} />
 						<div id="visualization-toolbox">TODO Toolbox</div>
-						{similarProteinLigandData && (
+						{queryProteinLigandData && similarProteinLigandData && (
 							<LigandToggler queryProteinLigandsData={queryProteinLigandData}
 								similarProteinsLigandsData={similarProteinLigandData}
 								onQueryProteinLigandToggle={handleQueryProteinLigandToggle}
@@ -318,11 +318,8 @@ function AnalyticalPage() {
 
 				chainResultsTmp[chain] = await alignSequencesAcrossAllDataSources(dataSourceResults, conservations);
 			}
-			setSelectedChain(chainsLocal[0]) // Every protein has at least 1 chain
+			handleChainSelect(chainResultsTmp[chainsLocal[0]], chainsLocal[0]); // Every protein has at least 1 chain
 			setChainResults(chainResultsTmp);
-
-			const queryProteinLigandsDataTmp = getQueryProteinLigandsData(chainResultsTmp[chainsLocal[0]], chainsLocal[0]);
-			setQueryProteinLigandData(queryProteinLigandsDataTmp);
 			lock = false;
 		}
 		isFetching[dataSourceIndex] = false;
@@ -618,7 +615,7 @@ function AnalyticalPage() {
 		setErrorMessages(new Array(dataSourceExecutors.length).fill(""));
 	}
 
-	function toLigandTogglerProps(chainResult: ChainResult, selectedStructureOptions: StructureOption[]) {
+	function toSimilarProteinLigandData(chainResult: ChainResult, selectedStructureOptions: StructureOption[]) {
 		const res: Record<string, Record<string, Record<string, Record<string, boolean>>>> = {};
 
 		for (const [dataSourceName, result] of Object.entries(chainResult.dataSourceExecutorResults)) {
@@ -636,6 +633,17 @@ function AnalyticalPage() {
 					continue;
 				}
 
+				if (simProt.bindingSites.length === 0) {
+					if (!(dataSourceName in res)) {
+						res[dataSourceName] = {};
+					}
+					if (!(simProt.pdbId in res[dataSourceName])) {
+						res[dataSourceName][simProt.pdbId] = {};
+					}
+					if (!(simProt.chain in res[dataSourceName][simProt.pdbId])) {
+						res[dataSourceName][simProt.pdbId][simProt.chain] = {};
+					}
+				}
 				for (const bindingSite of simProt.bindingSites) {
 					if (!(dataSourceName in res)) {
 						res[dataSourceName] = {};
@@ -646,7 +654,15 @@ function AnalyticalPage() {
 					if (!(simProt.chain in res[dataSourceName][simProt.pdbId])) {
 						res[dataSourceName][simProt.pdbId][simProt.chain] = {};
 					}
-					res[dataSourceName][simProt.pdbId][simProt.chain][bindingSite.id] = false;
+
+					let newValue = false;
+					if (dataSourceName in similarProteinLigandData
+						&& simProt.pdbId in similarProteinLigandData[dataSourceName]
+						&& simProt.chain in similarProteinLigandData[dataSourceName][simProt.pdbId]
+						&& bindingSite.id in similarProteinLigandData[dataSourceName][simProt.pdbId][simProt.chain]) {
+						newValue = similarProteinLigandData[dataSourceName][simProt.pdbId][simProt.chain][bindingSite.id];
+					}
+					res[dataSourceName][simProt.pdbId][simProt.chain][bindingSite.id] = newValue;
 				}
 			}
 		}
@@ -687,15 +703,21 @@ function AnalyticalPage() {
 		molstarWrapperRef.current?.toggleSimilarProteinLigand(dataSourceName, pdbCode, chain, ligandId, show);
 	}
 
+	function handleChainSelect(chainResult: ChainResult, selectedChain: string) {
+		setSelectedChain(selectedChain);
+
+		const queryProteinLigandsDataTmp = getQueryProteinLigandsData(chainResult, selectedChain);
+		setQueryProteinLigandData(queryProteinLigandsDataTmp);
+	}
+
 	function handleStructuresSelect(selectedStructureOptions: StructureOption[]) {
-		const ligandTogglerPropsTmp = toLigandTogglerProps(chainResults[selectedChain], selectedStructureOptions);
-		setSimilarProteinLigandData(ligandTogglerPropsTmp);
+		const similarProteinLigandDataTmp = toSimilarProteinLigandData(chainResults[selectedChain], selectedStructureOptions);
+		setSimilarProteinLigandData(similarProteinLigandDataTmp);
 
 		// User selected some structures, we hide them all, and then display only the selected ones
-		molstarWrapperRef.current?.hideAllProteinStructures();
-
+		molstarWrapperRef.current?.hideAllSimilarProteinStructures();
 		for (const option of selectedStructureOptions) {
-			molstarWrapperRef.current?.toggleProteinStructure(
+			molstarWrapperRef.current?.toggleSimilarProteinStructure(
 				option.value.dataSourceName,
 				option.value.pdbId,
 				option.value.chain,

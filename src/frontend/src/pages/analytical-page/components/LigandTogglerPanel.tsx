@@ -11,7 +11,7 @@ function LigandTogglerPanel({ title, ligandsRecord, onLigandToggle }: Props) {
 
     return (
         <div className="border rounded mb-2 pt-2 pb-1 px-2">
-            <div className="d-flex flex-row"
+            <div className="d-flex flex-row mb-1"
                 style={{ cursor: "pointer" }}
                 onClick={() => setIsPanelOpened(prevState => !prevState)}>
                 <div className="w-100 border-bottom mb-1 mr-auto">{title}</div>
@@ -28,19 +28,23 @@ function LigandTogglerPanel({ title, ligandsRecord, onLigandToggle }: Props) {
             </div>
 
             {isPanelOpened && (
-                <div className="d-flex flex-row flex-wrap">
-                    {Object.entries(ligandsRecord).map(([ligandId, isDisplayed], i) =>
-                        <div key={`${ligandId}-${i}`}>
-                            <label className="mr-2">
-                                <input type="checkbox"
-                                    name="checkbox"
-                                    className="mr-1"
-                                    checked={isDisplayed}
-                                    onChange={() => onLigandToggle(ligandId, !isDisplayed)} />
-                                {ligandId}
-                            </label>
-                        </div>
-                    )}
+                <div className="d-flex flex-row flex-wrap pl-1">
+                    {Object.entries(ligandsRecord).length === 0
+                        ? <div>No ligands.</div>
+                        : <>
+                            {Object.entries(ligandsRecord).map(([ligandId, isDisplayed], i) =>
+                                <div key={`${ligandId}-${i}`}>
+                                    <label className="mr-2">
+                                        <input type="checkbox"
+                                            name="checkbox"
+                                            className="mr-1"
+                                            checked={isDisplayed}
+                                            onChange={() => onLigandToggle(ligandId, !isDisplayed)} />
+                                        {ligandId}
+                                    </label>
+                                </div>
+                            )}
+                        </>}
                 </div>
             )}
         </div>

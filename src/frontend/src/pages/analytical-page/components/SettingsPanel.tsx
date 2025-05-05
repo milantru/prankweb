@@ -34,7 +34,7 @@ function SettingsPanel({ chainResults, onChainSelect, squashBindingSites, onBind
 
             for (const simProt of result.similarProteins) {
                 const option: StructureOption = {
-                    label: `${simProt.pdbId} (chain: ${simProt.chain}, source: ${dataSourceName})`,
+                    label: `${simProt.pdbId.toUpperCase()} (chain: ${simProt.chain}, source: ${dataSourceName})`,
                     value: {
                         dataSourceName: dataSourceName,
                         pdbId: simProt.pdbId,
