@@ -125,7 +125,8 @@ function AnalyticalPage() {
 	const [selectedChain, setSelectedChain] = useState<string | null>(null); // Will be set when chain results are set
 	const [squashBindingSites, setSquashBindingSites] = useState<boolean>(false);
 	let lock = useMemo<boolean>(() => false, []);
-	const [ligandTogglerProps, setLigandTogglerProps] = useState<Record<string, Record<string, Record<string, Record<string, boolean>>>>>(null!);
+	const [queryProteinLigandData, setQueryProteinLigandData] = useState<Record<string, Record<string, Record<string, boolean>>>>(null!);
+	const [similarProteinLigandData, setSimilarProteinLigandData] = useState<Record<string, Record<string, Record<string, Record<string, boolean>>>>>(null!);
 	const [isSettingsPanelDisabled, setIsSettingsPanelDisabled] = useState<boolean>(false);
 	const molstarWrapperRef = useRef<MolStarWrapperHandle>(null!);
 
@@ -202,9 +203,11 @@ function AnalyticalPage() {
 							onStructuresLoadingStart={() => setIsSettingsPanelDisabled(true)}
 							onStructuresLoadingEnd={() => setIsSettingsPanelDisabled(false)} />
 						<div id="visualization-toolbox">TODO Toolbox</div>
-						{ligandTogglerProps && (
-							<LigandToggler similarProteinsData={ligandTogglerProps}
-								onLigandToggle={handleLigandToggle} />
+						{similarProteinLigandData && (
+							<LigandToggler queryProteinLigandsData={queryProteinLigandData}
+								similarProteinsLigandsData={similarProteinLigandData}
+								onQueryProteinLigandToggle={handleQueryProteinLigandToggle}
+								onSimilarProteinLigandToggle={handleSimilarProteinLigandToggle} />
 						)}
 					</>) : (
 						<div className="d-flex py-2 justify-content-center align-items-center">
@@ -317,6 +320,9 @@ function AnalyticalPage() {
 			}
 			setSelectedChain(chainsLocal[0]) // Every protein has at least 1 chain
 			setChainResults(chainResultsTmp);
+
+			const queryProteinLigandsDataTmp = getQueryProteinLigandsData(chainResultsTmp[chainsLocal[0]], chainsLocal[0]);
+			setQueryProteinLigandData(queryProteinLigandsDataTmp);
 			lock = false;
 		}
 		isFetching[dataSourceIndex] = false;
@@ -648,8 +654,23 @@ function AnalyticalPage() {
 		return res;
 	}
 
-	function handleLigandToggle(dataSourceName: string, pdbCode: string, chain: string, ligandId: string, show: boolean) {
-		setLigandTogglerProps(prev => ({
+	function handleQueryProteinLigandToggle(dataSourceName: string, chain: string, ligandId: string, show: boolean) {
+		setQueryProteinLigandData(prev => ({
+			...prev,
+			[dataSourceName]: {
+				...prev[dataSourceName],
+				[chain]: {
+					...prev[dataSourceName][chain],
+					[ligandId]: show
+				}
+			}
+		}));
+
+		molstarWrapperRef.current?.toggleQueryProteinLigand(dataSourceName, chain, ligandId, show);
+	}
+
+	function handleSimilarProteinLigandToggle(dataSourceName: string, pdbCode: string, chain: string, ligandId: string, show: boolean) {
+		setSimilarProteinLigandData(prev => ({
 			...prev,
 			[dataSourceName]: {
 				...prev[dataSourceName],
@@ -663,12 +684,12 @@ function AnalyticalPage() {
 			}
 		}));
 
-		molstarWrapperRef.current?.toggleLigand(dataSourceName, pdbCode, chain, ligandId, show);
+		molstarWrapperRef.current?.toggleSimilarProteinLigand(dataSourceName, pdbCode, chain, ligandId, show);
 	}
 
 	function handleStructuresSelect(selectedStructureOptions: StructureOption[]) {
 		const ligandTogglerPropsTmp = toLigandTogglerProps(chainResults[selectedChain], selectedStructureOptions);
-		setLigandTogglerProps(ligandTogglerPropsTmp);
+		setSimilarProteinLigandData(ligandTogglerPropsTmp);
 
 		// User selected some structures, we hide them all, and then display only the selected ones
 		molstarWrapperRef.current?.hideAllProteinStructures();
@@ -681,6 +702,25 @@ function AnalyticalPage() {
 				true
 			);
 		}
+	}
+
+	function getQueryProteinLigandsData(chainResult: ChainResult, selectedChain: string) {
+		const queryProteinLigandsData: Record<string, Record<string, Record<string, boolean>>> = {};
+
+		const dseResult = chainResult.dataSourceExecutorResults
+		for (const [dataSourceName, result] of Object.entries(dseResult)) {
+			for (const bindingSite of result.bindingSites) {
+				if (!(dataSourceName in queryProteinLigandsData)) {
+					queryProteinLigandsData[dataSourceName] = {};
+				}
+				if (!(selectedChain in queryProteinLigandsData[dataSourceName])) {
+					queryProteinLigandsData[dataSourceName][selectedChain] = {};
+				}
+				queryProteinLigandsData[dataSourceName][selectedChain][bindingSite.id] = false;
+			}
+		}
+
+		return queryProteinLigandsData;
 	}
 }
 
