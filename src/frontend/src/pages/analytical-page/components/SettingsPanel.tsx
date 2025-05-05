@@ -10,7 +10,7 @@ export type StructureOption = {
 type Props = {
     chainResults: ChainResults;
     onChainSelect: (selectedChain: string) => void;
-    squashBindingSites
+    squashBindingSites: boolean;
     onBindingSitesSquashClick: () => void;
     onStructuresSelect: (selectedStructureOptions: StructureOption[]) => void;
     isDisabled: boolean;
@@ -95,9 +95,12 @@ function SettingsPanel({ chainResults, onChainSelect, squashBindingSites, onBind
         </div>
     </>);
 
-    function handleChainSelect(selectedChain: string) {
-        setSelectedChain(selectedChain);
-        onChainSelect(selectedChain);
+    function handleChainSelect(newSelectedChain: string) {
+        if (newSelectedChain === selectedChain) {
+            return;
+        }
+        setSelectedChain(newSelectedChain);
+        onChainSelect(newSelectedChain);
     }
 }
 
