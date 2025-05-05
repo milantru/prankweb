@@ -42,7 +42,7 @@ def get_or_generate():
 
     input_method = request.json.get('input_method')
     input_protein = request.json.get('input_protein')
-    logger.info(f'generate POST request received: input_method -> {input_method}, input_protein -> {input_protein}')
+    logger.info(f'generate POST request received: {{input_method: {input_method}, input_protein: {input_protein}}}')
 
     if input_method is None or (input_protein is None and input_method != InputMethods.CUSTOM_STR.value):
         logger.info('Wrong input from a user, status code 400')
