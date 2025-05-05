@@ -1,4 +1,4 @@
-import { useEffect, createRef } from "react";
+import { useEffect, createRef, useState, forwardRef, useImperativeHandle } from "react";
 import { createPluginUI } from "molstar/lib/mol-plugin-ui";
 import { renderReact18 } from "molstar/lib/mol-plugin-ui/react18";
 import { PluginUIContext } from "molstar/lib/mol-plugin-ui/context";
@@ -21,6 +21,13 @@ import { Mat4 } from "molstar/lib/mol-math/linear-algebra";
 import { StateTransforms } from "molstar/lib/mol-plugin-state/transforms";
 import { BuiltInTrajectoryFormat } from "molstar/lib/mol-plugin-state/formats/trajectory";
 import { MinimizeRmsd } from "molstar/lib/mol-math/linear-algebra/3d/minimize-rmsd";
+import { setSubtreeVisibility } from 'molstar/lib/mol-plugin/behavior/static/state';
+
+export type MolStarWrapperHandle = {
+	toggleLigand: (dataSourceName: string, pdbCode: string, chain: string, ligandId: string, show: boolean) => void;
+	toggleProteinStructure: (dataSourceName: string, pdbCode: string, chain: string, show: boolean) => void;
+	hideAllProteinStructures: () => void;
+};
 
 declare global {
 	interface Window {
@@ -31,22 +38,25 @@ declare global {
 type Props = {
 	chainResults: ChainResults;
 	selectedChain: string;
-	selectedStructureUrls: string[];
+	onStructuresLoadingStart: () => void;
+	onStructuresLoadingEnd: () => void;
 };
 
-export function MolStarWrapper({ chainResults, selectedChain, selectedStructureUrls }: Props) {
+export const MolStarWrapper = forwardRef(({ chainResults, selectedChain, onStructuresLoadingStart, onStructuresLoadingEnd }: Props, ref) => {
 	const chainResult = chainResults[selectedChain];
 	if (!chainResult) {
 		return <div>No data for the selected chain.</div>
 	}
-	const querySequenceUrl = getQuerySequenceUrl(chainResult);
-	let tmp = [querySequenceUrl, ...selectedStructureUrls]
-	const pdbUrls = tmp.map(x => x.replace("apache", "localhost")); // TODO: Delete map with replace
-	if (pdbUrls.length === 0) {
-		// At least one structure is always expected, but this check is added as a defensive programming measure.
-		return <div>No structures provided.</div>
-	}
 	const parent = createRef<HTMLDivElement>();
+	const [queryStructure, setQueryStructure] = useState<StateObjectSelector>(null!);
+	const [structures, setStructures] = useState<Record<string, Record<string, Record<string, StateObjectSelector>>>>({});
+	const [ligands, setLigands] = useState<Record<string, Record<string, Record<string, Record<string, StateObjectSelector>>>>>({});
+
+	useImperativeHandle(ref, () => ({
+		toggleLigand,
+		toggleProteinStructure,
+		hideAllProteinStructures
+	}));
 
 	// In debug mode of react's strict mode, this code will
 	// be called twice in a row, which might result in unexpected behavior.
@@ -60,7 +70,7 @@ export function MolStarWrapper({ chainResults, selectedChain, selectedStructureU
 					layout: {
 						initial: {
 							isExpanded: false,
-							showControls: true,
+							showControls: false,
 							controlsDisplay: "reactive",
 							regionState: {
 								top: "hidden",    //sequence
@@ -79,7 +89,7 @@ export function MolStarWrapper({ chainResults, selectedChain, selectedStructureU
 
 			window.molstar = plugin;
 
-			loadNewStructures(plugin, pdbUrls, "pdb", selectedChain);
+			loadNewStructures(plugin, "pdb", selectedChain);
 		}
 
 		init();
@@ -96,8 +106,8 @@ export function MolStarWrapper({ chainResults, selectedChain, selectedStructureU
 			return;
 		}
 
-		loadNewStructures(plugin, pdbUrls, "pdb", selectedChain);
-	}, [/*chainResult, */selectedStructureUrls, selectedChain]); // TODO is not dependant on chainResult because query seq should not change
+		loadNewStructures(plugin, "pdb", selectedChain);
+	}, [/*chainResult, */selectedChain]); // TODO is not dependant on chainResult because query seq should not change
 
 	return (
 		<div ref={parent} style={{ position: "relative", height: "70vh", width: "45vw" }}></div>
@@ -121,15 +131,66 @@ export function MolStarWrapper({ chainResults, selectedChain, selectedStructureU
 		return plugin.runTask(plugin.state.data.updateTree(b));
 	}
 
-	async function siteVisual(plugin: PluginContext, s: StateObjectRef<PSO.Molecule.Structure>, pivot: Expression, rest: Expression) {
-		const center = await plugin.builders.structure.tryCreateComponentFromExpression(s, pivot, "pivot");
-		if (center) await plugin.builders.structure.representation.addRepresentation(center, { type: "cartoon", color: "model-index" });
+	async function createLigandsRepresentation(
+		plugin: PluginContext,
+		structs: Record<string, Record<string, Record<string, StateObjectSelector>>>,
+		ligandsExpression: Record<string, Record<string, Record<string, Record<string, Expression>>>>
+	) {
+		const ls: Record<string, Record<string, Record<string, Record<string, StateObjectSelector>>>> = {};
+		for (const [dataSourceName, result] of Object.entries(chainResult.dataSourceExecutorResults)) {
+			if (!result.similarProteins) {
+				continue;
+			}
 
-		const surr = await plugin.builders.structure.tryCreateComponentFromExpression(s, rest, "rest");
-		if (surr) await plugin.builders.structure.representation.addRepresentation(surr, { type: "ball-and-stick"/*, color: "uniform", size: "uniform", sizeParams: { value: 0.33 }*/ }); // TODO
+			for (const simProt of result.similarProteins) {
+				for (const bindingSite of simProt.bindingSites) {
+					const struct = structs[dataSourceName][simProt.pdbId][simProt.chain];
+					const ligandsOfOneType = ligandsExpression[dataSourceName][simProt.pdbId][simProt.chain][bindingSite.id];
+
+					const l = await plugin.builders.structure.tryCreateComponentFromExpression(
+						struct, ligandsOfOneType, `${dataSourceName}-${simProt.pdbId}-${simProt.chain}-${bindingSite.id}`);
+					if (l) {
+						await plugin.builders.structure.representation.addRepresentation(l, { type: "ball-and-stick" });
+						setVisibility(l, false);
+
+						if (!(dataSourceName in ls)) {
+							ls[dataSourceName] = {};
+						}
+						if (!(simProt.pdbId in ls[dataSourceName])) {
+							ls[dataSourceName][simProt.pdbId] = {};
+						}
+						if (!(simProt.chain in ls[dataSourceName][simProt.pdbId])) {
+							ls[dataSourceName][simProt.pdbId][simProt.chain] = {};
+						}
+						ls[dataSourceName][simProt.pdbId][simProt.chain][bindingSite.id] = l;
+					}
+				}
+			}
+		}
+		setLigands(ls);
+	}
+
+	async function createStructureRepresentation(
+		plugin: PluginContext,
+		stateObjectRef: StateObjectRef<PSO.Molecule.Structure>,
+		pivotExpression: Expression,
+		restExpression: Expression,
+		show: boolean
+	) {
+		// Pivot
+		const center = await plugin.builders.structure.tryCreateComponentFromExpression(stateObjectRef, pivotExpression, "pivot");
+		if (center) {
+			await plugin.builders.structure.representation.addRepresentation(center, { type: "cartoon", color: "model-index" });
+			setVisibility(center, show);
+		}
+
+		// TODO
+		// const surr = await plugin.builders.structure.tryCreateComponentFromExpression(s, rest, "rest");
+		// if (surr) await plugin.builders.structure.representation.addRepresentation(surr, { type: "ball-and-stick"/*, color: "uniform", size: "uniform", sizeParams: { value: 0.33 }*/ }); // TODO
 	}
 
 	async function _loadStructure(plugin: PluginContext, structureUrl: string, format: BuiltInTrajectoryFormat) {
+		structureUrl = structureUrl.replace("apache", "localhost"); // TODO tmp fix, can be deleted later
 		const data = await plugin.builders.data.download({
 			url: Asset.Url(structureUrl),
 			isBinary: false
@@ -143,15 +204,84 @@ export function MolStarWrapper({ chainResults, selectedChain, selectedStructureU
 		return structure;
 	}
 
-	function performDynamicSuperposition(plugin: PluginContext, structureUrls: string[], format: BuiltInTrajectoryFormat, chain: string) {
+	function setVisibility(selector: StateObjectSelector, show: boolean, plugin: PluginContext | null = null) {
+		if (!plugin) {
+			plugin = window.molstar;
+			if (!plugin) {
+				return;
+			}
+		}
+
+		setSubtreeVisibility(plugin.state.data, selector.ref, !show);
+	}
+
+	function performDynamicSuperposition(plugin: PluginContext, format: BuiltInTrajectoryFormat, chain: string) {
 		return plugin.dataTransaction(async () => {
-			for (const structureUrl of structureUrls) {
-				await _loadStructure(plugin, structureUrl, format);
+			// Load query protein structure
+			const querySequenceUrl = getQuerySequenceUrl(chainResult);
+			const queryStructureTmp = await _loadStructure(plugin, querySequenceUrl, format);
+			setQueryStructure(queryStructureTmp);
+
+			// Load similar proteins structures
+			const structuresTmp: Record<string, Record<string, Record<string, StateObjectSelector>>> = {};
+			for (const [dataSourceName, result] of Object.entries(chainResult.dataSourceExecutorResults)) {
+				if (!result.similarProteins) {
+					continue;
+				}
+
+				for (const simProt of result.similarProteins) {
+					if (!(dataSourceName in structuresTmp)) {
+						structuresTmp[dataSourceName] = {};
+					}
+					if (!(simProt.pdbId in structuresTmp[dataSourceName])) {
+						structuresTmp[dataSourceName][simProt.pdbId] = {};
+					}
+					const structure = await _loadStructure(plugin, simProt.pdbUrl, format);
+					structuresTmp[dataSourceName][simProt.pdbId][simProt.chain] = structure;
+				}
+			}
+			setStructures(structuresTmp);
+
+			const ligandsExpression: Record<string, Record<string, Record<string, Record<string, Expression>>>> = {};
+			for (const [dataSourceName, result] of Object.entries(chainResult.dataSourceExecutorResults)) {
+				if (!result.similarProteins) {
+					continue;
+				}
+
+				for (const simProt of result.similarProteins) {
+					for (const bindingSite of simProt.bindingSites) {
+						const ligandLabel = bindingSite.id.substring(bindingSite.id.indexOf("_") + 1); // e.g. "H_SO4" -> "SO4"
+						const ligandsOfOneType = MS.struct.generator.atomGroups({
+							'residue-test': MS.core.rel.eq([
+								MS.struct.atomProperty.macromolecular.auth_comp_id(), ligandLabel
+							]),
+							'group-by': MS.struct.atomProperty.macromolecular.residueKey()
+						});
+
+						if (!(dataSourceName in ligandsExpression)) {
+							ligandsExpression[dataSourceName] = {};
+						}
+						if (!(simProt.pdbId in ligandsExpression[dataSourceName])) {
+							ligandsExpression[dataSourceName][simProt.pdbId] = {};
+						}
+						if (!(simProt.chain in ligandsExpression[dataSourceName][simProt.pdbId])) {
+							ligandsExpression[dataSourceName][simProt.pdbId][simProt.chain] = {};
+						}
+						ligandsExpression[dataSourceName][simProt.pdbId][simProt.chain][bindingSite.id] = ligandsOfOneType;
+					}
+				}
 			}
 
 			const pivot = MS.struct.generator.atomGroups({
 				"chain-test": MS.core.rel.eq([MS.struct.atomProperty.macromolecular.auth_asym_id(), chain])
 			});
+			// TODO OTAZKA: nepouzit radsej toto?:
+			// const pivot = MS.struct.generator.atomGroups({
+			// 	"chain-test": MS.core.logic.and([
+			// 		MS.core.rel.eq([MS.struct.atomProperty.macromolecular.auth_asym_id(), chain]),
+			// 		queryStructureTmp.ref
+			// 	])
+			// });
 
 			const rest = MS.struct.modifier.exceptBy({
 				0: MS.struct.modifier.includeSurroundings({
@@ -174,16 +304,56 @@ export function MolStarWrapper({ chainResults, selectedChain, selectedStructureU
 				transforms = superpose(selections);
 			}
 
-			await siteVisual(plugin, xs[0].cell, pivot, rest);
+			// // Create representation of query protein structure
+			await createStructureRepresentation(plugin, xs[0].cell, pivot, rest, true);
+
+			// // Create representations of similar protein structures
 			for (let i = 1; i < (selections?.length ?? 1); i++) {
 				await transform(plugin, xs[i].cell, transforms[i - 1].bTransform);
-				await siteVisual(plugin, xs[i].cell, pivot, rest);
+				await createStructureRepresentation(plugin, xs[i].cell, pivot, rest, false);
 			}
+
+			// // Create representations of ligands
+			createLigandsRepresentation(plugin, structuresTmp, ligandsExpression);
 		});
 	}
 
-	async function loadNewStructures(plugin: PluginUIContext, structureUrls: string[], format: BuiltInTrajectoryFormat, chain: string) {
+	async function loadNewStructures(plugin: PluginUIContext, format: BuiltInTrajectoryFormat, chain: string) {
+		onStructuresLoadingStart();
 		await plugin.clear();
-		await performDynamicSuperposition(plugin, structureUrls, format, chain);
+		await performDynamicSuperposition(plugin, format, chain);
+		onStructuresLoadingEnd();
 	}
-}
+
+	function toggleLigand(dataSourceName: string, pdbCode: string, chain: string, ligandId: string, show: boolean) {
+		const ligand = ligands[dataSourceName][pdbCode][chain][ligandId];
+		if (ligand) {
+			setVisibility(ligand, show);
+		} else {
+			console.warn(`Failed to toggle ligand... Data: `, dataSourceName, pdbCode, chain, ligandId, show);
+		}
+	}
+
+	function toggleProteinStructure(dataSourceName: string, pdbCode: string, chain: string, show: boolean) {
+		const struct = structures[dataSourceName][pdbCode][chain];
+		if (struct) {
+			setVisibility(struct, show);
+			// When protein structure is displayed, the ligands are as well, so we hide them
+			for (const ligand of Object.values(ligands[dataSourceName][pdbCode][chain])) {
+				setVisibility(ligand, false);
+			}
+		} else {
+			console.warn(`Failed to toggle struct... Data: `, dataSourceName, pdbCode, chain, show);
+		}
+	}
+
+	function hideAllProteinStructures() {
+		for (const dataSourceRecord of Object.values(structures)) {
+			for (const chainRecord of Object.values(dataSourceRecord)) {
+				for (const structure of Object.values(chainRecord)) {
+					setVisibility(structure, false);
+				}
+			}
+		}
+	}
+});

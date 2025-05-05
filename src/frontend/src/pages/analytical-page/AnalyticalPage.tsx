@@ -1,14 +1,14 @@
 import { useSearchParams } from "react-router-dom";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useInterval } from "../../shared/hooks/useInterval";
 import { useVisibilityChange } from "../../shared/hooks/useVisibilityChange";
 import { DataStatus, getAllChainsAPI, getConservationsAPI, getDataSourceExecutorResultAPI, getDataSourceExecutorResultStatusAPI } from "../../shared/services/apiCalls";
 import RcsbSaguaro from "./components/RcsbSaguaro";
 import { FadeLoader } from "react-spinners";
-import { MolStarWrapper } from "./components/MolstarWrapper";
+import { MolStarWrapper, MolStarWrapperHandle } from "./components/MolstarWrapper";
 import { toastWarning } from "../../shared/helperFunctions/toasts";
 import ErrorMessageBox from "./components/ErrorMessageBox";
-import SettingsPanel from "./components/SettingsPanel";
+import SettingsPanel, { StructureOption } from "./components/SettingsPanel";
 import LigandToggler from "./components/LigandToggler";
 
 const POLLING_INTERVAL = 1000 * 5; // every 5 seconds
@@ -124,9 +124,10 @@ function AnalyticalPage() {
 	const [chainResults, setChainResults] = useState<ChainResults | null>(null);
 	const [selectedChain, setSelectedChain] = useState<string | null>(null); // Will be set when chain results are set
 	const [squashBindingSites, setSquashBindingSites] = useState<boolean>(false);
-	const [selectedStructureUrls, setSelectedStructureUrls] = useState<string[]>([]);
 	let lock = useMemo<boolean>(() => false, []);
 	const [ligandTogglerProps, setLigandTogglerProps] = useState<Record<string, Record<string, Record<string, Record<string, boolean>>>>>(null!);
+	const [isSettingsPanelDisabled, setIsSettingsPanelDisabled] = useState<boolean>(false);
+	const molstarWrapperRef = useRef<MolStarWrapperHandle>(null!);
 
 	useEffect(() => {
 		if (isPollingFinished.every(x => x)) {
@@ -159,6 +160,21 @@ function AnalyticalPage() {
 		}
 	}, pollingInterval);
 
+	function handleStructuresSelect(selectedStructureOptions: StructureOption[]) {
+		const ligandTogglerPropsTmp = toLigandTogglerProps(chainResults[selectedChain], selectedStructureOptions);
+		setLigandTogglerProps(ligandTogglerPropsTmp);
+
+		molstarWrapperRef.current?.hideAllProteinStructures();
+		for (const option of selectedStructureOptions) {
+			molstarWrapperRef.current?.toggleProteinStructure(
+				option.value.dataSourceName,
+				option.value.pdbId,
+				option.value.chain,
+				true
+			);
+		}
+	}
+
 	return (
 		<div>
 			{errorMessages.some(errMsg => errMsg.length > 0) && (
@@ -173,12 +189,13 @@ function AnalyticalPage() {
 					{chainResults && selectedChain ? (
 						<div className="d-flex flex-column align-items-center">
 							{/* Settings/Filter panel */}
-							<div className="w-90 d-flex flex-wrap align-items-center border rounded px-5 py-2 mx-5">
+							<div className="w-100 d-flex flex-wrap align-items-center border rounded ml-5 mr-3 px-3 py-2">
 								<SettingsPanel chainResults={chainResults}
 									onChainSelect={setSelectedChain}
 									squashBindingSites={squashBindingSites}
 									onBindingSitesSquashClick={() => setSquashBindingSites(prevState => !prevState)}
-									onStructuresSelect={selectedStructureUrls => setSelectedStructureUrls(selectedStructureUrls)} />
+									onStructuresSelect={handleStructuresSelect}
+									isDisabled={isSettingsPanelDisabled} />
 							</div>
 
 							<div className="w-100 mt-2">
@@ -194,27 +211,15 @@ function AnalyticalPage() {
 				</div>
 				<div id="visualization-molstar" className="col-xs-12 col-md-6 col-xl-6">
 					{chainResults && selectedChain ? (<>
-						<MolStarWrapper chainResults={chainResults}
+						<MolStarWrapper ref={molstarWrapperRef}
+							chainResults={chainResults}
 							selectedChain={selectedChain}
-							selectedStructureUrls={selectedStructureUrls} />
+							onStructuresLoadingStart={() => setIsSettingsPanelDisabled(true)}
+							onStructuresLoadingEnd={() => setIsSettingsPanelDisabled(false)} />
 						<div id="visualization-toolbox">TODO Toolbox</div>
 						{ligandTogglerProps && (
 							<LigandToggler data={ligandTogglerProps}
-								onToggle={(dataSourceName, pdbCode, chain, ligandId, newValue) =>
-									setLigandTogglerProps(prev => ({
-										...prev,
-										[dataSourceName]: {
-											...prev[dataSourceName],
-											[pdbCode]: {
-												...prev[dataSourceName][pdbCode],
-												[chain]: {
-													...prev[dataSourceName][pdbCode][chain],
-													[ligandId]: newValue
-												}
-											}
-										}
-									}))
-								} />
+								onToggle={handleLigandToggle} />
 						)}
 					</>) : (
 						<div className="d-flex py-2 justify-content-center align-items-center">
@@ -327,9 +332,6 @@ function AnalyticalPage() {
 			}
 			setSelectedChain(chainsLocal[0]) // Every protein has at least 1 chain
 			setChainResults(chainResultsTmp);
-
-			const ligandTogglerPropsTmp = toLigandTogglerProps(chainResultsTmp[chainsLocal[0]]);
-			setLigandTogglerProps(ligandTogglerPropsTmp);
 			lock = false;
 		}
 		isFetching[dataSourceIndex] = false;
@@ -625,7 +627,7 @@ function AnalyticalPage() {
 		setErrorMessages(new Array(dataSourceExecutors.length).fill(""));
 	}
 
-	function toLigandTogglerProps(chainResult: ChainResult) {
+	function toLigandTogglerProps(chainResult: ChainResult, selectedStructureOptions: StructureOption[]) {
 		const res: Record<string, Record<string, Record<string, Record<string, boolean>>>> = {};
 
 		for (const [dataSourceName, result] of Object.entries(chainResult.dataSourceExecutorResults)) {
@@ -634,6 +636,15 @@ function AnalyticalPage() {
 			}
 
 			for (const simProt of result.similarProteins) {
+				const isStructureSelected = selectedStructureOptions.some(
+					x => x.value.dataSourceName === dataSourceName
+						&& x.value.pdbId === simProt.pdbId
+						&& x.value.chain === simProt.chain
+				);
+				if (!isStructureSelected) {
+					continue;
+				}
+
 				for (const bindingSite of simProt.bindingSites) {
 					if (!(dataSourceName in res)) {
 						res[dataSourceName] = {};
@@ -650,6 +661,24 @@ function AnalyticalPage() {
 		}
 
 		return res;
+	}
+
+	function handleLigandToggle(dataSourceName: string, pdbCode: string, chain: string, ligandId: string, show: boolean) {
+		setLigandTogglerProps(prev => ({
+			...prev,
+			[dataSourceName]: {
+				...prev[dataSourceName],
+				[pdbCode]: {
+					...prev[dataSourceName][pdbCode],
+					[chain]: {
+						...prev[dataSourceName][pdbCode][chain],
+						[ligandId]: show
+					}
+				}
+			}
+		}));
+
+		molstarWrapperRef.current?.toggleLigand(dataSourceName, pdbCode, chain, ligandId, show);
 	}
 }
 
