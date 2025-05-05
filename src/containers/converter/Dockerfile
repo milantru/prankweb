@@ -12,10 +12,9 @@ WORKDIR /app
 COPY --chown=user:user \
         ./shared/install-requirements.sh \
         ./shared/tasks_logger.py \
+        ./shared/mapping.json \
         ./converter/requirements.in \
         ./
-
-COPY --chown=user:user ./shared/mapping.json .
 
 RUN chmod +x install-requirements.sh \
     && ./install-requirements.sh \
