@@ -44,7 +44,7 @@ def run_foldseek(id):
         query_structure_file = os.path.join(eval_folder, "input.pdb")
 
         logger.info(f'{id} Downloading PDB file from: {pdb_url}')
-        response = requests.get(pdb_url, stream=True)
+        response = requests.get(pdb_url, stream=True, timeout=(10,20))
         response.raise_for_status()
         logger.info(f'{id} PDB file downloaded successfully')
 

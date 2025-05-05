@@ -125,7 +125,7 @@ def process_similar_protein(result_folder: str, fields: List[str], curr_chain: s
     try:
         if not os.path.exists(pdb_filename):
             logger.info(f'{id} Downloading similar protein: {sim_protein_pdb_id}')
-            response = requests.get(PDB_FILE_URL.format(sim_protein_pdb_id))
+            response = requests.get(PDB_FILE_URL.format(sim_protein_pdb_id), timeout=(15,30))
             response.raise_for_status()
             logger.info(f'{id} Similar protein {sim_protein_pdb_id} downloaded successfully')
             with open(pdb_filename, "wb") as f:
@@ -149,7 +149,7 @@ def process_foldseek_output(result_folder, foldseek_result_file, id, query_struc
         chains_json = os.path.join(INPUTS_URL, id, "chains.json")
         logger.info(f'{id} Downloading chains file from: {chains_json}') 
         try:
-            response = requests.get(chains_json, stream=True)
+            response = requests.get(chains_json, stream=True, timeout=(10,20))
             response.raise_for_status()
         except requests.RequestException as e:
             logger.critical(f'{id} Failed to download chains file')

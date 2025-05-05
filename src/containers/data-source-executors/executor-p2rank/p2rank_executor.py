@@ -37,7 +37,7 @@ def prepare_hom_files(id, eval_folder):
 
     logger.info(f'{id} Downloading chains file from: {chains_json}')
     try:
-        response = requests.get(chains_json, stream=True)
+        response = requests.get(chains_json, stream=True, timeout=(10,20))
         response.raise_for_status()
     except requests.RequestException as e:
         logger.critical(f'{id} Failed to download chains file')
@@ -53,7 +53,7 @@ def prepare_hom_files(id, eval_folder):
 
         logger.info(f'{id} Downloading hom file from: {chain_hom_file}')
         try:
-            response = requests.get(chain_hom_file, stream=True)
+            response = requests.get(chain_hom_file, stream=True, timeout=(10,20))
             response.raise_for_status()
         except requests.RequestException as e:
             logger.error(f'{id} Failed to download hom file')
@@ -87,7 +87,7 @@ def run_p2rank(id, params):
         pdb_url = os.path.join(INPUTS_URL, id, "structure.pdb")
         query_structure_file = os.path.join(eval_folder, "input.pdb")
         logger.info(f'{id} Downloading PDB file from: {pdb_url}')
-        response = requests.get(pdb_url, stream=True)
+        response = requests.get(pdb_url, stream=True, timeout=(10,20))
         response.raise_for_status()
         logger.info(f'{id} PDB file downloaded successfully')
 

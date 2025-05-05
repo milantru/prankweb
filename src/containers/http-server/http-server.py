@@ -90,7 +90,7 @@ def _check_form_fields(input_data: dict, form_fields: list) -> ErrorStr | None:
 
 # def _file_exists_at_url(url: str) -> bool:
 #     try:
-#         response = requests.head(url, allow_redirects=True, timeout=20)
+#         response = requests.head(url, timeout=(15,30))
 #         return response.status_code == 200
 #     except requests.RequestException as e:
 #         logger.error(f'Error checking URL: {e}')
@@ -100,7 +100,7 @@ def _check_form_fields(input_data: dict, form_fields: list) -> ErrorStr | None:
 def _download_file_from_url(url: str, filename: str) -> bool:
     logger.info(f'Downloading file from: {url}')
     try:
-        response = requests.get(url)
+        response = requests.get(url, timeout=(15,30))
         response.raise_for_status()
     except requests.RequestException as e:
         logger.error(f'File download failed {str(e)}')
@@ -154,7 +154,7 @@ def _validate_pdb(input_data: dict) -> ValidationResult:
     try:
         url = PDB_ID_URL.format(pdb_id)
         logger.info(f'Downloading protein metadata from: {url}')
-        response = requests.get(url, allow_redirects=True, timeout=(3,5))
+        response = requests.get(url, timeout=(15,30))
         response.raise_for_status()
         response_data = response.json()[pdb_id][0]
         logger.info('Protein metadata downloaded successfully')
@@ -249,7 +249,7 @@ def _validate_uniprot(input_data: dict) -> ValidationResult:
         # check whether given Uniprot ID exists
         url = UNIPROT_ID_URL.format(uniprot_id)
         logger.info(f'Downloading protein metadata from: {url}')
-        response = requests.get(url, allow_redirects=True, timeout=(3,5))
+        response = requests.get(url, timeout=(15,30))
         response.raise_for_status()
         logger.info('Protein metadata downloaded successfully')
         
@@ -362,7 +362,7 @@ def upload_data() -> Response:
 
     logger.info(f'Sending POST request to id-provider: {ID_PROVIDER_URL}, payload:\n {json.dumps(id_payload, indent=2)}')
     try:
-        response = requests.post(ID_PROVIDER_URL, json=id_payload)
+        response = requests.post(ID_PROVIDER_URL, json=id_payload, timeout=(10,20))
         response.raise_for_status()
     except:
         logger.error('Failed to get ID from id-provider')

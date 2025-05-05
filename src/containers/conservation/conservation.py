@@ -46,7 +46,7 @@ def compute_conservation(id):
     try:
         json_url = os.path.join(INPUTS_URL, f"{id}/chains.json")
         logger.info(f'{id} Downloading chains file from: {json_url}')
-        response = requests.get(json_url)
+        response = requests.get(json_url, timeout=(10,20))
         response.raise_for_status()
         logger.info(f'{id} Chains file downloaded successfully')
         files_metadata = response.json()
@@ -61,7 +61,7 @@ def compute_conservation(id):
         for file, chains in files_metadata["fasta"].items():
             file_url = os.path.join(INPUTS_URL, f"{id}/{file}")
             logger.info(f'{id} Downloading FASTA file from: {file_url}')
-            response = requests.get(file_url, stream=True)
+            response = requests.get(file_url, stream=True, timeout=(10,20))
             response.raise_for_status()
             logger.info(f'{id} FASTA file downloaded successfully')
 

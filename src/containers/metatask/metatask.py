@@ -45,7 +45,7 @@ logger = create_logger('metatask')
 def _download_file_from_url(id: str, url: str, filename: str) -> bool:
     logger.info(f'{id} Downloading file from: {url}')
     try:
-        response = requests.get(url)
+        response = requests.get(url, timeout=(10,20))
         response.raise_for_status()
     except requests.RequestException as e:
         logger.error(f'{id} File download failed {str(e)}')
@@ -167,7 +167,7 @@ def _is_task_running_or_completed(id: str, output_folder: str) -> bool:
     try:
         status_url = os.path.join(output_folder, 'status.json')
         logger.info(f'{id} Getting status file from: {status_url}')
-        response = requests.get(status_url)
+        response = requests.get(status_url, timeout=(10,20))
         response.raise_for_status()
         task_status = response.json().get('status')
         logger.info(f'{id} Status: {task_status}')
