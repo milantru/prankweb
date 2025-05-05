@@ -127,7 +127,7 @@ function AnalyticalPage() {
 	let lock = useMemo<boolean>(() => false, []);
 	const [queryProteinLigandData, setQueryProteinLigandData] = useState<Record<string, Record<string, Record<string, boolean>>>>(null!);
 	const [similarProteinLigandData, setSimilarProteinLigandData] = useState<Record<string, Record<string, Record<string, Record<string, boolean>>>>>(null!);
-	const [isSettingsPanelDisabled, setIsSettingsPanelDisabled] = useState<boolean>(false);
+	const [isSettingsPanelDisabled, setIsSettingsPanelDisabled] = useState<boolean>(true);
 	const molstarWrapperRef = useRef<MolStarWrapperHandle>(null!);
 
 	useEffect(() => {
