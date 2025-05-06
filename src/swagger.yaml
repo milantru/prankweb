@@ -1,0 +1,490 @@
+openapi: 3.0.0
+info:
+  title: "PlankWeb: Ligand Binding Site Analysis"
+  version: 1.0.0
+
+servers:
+  - url: http://localhost
+    description: Local development server
+  - url: https://plankweb.cz
+    description: Coming soon...
+
+paths:
+  /upload-data:
+    post:
+      summary: Upload protein data
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              oneOf:
+                - title: Method 0 - PDB Code
+                  required: [inputMethod, pdbCode, chains, useConservation]
+                  properties:
+                    inputMethod:
+                      type: integer
+                      example: 0
+                    pdbCode:
+                      type: string
+                      example: "2src"
+                    chains:
+                      type: string
+                      example: "A"
+                    useConservation:
+                      type: boolean
+                      example: true
+
+                - title: Method 1 - File Upload
+                  required: [inputMethod, uderFile, chains, userInputModel]
+                  properties:
+                    inputMethod:
+                      type: integer
+                      example: 1
+                    userFile:
+                      type: string
+                      format: binary
+                    chains:
+                      type: string
+                      example: "A"
+                    userInputModel:
+                      type: integer
+                      example: 0
+                - title: Method 2 - UniProt Code
+                  required: [inputMethod, uniprotCode, useConservation]
+                  properties:
+                    inputMethod:
+                      type: integer
+                      example: 2
+                    uniprotCode:
+                      type: string
+                      example: "P12345"
+                    useConservation:
+                      type: boolean
+                      example: true
+                - title: Method 3 - Sequence
+                  required: [inputMethod, sequence, useConservation]
+                  properties:
+                    inputMethod:
+                      type: integer
+                      example: 3
+                    sequence:
+                      type: string
+                      example: "TTFVALYDYESRTETDLSFKKGERLQIVNNTEGDWWL..."
+                    useConservation:
+                      type: boolean
+                      example: true
+
+      responses:
+        '200':
+          description: Successful upload
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: pdb_2src
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Unexpected input method
+
+  /get-id:
+    get:
+      summary: Get ID for protein based on the input method
+      description: |
+        This endpoint returns an ID for a protein based on the input method.
+        Supported input methods are `pdb`, `uniprot`, and `sequence`.
+      parameters:
+        - name: input_method
+          in: query
+          required: true
+          schema:
+            type: string
+            enum:
+              - pdb
+              - uniprot
+              - sequence
+          example: pdb
+        - name: input_protein
+          in: query
+          required: true
+          description: |
+            The identifiers for the proteins, which can be one or more of the following:
+            - PDB ID
+            - Uniprot ID
+            - Sequence string (max. 400 chars)
+          schema:
+            type: string
+          example: 2src
+      responses:
+        '200':
+          description: Successful response with the protein ID.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    description: The ID associated with the protein.
+                    example: "pdb_2src"
+        '400':
+          description: Bad request due to invalid input method or missing protein identifier.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Error message describing the problem.
+  /data/inputs/{inputId}/chains.json:
+    get:
+      summary: Get available chains and their corresponding FASTA files
+      description: |
+        This endpoint returns a list of available chains and their corresponding FASTA files for a given protein ID.
+        The protein ID is generated by the /upload-data endpoint.
+      parameters:
+        - in: path
+          name: inputId
+          required: true
+          description: The generated ID of a protein
+          schema:
+            type: string
+            example: "pdb_6xez"
+      responses:
+        '200':
+          description: A list of available chains and their corresponding FASTA files
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  chains:
+                    type: array
+                    items:
+                      type: string
+                    example: ["A", "B", "D", "C", "E", "F"]
+                  fasta:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                    example:
+                      sequence_1.fasta: ["A"]
+                      sequence_2.fasta: ["B", "D"]
+                      sequence_3.fasta: ["C"]
+                      sequence_4.fasta: ["E", "F"]
+
+  /data/inputs/{inputId}/{chain_fasta_file}:
+    get:
+      summary: Get FASTA file for a specific chain
+      description: |
+        This endpoint returns the FASTA file for a specific chain of a protein.
+        The chain ID can be obtained from the /data/inputs/{inputId}/chains.json endpoint.
+      parameters:
+        - in: path
+          name: inputId
+          required: true
+          description: The generated ID of a protein
+          schema:
+            type: string
+            example: "pdb_6xez"
+        - in: path
+          required: true
+          name: chain_fasta_file
+          description: The FASTA file obtained from endpoint /data/inputs/{inputId}/chains.json
+          schema:
+            type: string
+            example: "sequence_1.fasta"
+      responses:
+        '200':
+          description: A FASTA file containing the sequence of the specified chain.
+          content:
+            application/json:
+              schema:
+                type: string
+                example: |
+                  > Chains: ['A']
+                  QSFLNRVCGVSAARLTPCGTGTSTDVVYRAFD
+        '404':
+          description: Not Found.
+
+  /data/inputs/{inputId}/structure.pdb:
+    get:
+      summary: Get PDB file for a specific protein
+      parameters:
+        - in: path
+          name: inputId
+          required: true
+          description: The generated ID of a protein
+          schema:
+            type: string
+            example: "pdb_6xez"
+      responses:
+        '200':
+          description: A PDB file containing the structure of the specified protein.
+          content:
+            .pdb:
+              schema:
+                type: string
+                example: |
+                  PDB FILE
+        '404':
+          description: Not Found.
+  /data/{dataSourceName}/{inputId}/status.json:
+    get:
+      summary: Get the status of the data source computation
+      parameters:
+        - in: path
+          name: inputId
+          required: true
+          description: The generated ID of a protein
+          schema:
+            type: string
+            example: "pdb_2src"
+      responses:
+        '200':
+          description:
+            JSON object with status code and error messages.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: integer
+                    description: |
+                      The status of the data source computation.
+                        - 0: Started
+                        - 1: Completed
+                        - 2: Failed
+                    example: 1
+                  errorMessages:
+                    type: string
+                    description: Error message(s) if the computation failed.
+                    example: "" 
+  /data/{dataSourceName}/{inputId}/{chainId}_chain_result.json:
+    get:
+      summary: Get data source results for a specific protein and chain in JSON format
+      parameters:
+        - in: path
+          name: dataSourceName
+          required: true
+          description: |
+            The name of the data source, one of:
+            - ds_foldseek
+            - ds_p2rank
+            - ds_p2rank/conservation
+            - ds_plm
+          schema:
+            type: string
+            example: "foldseek"
+        - in: path
+          name: inputId
+          required: true
+          description: The generated ID of a protein
+          schema:
+            type: string
+            example: "pdb_2src"
+        - in: path
+          name: chainId
+          required: true
+          description: The ID of the chain (e.g., "A"), which can be obtained from the /data/inputs/{inputId}/chains.json endpoint.
+          schema:
+            type: string
+            example: "A"
+      responses:
+        '200':
+          description: A JSON result in the shared format
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  result:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        example: pdb_2src
+                      chain:
+                        type: string
+                        example: A
+                      sequence:
+                        type: string
+                        example: TTFVALYDYESRTETDLSFKKGERLQIVNNTEGDWWL...
+                      pdbUrl:
+                        type: string
+                        format: uri
+                        example: http://localhost/data/inputs/pdb_2src/structure.pdb
+                      bindingSites:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                              example: pocket_1
+                            confidence:
+                              type: number
+                              format: float
+                              example: 0.916
+                            residues:
+                              type: array
+                              items:
+                                type: integer
+                              example: [189, 190, 191, 192, 193, 194, 195]
+                      similarProteins:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            pdbId:
+                              type: string
+                              example: 4k11
+                            chain:
+                              type: string
+                              example: A
+                            sequence:
+                              type: string
+                              example: TTFVALYDYESRTETDLSFKKGERLQIVNNTEGDWWL...
+                            pdbUrl:
+                              type: string
+                              format: uri
+                              example: http://localhost/data/ds_foldseek/pdb_2src/4k11.pdb
+                            bindingSites:
+                              type: array
+                              items:
+                                type: object
+                                properties:
+                                  id:
+                                    type: string
+                                    example: H_PTR
+                                  confidence:
+                                    type: number
+                                    format: float
+                                    example: 1.0
+                                  residues:
+                                    type: array
+                                    items:
+                                      type: object
+                                      properties:
+                                        sequenceIndex:
+                                          type: integer
+                                          example: 71
+                                        structureIndex:
+                                          type: integer
+                                          example: 155
+                            alignmentData:
+                              type: object
+                              properties:
+                                querySeqAlignedPartStartIdx:
+                                  type: integer
+                                  example: 0
+                                querySeqAlignedPartEndIdx:
+                                  type: integer
+                                  example: 447
+                                querySeqAlignedPart:
+                                  type: string
+                                  example: TTFVALYDYESRTETDLSFKKGERLQIVNNTEGDWWL...
+                                similarSequence:
+                                  type: string
+                                  example: TTFVALYDYESRTETDLSFKKGERLQIVNNTEGDWWL...
+                                similarSeqAlignedPartStartIdx:
+                                  type: integer
+                                  example: 0
+                                similarSeqAlignedPartEndIdx:
+                                  type: integer
+                                  example: 447
+                                similarSeqAlignedPart:
+                                  type: string
+                                  example: TTFVALYDYESRTETDLSFKKGERLQIVNNTEGDWWL...
+                      metadata:
+                        type: object
+                        properties:
+                          source:
+                            type: string
+                            example: foldseek
+                          timestamp:
+                            type: string
+                            format: date-time
+                            example: 2025-04-11T10:56:00.731529
+        '404':
+          description: Not Found.
+  /data/conservation/{inputId}/status.json:
+    get:
+      summary: Get the status of the conservation computation
+      parameters:
+        - in: path
+          name: inputId
+          required: true
+          description: The generated ID of a protein
+          schema:
+            type: string
+            example: "pdb_2src"
+      responses:
+        '200':
+          description:
+            JSON object with status code and error messages.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: integer
+                    description: |
+                      The status of the conservation computation.
+                        - 0: Started
+                        - 1: Completed
+                        - 2: Failed
+                    example: 1
+                  errorMessages:
+                    type: string
+                    description: Error message(s) if the computation failed.
+                    example: ""
+  /data/conservation/{inputId}/input{chainId}.json:
+    get:
+      summary: Get protein conservation data for a specific chain
+      parameters:
+        - in: path
+          name: inputId
+          required: true
+          description: The generated ID of a protein
+          schema:
+            type: string
+            example: "pdb_6xez"
+        - in: path
+          name: chainId
+          required: true
+          description: The ID of the chain (e.g., "A"), which can be obtained from the /data/inputs/{inputId}/chains.json endpoint.
+          schema:
+            type: string
+            example: "A"
+      responses:
+        '200':
+          description: A JSON object containing the conservation data for the specified chain.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    index:
+                      type: integer
+                      example: 0
+                    value:
+                      type: number
+                      format: float
+                      example: 4.32192809
+        '404':
+          description: Not Found.

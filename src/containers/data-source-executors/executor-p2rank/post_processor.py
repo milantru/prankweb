@@ -5,6 +5,8 @@ from dataclasses import asdict
 from Bio.PDB.Polypeptide import three_to_index, index_to_one
 from Bio.Data.IUPACData import protein_letters_3to1
 
+from tasks_logger import create_logger
+
 # _____________predictions.csv________________
 # name     ,  rank,   score, probability,  ...
 # pocket1  ,     1,    5.34,       0.265,  ...
@@ -28,6 +30,10 @@ RESIDUE_INDEX = 2
 POCKET_INDEX = 6
 
 RESULT_FILE = "{}_chain_result.json"
+MAPPING_FILE = "mapping.json"
+
+logger = create_logger('ds-p2rank')
+
 
 def is_amino_acid(code):
     return code.capitalize() in protein_letters_3to1
@@ -41,6 +47,14 @@ def read_residues(residues_result_file):
         for index, line in enumerate(file):
             row = [item.strip() for item in line.strip().split(',')]
             chain, structure_index, residue, pocket = row[CHAIN_INDEX], row[RESIDUE_STRUCTURE_INDEX], row[RESIDUE_INDEX], int(row[POCKET_INDEX])
+            if not is_amino_acid(residue):
+                with open(MAPPING_FILE, "r") as infile:
+                    mapping_dict = json.load(infile)
+                if residue in mapping_dict:
+                    residue = mapping_dict[residue]
+                else:
+                    raise ValueError(f"Residue {residue} not found in {MAPPING_FILE}")
+                
             if is_amino_acid(residue):
                 if curr_chain is None or curr_chain != chain:
                     seq_index = 0
@@ -75,9 +89,12 @@ def update_pocket_probabilities(pocket_prediction_result_file, grouped_data):
 def process_p2rank_output(id, result_folder, query_file, pdb_url):
     residues_result_file = query_file + "_residues.csv"
     pocket_prediction_result_file = query_file + "_predictions.csv"
-
+    
+    logger.info(f'{id} Starting to process p2rank output: {residues_result_file}, {pocket_prediction_result_file}')
     grouped_data = read_residues(residues_result_file)
+    logger.info(f'{id} Data grouped by chains')
     update_pocket_probabilities(pocket_prediction_result_file, grouped_data)
+    logger.info(f'{id} Pocket probabilities for grouped data updated')
 
     for chain, data in grouped_data.items():
         protein_data_builder = ProteinDataBuilder(id=id, chain=chain, sequence=data["residues"], pdb_url=pdb_url)
@@ -99,3 +116,4 @@ def process_p2rank_output(id, result_folder, query_file, pdb_url):
         result_file = os.path.join(result_folder, RESULT_FILE.format(chain))
         with open(result_file, 'w') as json_file:
             json.dump(asdict(protein_data), json_file, indent=4)
+        logger.info(f'{id} Post-processor results for chain {chain} saved to: {result_file}')

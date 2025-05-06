@@ -1,5 +1,9 @@
+#!/usr/bin/env python3
+
+import json
 import os
-import time
+import tempfile
+from dataclasses import dataclass
 from enum import Enum
 from io import StringIO
 from subprocess import Popen
@@ -34,7 +38,13 @@ logger = create_logger('http-server')
 
 ErrorStr: TypeAlias = str
 ProteinID: TypeAlias = str
-ValidationResult: TypeAlias = tuple[ErrorStr | None, ProteinID | None]
+FilePath: TypeAlias = str
+
+@dataclass
+class ValidationResult:
+    err_msg: ErrorStr | None = None
+    protein_id: ProteinID | None = None
+    tmp_file: FilePath | None = None
 
 class InputMethods(Enum):
     PDB = '0'
@@ -48,10 +58,12 @@ class InputModels(Enum):
     ALPHAFOLD = '2'
     ALPHAFOLD_CONSERVATION_HMM = '3'
 
+TMP_FOLDER = 'tmp/'
+
 PDB_FORM_FIELDS = [ 'pdbCode', 'chains', 'useConservation' ]
 CUSTOM_STR_FORM_FIELDS = [ 'chains', 'userInputModel' ]
 UNIPROT_FORM_FIELDS = [ 'uniprotCode', 'useConservation' ]
-SEQUENCE_FORM_FIELDS = [ 'sequence', 'useConservation' ]  
+SEQUENCE_FORM_FIELDS = [ 'sequence', 'useConservation' ]
 
 
 ID_PROVIDER_URL = os.getenv('ID_PROVIDER_URL')
@@ -63,6 +75,9 @@ PDB_FILE_URL = 'https://files.rcsb.org/download/{}.pdb'
 UNIPROT_ID_URL = 'https://rest.uniprot.org/uniprotkb/{}'
 UNIPROT_FILE_URL = 'https://alphafold.ebi.ac.uk/files/AF-{}-F1-model_v4.pdb'
 
+
+logger = create_logger('http-server')
+
 ############################## Private functions ###############################
 
 def _check_form_fields(input_data: dict, form_fields: list) -> ErrorStr | None:
@@ -73,13 +88,29 @@ def _check_form_fields(input_data: dict, form_fields: list) -> ErrorStr | None:
     return None
 
 
-def _file_exists_at_url(url: str) -> bool:
+# def _file_exists_at_url(url: str) -> bool:
+#     try:
+#         response = requests.head(url, timeout=(15,30))
+#         return response.status_code == 200
+#     except requests.RequestException as e:
+#         logger.error(f'Error checking URL: {e}')
+#         return False
+
+
+def _download_file_from_url(url: str, filename: str) -> bool:
+    logger.info(f'Downloading file from: {url}')
     try:
-        response = requests.head(url, allow_redirects=True, timeout=(3,5))
-        return response.status_code == 200
+        response = requests.get(url, timeout=(15,30))
+        response.raise_for_status()
     except requests.RequestException as e:
-        print(f'Error checking URL: {e}')
+        logger.error(f'File download failed {str(e)}')
         return False
+    
+    logger.info(f'File downloaded successfully')
+    with open(filename, 'w') as file:
+        file.write(response.text)
+    logger.info(f'File saved to: {filename}')
+    return True
 
 
 def _text_is_fasta_format(text: str) -> bool:
@@ -104,10 +135,10 @@ def _try_parse_pdb(pdb_file: str, user_chains: list) -> ErrorStr | None:
                 file_chains.add(chain.get_id())
 
         if not (user_chains <= file_chains):
-            return 'Wrong chains selected'
+            return 'Wrong chains selected for parsing user file'
     
-    except Exception as e:
-        return 'Wrong file format'
+    except Exception:
+        return 'Wrong user file format'
     
     return None
 
@@ -116,56 +147,66 @@ def _validate_pdb(input_data: dict) -> ValidationResult:
 
     err = _check_form_fields(input_data, PDB_FORM_FIELDS)    
     if err:
-        return err, None
+        return ValidationResult(err_msg=err)
         
+    pdb_id = input_data['pdbCode'].lower()
+    
     try:
-        pdb_id = input_data['pdbCode'].lower()
-        
         url = PDB_ID_URL.format(pdb_id)
-        response = requests.get(url, allow_redirects=True, timeout=(3,5))
-        if response.status_code != 200:
-            return f'PDB ID {pdb_id} not found in database', None
-
+        logger.info(f'Downloading protein metadata from: {url}')
+        response = requests.get(url, timeout=(15,30))
+        response.raise_for_status()
         response_data = response.json()[pdb_id][0]
+        logger.info('Protein metadata downloaded successfully')
 
         # check chains, empty string means no chain restriction
         chains_str = input_data['chains']
         selected_chains = set((chains_str.split(',') if chains_str else []))
         pdb_chains = set(response_data['in_chains'])
         if not (selected_chains <= pdb_chains):
-            return 'Wrong chains selected', None
+            return ValidationResult(err_msg='Wrong chains selected')
 
-        # check whether pdb file exists
+        # try to download download pdb file
         url = PDB_FILE_URL.format(pdb_id)
-        if not _file_exists_at_url(url):
-            return 'PDB ID found, but corresponding .pdb file not found', None
 
-        # append sequence to the dict
-        input_data['inputUrl'] = url
+        with tempfile.NamedTemporaryFile(
+            mode='w',
+            dir=TMP_FOLDER,
+            prefix=f'{pdb_id}_',
+            suffix='.pdb',
+            delete=False
+        ) as f:
+            tmp_file = os.path.relpath(f.name, os.getcwd())
+
+        if not _download_file_from_url(url, tmp_file):
+            return ValidationResult(
+                err_msg='PDB ID found, but cannot find or download corresponding .pdb file'
+            )
         
         # input model setup for p2rank
         input_data['inputModel'] = 'default'
 
+        return ValidationResult(protein_id=pdb_id, tmp_file=tmp_file)
+    
+    except requests.RequestException as e:
+        return ValidationResult(err_msg=f'PDB ID {pdb_id} not found in database due to an error: {str(e)}')
     except Exception as e:
-        print(e)
-        return 'Unknown exception occured', None
-
-    return None, pdb_id
+        return ValidationResult(err_msg=f'Unknown exception occured: {str(e)}')
 
 
 def _validate_custom_str(input_data: dict, input_file: FileStorage | None) -> ValidationResult:
 
     err = _check_form_fields(input_data, CUSTOM_STR_FORM_FIELDS)    
     if err:
-        return err, None
+        ValidationResult(err_msg=err)
         
     if not input_file:
-        return 'userFile not found', None
+        return ValidationResult(err_msg='userFile not found')
 
     # just check whether input model is fine
     model = input_data['userInputModel']
     if not any(model == m.value for m in InputModels):
-        return 'Selected input model not supported', None
+        return ValidationResult(err_msg=f'Selected input model ({model}) not supported')
     
     del input_data['userInputModel']
     
@@ -175,91 +216,105 @@ def _validate_custom_str(input_data: dict, input_file: FileStorage | None) -> Va
     )
 
     # save file to tmp folder
-    tmp_file = f'/tmp/{str(time.time())[-5:]}_{input_file.filename}'
-    input_file.save(tmp_file)
+    with tempfile.NamedTemporaryFile(
+        mode='wb',
+        dir=TMP_FOLDER,
+        prefix='str_',
+        suffix='.pdb',
+        delete=False
+    ) as f:
+        tmp_file = os.path.relpath(f.name, os.getcwd())
+        input_file.save(f)
 
     # try to parse pdb and check selected chains
     chains_str = input_data['chains']
     selected_chains = set((chains_str.split(',') if chains_str else []))
     err = _try_parse_pdb(tmp_file, selected_chains)
-    
-    # tmp_folder is mounted to volume tmp which is shared with apache
-    input_data['inputUrl'] = os.path.join(APACHE_URL, tmp_file[1:]) # without /
 
     # input model setup for p2rank
     input_data['inputModel'] = InputModels(model).name.split('_')[0].lower()     # result is default / alphafold
-
-    # Delete tmp file after 15 minutes
-    Popen(f'sleep 900 && rm -f {tmp_file}', shell=True)
     
-    return err, None
+    return ValidationResult(err_msg=err, tmp_file=tmp_file)
 
 
 def _validate_uniprot(input_data: dict) -> ValidationResult:
     
     err = _check_form_fields(input_data, UNIPROT_FORM_FIELDS)    
     if err:
-        return err, None
+        return ValidationResult(err_msg=err)
         
+    uniprot_id = input_data['uniprotCode']
+    
     try:
-        uniprot_id = input_data['uniprotCode']
-        
+        # check whether given Uniprot ID exists
         url = UNIPROT_ID_URL.format(uniprot_id)
-        response = requests.get(url, allow_redirects=True, timeout=(3,5))
-        if response.status_code != 200:
-            return f'Given Uniprot ID({uniprot_id}) not found in database', None
+        logger.info(f'Downloading protein metadata from: {url}')
+        response = requests.get(url, timeout=(15,30))
+        response.raise_for_status()
+        logger.info('Protein metadata downloaded successfully')
         
-        # check whether alphafold file exists
+        # download pdb file from alphafold database
         url = UNIPROT_FILE_URL.format(uniprot_id)
-        if not _file_exists_at_url(url):
-            return 'Uniprot ID found, but corresponding .pdb file not', None
+        
+        with tempfile.NamedTemporaryFile(
+            mode='w',
+            dir=TMP_FOLDER,
+            prefix=f'{uniprot_id}_',
+            suffix='.pdb',
+            delete=False
+        ) as f:
+            tmp_file = os.path.relpath(f.name, os.getcwd())
 
-        # append sequence to the dict
-        input_data['inputUrl'] = url
+        if not _download_file_from_url(url, tmp_file):
+            return ValidationResult(
+                err_msg='Uniprot ID found, but cannot find or download corresponding .pdb file'
+            )
 
         # input model setup for p2rank
         input_data['inputModel'] = 'alphafold'
 
-    except Exception:
-        return 'Unknown exception occured', None
+        return ValidationResult(protein_id=uniprot_id, tmp_file=tmp_file)
 
-    return None, uniprot_id
+    except requests.RequestException as e:
+        return ValidationResult(err_msg=f'Uniprot ID {uniprot_id} not found in database due to an error: {str(e)}')
+    except Exception as e:
+        return ValidationResult(err_msg=f'Unknown exception occured: {str(e)}')
 
 
-def _validate_seq(input_data: dict) -> ValidationResult:
+def _validate_seq(input_data: dict) -> ValidationResult: 
     
     err = _check_form_fields(input_data, SEQUENCE_FORM_FIELDS)    
     if err:
-        return err, None
+        return ValidationResult(err_msg=err)
         
     # check sequence
     sequence = input_data['sequence']
-
-    if len(sequence) > 400:
-        return 'Too long sequence (more than 400 characters)', None
     
-    if len(sequence) < 1:
-        return 'Too short sequence (less than 1 character)', None
+    if not 1 <= len(sequence) <= 400:
+        return ValidationResult(
+            err_msg=f'Invalid sequence length: {len(sequence)}, should be in interval [1, 400]'
+        )
 
     if not sequence.startswith('>'): sequence = '>PLANKWEB_SEQ\n' + sequence
     if not _text_is_fasta_format(sequence):
-        return 'Sequence not in FASTA format', None
+        return ValidationResult(err_msg='Sequence not in FASTA format')
     del input_data['sequence']
     
     # save sequence to tmp folder
-    tmp_file = f'/tmp/{str(time.time())[-5:]}_seq'
-    with open(tmp_file, 'w') as f: f.write(sequence)
-
-    # tmp_folder is mounted to volume tmp which is shared with apache
-    input_data['inputUrl'] = os.path.join(APACHE_URL, tmp_file[1:]) # without /
+    with tempfile.NamedTemporaryFile(
+        mode='w',
+        dir=TMP_FOLDER,
+        prefix='seq_',
+        suffix='.fasta',
+        delete=False
+    ) as f:
+        tmp_file = os.path.relpath(f.name, os.getcwd())
+        f.write(sequence)
 
     # input model setup for p2rank
     input_data['inputModel'] = 'alphafold'
-
-    # Delete tmp file after 15 minutes
-    Popen(f'sleep 900 && rm -f {tmp_file}', shell=True)
     
-    return None, sequence
+    return ValidationResult(protein_id=sequence, tmp_file=tmp_file)
 
 
 def _is_input_valid(input_method: str, input_data: dict, input_file: FileStorage | None) -> ValidationResult:
@@ -268,27 +323,33 @@ def _is_input_valid(input_method: str, input_data: dict, input_file: FileStorage
         case InputMethods.CUSTOM_STR.value: return _validate_custom_str(input_data, input_file)
         case InputMethods.UNIPROT.value: return _validate_uniprot(input_data)
         case InputMethods.SEQUENCE.value: return _validate_seq(input_data)
-        case _: raise  Exception('Unexpected input method')
+        case _: return ValidationResult(err_msg='Unexpected input method')
 
 ############################## Public functions ################################
 
 @app.route('/upload-data', methods=['POST'])
 def upload_data() -> Response:
+    logger.info(f'upload-data POST request received')
 
     input_method = request.form.get('inputMethod')
     if input_method is None:
-        print('inputMethod field not found in form')
-        return jsonify({'error': 'inputMethod field not found in form'}), 400
+        logger.info('inputMethod field not found in a form')
+        return jsonify({'error': 'inputMethod field not found in a form'}), 400
     
     input_data = request.form.to_dict()
+    logger.info(f'Input data:\n{json.dumps(input_data, indent=2)}')
+
     input_file = request.files.get('userFile') # returns None when not found
+    logger.info(f'userFile exists: {True if input_file else False}')
 
-    print('INPUT TYPE:', input_method) # TODO: replace by log
+    logger.info('Starting user input validation...')
+    validation_result = _is_input_valid(input_method, input_data, input_file)
 
-    err, protein = _is_input_valid(input_method, input_data, input_file)
-    if err:
-        print(err)
-        return jsonify({'error': err}), 400
+    if validation_result.err_msg:
+        logger.info(validation_result.err_msg)
+        return jsonify({'error': validation_result.err_msg}), 400
+    
+    logger.info('User input validation passed')
 
     # convert useConservation to Python friendly format
     use_conservation = input_data['useConservation'].lower() == 'true'
@@ -296,36 +357,57 @@ def upload_data() -> Response:
 
     id_payload = {
         'input_method': input_method,
-        'input_protein': protein
+        'input_protein': validation_result.protein_id
     }
 
-    print('ID PROVIDER REQUEST')
-    response = requests.post(ID_PROVIDER_URL, json=id_payload)
-
-    if response.status_code != 200:
-        return jsonify({'error': 'Failed to fetch data from id-provider'}), 500
+    logger.info(f'Sending POST request to id-provider: {ID_PROVIDER_URL}, payload:\n {json.dumps(id_payload, indent=2)}')
+    try:
+        response = requests.post(ID_PROVIDER_URL, json=id_payload, timeout=(10,20))
+        response.raise_for_status()
+    except:
+        logger.error('Failed to get ID from id-provider')
+        return jsonify({'error': 'Failed to get ID from id-provider'}), 500
     
-    print('ID PROVIDER RESPONDED POSITIVELY')
-
-    # change input method to 'STR' or 'SEQ'
-    input_data['inputMethod'] = (
-        'SEQ' if input_method == InputMethods.SEQUENCE.value else 'STR'
-    )
-
     response_data = response.json()
 
+    logger.info(f'id-provider responded positively, response:\n{json.dumps(response_data, indent=2)}')
+
+    # change input method to 'STR' or 'SEQ'
+    new_input_method = (
+        'SEQ' if input_method == InputMethods.SEQUENCE.value else 'STR'
+    )
+    
+    input_data['inputMethod'] = new_input_method
+    logger.info(f'inputMethod changed from {input_method} to {new_input_method}')
+
+    # tmp_folder is mounted to volume tmp which is shared with apache
+    input_data['inputUrl'] = os.path.join(APACHE_URL, validation_result.tmp_file)
+
     # convert keys to snake_case
+    logger.info('Preparing metatask payload...')
     metatask_payload = { decamelize(k):v for k,v in input_data.items() }
     metatask_payload['id'] = response_data['id']
     metatask_payload['id_existed'] = response_data['existed']
+    logger.info(f'Metatask payload prepared:\n{json.dumps(metatask_payload, indent=2)}')
 
+    metatask_task_name = f'metatask_{metatask_payload["input_method"]}'
+    logger.info(f'Sending {metatask_task_name}')
     celery.send_task(
-        f'metatask_{metatask_payload["input_method"]}',
+        metatask_task_name,
         args=[metatask_payload]
     )
+
+    # Delete validation_result.tmp_file file after 15 minutes
+    delete_cmd = f'sleep 900 && rm -f {validation_result.tmp_file}'
+    logger.info(f'Starting a process which deletes tmp file after 15 minutes: {delete_cmd}')
+    Popen(delete_cmd, shell=True)
     
+    logger.info(f'http-server finished, returning ID: {response_data["id"]}')
+
     return jsonify(response_data['id'])
 
 
 if __name__ == '__main__':
+    os.makedirs(TMP_FOLDER, exist_ok=True)
+    logger.info(f'Temporary folder prepared: {TMP_FOLDER}')
     app.run(host='0.0.0.0', port=3000)

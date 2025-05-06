@@ -1,0 +1,6 @@
+# Set default eol behavior
+* text eol=lf
+
+# Binary files.
+*.png binary
+*.svg binary
