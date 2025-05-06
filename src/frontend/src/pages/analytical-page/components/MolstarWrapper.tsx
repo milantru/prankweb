@@ -269,8 +269,13 @@ export const MolStarWrapper = forwardRef(({ chainResults, selectedChain, onStruc
 				for (const bindingSite of result.bindingSites) {
 					const ligandLabel = bindingSite.id.substring(bindingSite.id.indexOf("_") + 1); // e.g. "H_SO4" -> "SO4"
 					const ligandsOfOneType = MS.struct.generator.atomGroups({
-						'residue-test': MS.core.rel.eq([
-							MS.struct.atomProperty.macromolecular.auth_comp_id(), ligandLabel
+						'residue-test': MS.core.logic.and([
+							MS.core.rel.eq([
+								MS.struct.atomProperty.macromolecular.auth_comp_id(), ligandLabel
+							]),
+							MS.core.rel.eq([
+								MS.struct.atomProperty.macromolecular.auth_asym_id(), chain
+							])
 						]),
 						'group-by': MS.struct.atomProperty.macromolecular.residueKey()
 					});
@@ -326,8 +331,13 @@ export const MolStarWrapper = forwardRef(({ chainResults, selectedChain, onStruc
 					for (const bindingSite of simProt.bindingSites) {
 						const ligandLabel = bindingSite.id.substring(bindingSite.id.indexOf("_") + 1); // e.g. "H_SO4" -> "SO4"
 						const ligandsOfOneType = MS.struct.generator.atomGroups({
-							'residue-test': MS.core.rel.eq([
-								MS.struct.atomProperty.macromolecular.auth_comp_id(), ligandLabel
+							'residue-test': MS.core.logic.and([
+								MS.core.rel.eq([
+									MS.struct.atomProperty.macromolecular.auth_comp_id(), ligandLabel
+								]),
+								MS.core.rel.eq([
+									MS.struct.atomProperty.macromolecular.auth_asym_id(), chain
+								])
 							]),
 							'group-by': MS.struct.atomProperty.macromolecular.residueKey()
 						});
@@ -420,6 +430,9 @@ export const MolStarWrapper = forwardRef(({ chainResults, selectedChain, onStruc
 
 			// Create representations of similar protein ligands
 			await createLigandsRepresentationForStructs(plugin, structuresTmp, similarProteinLigandsExpression, false);
+
+			plugin.canvas3d?.requestCameraReset();
+			plugin.managers.camera.reset()
 		});
 	}
 
@@ -463,6 +476,10 @@ export const MolStarWrapper = forwardRef(({ chainResults, selectedChain, onStruc
 		for (const ligand of Object.values(similarProteinLigands.current[dataSourceName][pdbCode][chain])) {
 			setVisibility(ligand, ligand.isVisible);
 		}
+
+		// TODO maybe to other functions as well?
+		window.molstar?.canvas3d?.requestCameraReset();
+		window.molstar?.managers.camera.reset()
 	}
 
 	function hideAllSimilarProteinStructures() {
