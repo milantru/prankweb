@@ -23,7 +23,7 @@ def run_structure_to_sequence(id):
 
     logger.info(f'{id} Downloading PDB file from: {pdb_url}')
     try:
-        response = requests.get(pdb_url, stream=True, timeout=10)
+        response = requests.get(pdb_url, stream=True, timeout=(10,20))
         response.raise_for_status()
     except requests.RequestException as e:
         logger.error(f'{id} PDB file download failed {str(e)}')
@@ -77,7 +77,7 @@ def run_sequence_to_structure(id):
 
     logger.info(f'{id} Downloading FASTA file from: {fasta_url}')
     try:
-        response = requests.get(fasta_url, timeout=10)
+        response = requests.get(fasta_url, timeout=(10,20))
         response.raise_for_status()
     except requests.RequestException as e:
         logger.error(f'{id} FASTA file download failed {str(e)}')
@@ -91,7 +91,7 @@ def run_sequence_to_structure(id):
 
     logger.info(f'{id} Sending POST request to {ESMFOLD_URL} for structure prediction')
     try:
-        response = requests.post(ESMFOLD_URL, data=sequence, timeout=20)
+        response = requests.post(ESMFOLD_URL, data=sequence, timeout=(15,30))
         response.raise_for_status()
     except requests.RequestException as e:
         logger.error(f'{id} Structure not received: {str(e)}')
