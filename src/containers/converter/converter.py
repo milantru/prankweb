@@ -1,12 +1,18 @@
+import json
 import os
 import requests
 from Bio.PDB import PDBParser, Polypeptide, is_aa
+from Bio.Data.IUPACData import protein_letters_3to1
 import tempfile
 
 from tasks_logger import create_logger
 
 ESMFOLD_URL = 'https://api.esmatlas.com/foldSequence/v1/pdb/'
 INPUTS_URL = os.getenv('INPUTS_URL')
+MAPPING_FILE = "mapping.json"
+
+def is_standard_aa(code):
+    return code.capitalize() in protein_letters_3to1
 
 logger = create_logger('converter')
 
@@ -17,7 +23,7 @@ def run_structure_to_sequence(id):
 
     logger.info(f'{id} Downloading PDB file from: {pdb_url}')
     try:
-        response = requests.get(pdb_url, stream=True, timeout=10)
+        response = requests.get(pdb_url, stream=True, timeout=(10,20))
         response.raise_for_status()
     except requests.RequestException as e:
         logger.error(f'{id} PDB file download failed {str(e)}')
@@ -39,8 +45,18 @@ def run_structure_to_sequence(id):
         for chain in model:
             seq = ""
             for residue in chain:
-                if (residue.id[0] == " " or residue.id[0] == "") and is_aa(residue, standard=True): 
-                    seq += Polypeptide.index_to_one(Polypeptide.three_to_index(residue.resname))
+                if is_aa(residue, standard=False): 
+                    residue = residue.resname
+                    if not is_standard_aa(residue):
+                        with open(MAPPING_FILE, "r") as infile:
+                            mapping_dict = json.load(infile)
+                        if residue in mapping_dict:
+                            print("UPDATE")
+                            residue = mapping_dict[residue]
+                        else:
+                            raise ValueError(f"Residue {residue} not found in {MAPPING_FILE}")                        
+                        
+                    seq += Polypeptide.index_to_one(Polypeptide.three_to_index(residue))
             
             if seq != "":
                 chains.setdefault(seq, []).append(chain.id)
@@ -61,7 +77,7 @@ def run_sequence_to_structure(id):
 
     logger.info(f'{id} Downloading FASTA file from: {fasta_url}')
     try:
-        response = requests.get(fasta_url, timeout=10)
+        response = requests.get(fasta_url, timeout=(10,20))
         response.raise_for_status()
     except requests.RequestException as e:
         logger.error(f'{id} FASTA file download failed {str(e)}')
@@ -75,7 +91,7 @@ def run_sequence_to_structure(id):
 
     logger.info(f'{id} Sending POST request to {ESMFOLD_URL} for structure prediction')
     try:
-        response = requests.post(ESMFOLD_URL, data=sequence, timeout=20)
+        response = requests.post(ESMFOLD_URL, data=sequence, timeout=(15,30))
         response.raise_for_status()
     except requests.RequestException as e:
         logger.error(f'{id} Structure not received: {str(e)}')

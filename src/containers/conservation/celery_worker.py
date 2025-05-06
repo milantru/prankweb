@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import os
 from celery import Celery
 from conservation import compute_conservation

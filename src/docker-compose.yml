@@ -96,6 +96,8 @@ services:
         condition: service_healthy
       http-server:
         condition: service_started
+      swagger-ui:
+        condition: service_started
     ports:
       - 80:80
 
@@ -281,6 +283,14 @@ services:
     environment:
       CELERY_BROKER_URL: amqp://${PLANKWEB_SERVICE_USER:-guest}:${PLANKWEB_SERVICE_PASS:-guest}@message-broker:5672//
     command: celery flower --url_prefix=service/flower --prometheus
+  swagger-ui:
+      image: swaggerapi/swagger-ui
+      container_name: openapi
+      environment:
+        SWAGGER_JSON: /app/swagger.yaml
+      volumes:
+        - ./swagger.yaml:/app/swagger.yaml
+
 
 volumes:
   rabbitmq:
