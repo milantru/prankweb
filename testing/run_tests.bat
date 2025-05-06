@@ -1,0 +1,13 @@
+@echo off
+REM Exit on any error
+SETLOCAL ENABLEEXTENSIONS
+SETLOCAL ENABLEDELAYEDEXPANSION
+
+python -m venv venv
+
+CALL venv\Scripts\activate.bat
+
+pip install --upgrade pip
+pip install requests pytest
+
+pytest plankweb-tests.py

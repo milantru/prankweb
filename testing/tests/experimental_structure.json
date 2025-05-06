@@ -1,0 +1,189 @@
+[
+    {
+      "inputMethod": "0",
+      "pdbCode": "2src",
+      "chains": "",
+      "useConservation": "true",
+      "description": "Input method '0', Valid PDB code '2src', No chains, Use conservation"
+    },
+    {
+      "inputMethod": "0",
+      "pdbCode": "2src",
+      "chains": "",
+      "useConservation": "false",
+      "description": "Input method '0', Valid PDB code '2src', No chains, Do not use conservation"
+    },
+    {
+      "inputMethod": "0",
+      "pdbCode": "2src",
+      "chains": "",
+      "description": "Input method '0', Valid PDB code '2src', No chains, Conservation missing"
+    },
+    {
+      "inputMethod": "0",
+      "pdbCode": "2src",
+      "chains": "A",
+      "useConservation": "true",
+      "description": "Input method '0', Valid PDB code '2src', Chain A, Use conservation"
+    },
+    {
+      "inputMethod": "0",
+      "pdbCode": "2src",
+      "chains": "A",
+      "useConservation": "false",
+      "description": "Input method '0', Valid PDB code '2src', Chain A, Do not use conservation"
+    },
+    {
+      "inputMethod": "0",
+      "pdbCode": "2src",
+      "chains": "A",
+      "description": "Input method '0', Valid PDB code '2src', Chain A, Conservation missing"
+    },
+    {
+      "inputMethod": "0",
+      "pdbCode": "2src",
+      "chains": "",
+      "useConservation": "true",
+      "description": "Input method '0', Valid PDB code '2src', No chains, Use conservation"
+    },
+    {
+      "inputMethod": "0",
+      "pdbCode": "2src",
+      "chains": "",
+      "useConservation": "false",
+      "description": "Input method '0', Valid PDB code '2src', No chains, Do not use conservation"
+    },
+    {
+      "inputMethod": "0",
+      "pdbCode": "2src",
+      "chains": "",
+      "description": "Input method '0', Valid PDB code '2src', No chains, Conservation missing"
+    },
+    {
+      "inputMethod": "0",
+      "pdbCode": "1234",
+      "chains": "",
+      "useConservation": "true",
+      "description": "Input method '0', Invalid PDB code '1234', No chains, Use conservation"
+    },
+    {
+      "inputMethod": "0",
+      "pdbCode": "1234",
+      "chains": "",
+      "useConservation": "false",
+      "description": "Input method '0', Invalid PDB code '1234', No chains, Do not use conservation"
+    },
+    {
+      "inputMethod": "0",
+      "pdbCode": "1234",
+      "chains": "",
+      "description": "Input method '0', Invalid PDB code '1234', No chains, Conservation missing"
+    },
+    {
+      "inputMethod": "0",
+      "pdbCode": "1234",
+      "chains": "A",
+      "useConservation": "true",
+      "description": "Input method '0', Invalid PDB code '1234', Chain A, Use conservation"
+    },
+    {
+      "inputMethod": "0",
+      "pdbCode": "1234",
+      "chains": "A",
+      "useConservation": "false",
+      "description": "Input method '0', Invalid PDB code '1234', Chain A, Do not use conservation"
+    },
+    {
+      "inputMethod": "0",
+      "pdbCode": "1234",
+      "chains": "A",
+      "description": "Input method '0', Invalid PDB code '1234', Chain A, Conservation missing"
+    },
+    {
+      "inputMethod": "0",
+      "pdbCode": "missing",
+      "useConservation": "true",
+      "description": "Input method '0', Missing PDB code, No chains, Use conservation"
+    },
+    {
+      "inputMethod": "0",
+      "pdbCode": "missing",
+      "chains": "",
+      "useConservation": "false",
+      "description": "Input method '0', Missing PDB code, No chains, Do not use conservation"
+    },
+    {
+      "inputMethod": "0",
+      "pdbCode": "missing",
+      "chains": "",
+      "description": "Input method '0', Missing PDB code, No chains, Conservation missing"
+    },
+    {
+      "inputMethod": "0",
+      "pdbCode": "missing",
+      "chains": "A",
+      "useConservation": "true",
+      "description": "Input method '0', Missing PDB code, Chain A, Use conservation"
+    },
+    {
+      "inputMethod": "0",
+      "pdbCode": "missing",
+      "chains": "A",
+      "useConservation": "false",
+      "description": "Input method '0', Missing PDB code, Chain A, Do not use conservation"
+    },
+    {
+      "inputMethod": "0",
+      "pdbCode": "missing",
+      "chains": "A",
+      "description": "Input method '0', Missing PDB code, Chain A, Conservation missing"
+    },
+    {
+      "inputMethod": "0",
+      "pdbCode": "2src",
+      "chains": "",
+      "useConservation": "true",
+      "description": "Input method '0', Valid PDB code '2src', No chains, Use conservation"
+    },
+    {
+      "inputMethod": "0",
+      "pdbCode": "2src",
+      "chains": "",
+      "useConservation": "false",
+      "description": "Input method '0', Valid PDB code '2src', No chains, Do not use conservation"
+    },
+    {
+      "inputMethod": "0",
+      "pdbCode": "2src",
+      "chains": "",
+      "description": "Input method '0', Valid PDB code '2src', No chains, Conservation missing"
+    },
+    {
+      "inputMethod": "0",
+      "pdbCode": "1234",
+      "chains": "",
+      "useConservation": "true",
+      "description": "Input method '0', Invalid PDB code '1234', No chains, Use conservation"
+    },
+    {
+      "inputMethod": "0",
+      "pdbCode": "1234",
+      "chains": "",
+      "useConservation": "false",
+      "description": "Input method '0', Invalid PDB code '1234', No chains, Do not use conservation"
+    },
+    {
+      "inputMethod": "0",
+      "pdbCode": "1234",
+      "chains": "",
+      "description": "Input method '0', Invalid PDB code '1234', No chains, Conservation missing"
+    },
+    {
+      "inputMethod": "0",
+      "pdbCode": "missing",
+      "chains": "",
+      "useConservation": "true",
+      "description": "Input method '0', Missing PDB code, No chains, Use conservation"
+    }
+  ]
+  
