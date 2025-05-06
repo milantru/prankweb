@@ -359,13 +359,6 @@ export const MolStarWrapper = forwardRef(({ chainResults, selectedChain, onStruc
 			const pivot = MS.struct.generator.atomGroups({
 				"chain-test": MS.core.rel.eq([MS.struct.atomProperty.macromolecular.auth_asym_id(), chain])
 			});
-			// TODO OTAZKA: nepouzit radsej toto?:
-			// const pivot = MS.struct.generator.atomGroups({
-			// 	"chain-test": MS.core.logic.and([
-			// 		MS.core.rel.eq([MS.struct.atomProperty.macromolecular.auth_asym_id(), chain]),
-			// 		queryStructureTmp.ref
-			// 	])
-			// });
 
 			const rest = MS.struct.modifier.exceptBy({
 				0: MS.struct.modifier.includeSurroundings({
