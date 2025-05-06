@@ -13,7 +13,7 @@ import { Asset } from "molstar/lib/mol-util/assets";
 import { MolScriptBuilder as MS } from "molstar/lib/mol-script/language/builder";
 import { QueryContext, StructureElement, StructureSelection } from "molstar/lib/mol-model/structure";
 import { compile } from "molstar/lib/mol-script/runtime/query/compiler";
-import { superpose } from "molstar/lib/mol-model/structure/structure/util/superposition";
+import { alignAndSuperpose, superpose } from "molstar/lib/mol-model/structure/structure/util/superposition";
 import { PluginContext } from "molstar/lib/mol-plugin/context";
 import { PluginStateObject as PSO } from "molstar/lib/mol-plugin-state/objects";
 import { Expression } from "molstar/lib/mol-script/language/expression";
@@ -212,12 +212,11 @@ export const MolStarWrapper = forwardRef(({ chainResults, selectedChain, onStruc
 	async function createStructureRepresentation(
 		plugin: PluginContext,
 		stateObjectRef: StateObjectRef<PSO.Molecule.Structure>,
-		pivotExpression: Expression,
-		restExpression: Expression,
+		thingsToDisplayExpression: Expression,
 		showRepresentationWhenCreated: boolean
 	) {
 		// Pivot
-		const center = await plugin.builders.structure.tryCreateComponentFromExpression(stateObjectRef, pivotExpression, "pivot");
+		const center = await plugin.builders.structure.tryCreateComponentFromExpression(stateObjectRef, thingsToDisplayExpression, "pivot");
 		if (center) {
 			await plugin.builders.structure.representation.addRepresentation(center, { type: "cartoon", color: "model-index" });
 			setSubtreeVisibility(plugin.state.data, center.ref, !showRepresentationWhenCreated);
@@ -356,33 +355,64 @@ export const MolStarWrapper = forwardRef(({ chainResults, selectedChain, onStruc
 				}
 			}
 
-			const pivot = MS.struct.generator.atomGroups({
-				"chain-test": MS.core.rel.eq([MS.struct.atomProperty.macromolecular.auth_asym_id(), chain])
-			});
+			function createGetChainExpression(c: string) {
+				const selectChainExpr = MS.struct.generator.atomGroups({
+					'chain-test': MS.core.rel.eq([
+						MS.struct.atomProperty.macromolecular.auth_asym_id(), c
+					]),
+				});
 
-			const rest = MS.struct.modifier.exceptBy({
-				0: MS.struct.modifier.includeSurroundings({
-					0: pivot,
-					radius: 5
-				}),
-				by: pivot
-			});
+				return selectChainExpr;
+			}
 
-			const query = compile<StructureSelection>(pivot);
+			// TODO vyuziva sa?
+			function createGetRestExpression(getPivotExpression: Expression) {
+				const rest = MS.struct.modifier.exceptBy({
+					0: MS.struct.modifier.includeSurroundings({
+						0: getPivotExpression,
+						radius: 5
+					}),
+					by: getPivotExpression
+				});
+
+				return rest;
+			}
+
 			const xs = plugin.managers.structure.hierarchy.current.structures;
 			if (xs.length === 0) {
 				console.warn("No structures to display.");
 				return;
 			}
-			let selections: StructureElement.Loci[] | null = null;
-			let transforms: MinimizeRmsd.Result[] = null!;
+
+			const similarProteinsChains: string[] = [];
+			for (const [dataSourceName, result] of Object.entries(chainResult.dataSourceExecutorResults)) {
+				if (!result.similarProteins) {
+					continue;
+				}
+
+				for (const simProt of result.similarProteins) {
+					similarProteinsChains.push(simProt.chain);
+				}
+			}
+
+			const query1 = compile<StructureSelection>(createGetChainExpression(chain));
+			let selections: StructureElement.Loci[] = [
+				StructureSelection.toLociWithCurrentUnits(query1(new QueryContext(xs[0].cell.obj!.data)))
+			];
+			for (let i = 1; i < xs.length; i++) {
+				const similarProteinChain = similarProteinsChains[i - 1];
+				const query2 = compile<StructureSelection>(createGetChainExpression(similarProteinChain));
+				const selection = StructureSelection.toLociWithCurrentUnits(query2(new QueryContext(xs[i].cell.obj!.data)));
+				selections.push(selection);
+			}
+
+			let transforms: MinimizeRmsd.Result[] | null = null;
 			if (xs.length > 1) { // At least 1 similar protein structure selected (not only query protein is being visualised)
-				selections = xs.map(s => StructureSelection.toLociWithCurrentUnits(query(new QueryContext(s.cell.obj!.data))));
-				transforms = superpose(selections);
+				transforms = alignAndSuperpose(selections);
 			}
 
 			// Create representation of query protein structure
-			await createStructureRepresentation(plugin, xs[0].cell, pivot, rest, true);
+			await createStructureRepresentation(plugin, xs[0].cell, createGetChainExpression(chain), true);
 
 			// Create representations of query protein ligands
 			const queryProteinLigandsTmp: Record<string, Record<string, Record<string, VisibleObject>>> = {};
@@ -418,7 +448,7 @@ export const MolStarWrapper = forwardRef(({ chainResults, selectedChain, onStruc
 			// Create representations of similar protein structures
 			for (let i = 1; i < (selections?.length ?? 1); i++) {
 				await transform(plugin, xs[i].cell, transforms[i - 1].bTransform);
-				await createStructureRepresentation(plugin, xs[i].cell, pivot, rest, false);
+				await createStructureRepresentation(plugin, xs[i].cell, createGetChainExpression(similarProteinsChains[i - 1]), false);
 			}
 
 			// Create representations of similar protein ligands
