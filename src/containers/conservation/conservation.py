@@ -3,9 +3,12 @@ import subprocess
 import random
 import typing
 import requests
+import shutil
 from requests.exceptions import HTTPError
 import json
 from enum import Enum
+
+from tasks_logger import create_logger
 
 PHMMER_DIR = "./hmmer-3.4/src/"
 ESL_DIR = "./hmmer-3.4/easel/miniapps/"
@@ -13,65 +16,93 @@ DATABASE = "./uniprot_sprot.fasta" # TODO: DOWNLOAD uniref50.fasta AND USE IT
 TEMP = "./tmp_conservation_{id}"
 RESULT_FOLDER = "./results/{id}/"
 MAX_SEQS = 100
-INPUTS_URL = "http://apache:80/inputs/"
+INPUTS_URL = os.getenv('INPUTS_URL')
 
 class StatusType(Enum):
     STARTED = 0
     COMPLETED = 1
     FAILED = 2
 
+logger = create_logger('conservation')
+
 def update_status(status_file_path, id, status, message=""):
+    logger.info(f'{id} Changing status in {status_file_path} to: {status}')
     try:
         with open(status_file_path, "w") as f:
             json.dump({"status": status, "errorMessages": message}, f)
+        logger.info(f'{id} Status changed')
     except Exception as e:
-        print(f"Error updating status for {id}: {e}")
+        logger.error(f'{id} Status change failed: {str(e)}')
+
 
 def compute_conservation(id):
+    logger.info(f'{id} conservation started')
     result_folder = RESULT_FOLDER.format(id=id)
     os.makedirs(result_folder, exist_ok=True)
+    logger.info(f'{id} Result folder prepared: {result_folder}')
     status_file_path = os.path.join(result_folder, "status.json")
     update_status(status_file_path, id, StatusType.STARTED.value)
 
     try:
-        json_url = INPUTS_URL + f"{id}/chains.json"
-        response = requests.get(json_url)
+        json_url = os.path.join(INPUTS_URL, f"{id}/chains.json")
+        logger.info(f'{id} Downloading chains file from: {json_url}')
+        response = requests.get(json_url, timeout=(10,20))
         response.raise_for_status()
+        logger.info(f'{id} Chains file downloaded successfully')
         files_metadata = response.json()
 
-        for file, chains in files_metadata["fasta"].items():
-            file_url = INPUTS_URL + f"{id}/{file}"
-            response = requests.get(file_url, stream=True)
-            response.raise_for_status()
+        os.makedirs(id, exist_ok=True)
+        logger.info(f'{id} Input folder prepared: {id}')
+        
+        temp_folder = TEMP.format(id=id)
+        os.makedirs(temp_folder, exist_ok=True)
+        logger.info(f'{id} Temporary folder prepared: {temp_folder}')
 
-            hom_file = file.split('.')[0] + ".hom"
-            result_file = os.path.join(result_folder, hom_file)
-            os.makedirs(id, exist_ok=True)
+        for file, chains in files_metadata["fasta"].items():
+            file_url = os.path.join(INPUTS_URL, f"{id}/{file}")
+            logger.info(f'{id} Downloading FASTA file from: {file_url}')
+            response = requests.get(file_url, stream=True, timeout=(10,20))
+            response.raise_for_status()
+            logger.info(f'{id} FASTA file downloaded successfully')
+
+            hom_file_name = file.split('.')[0]
+            result_file = os.path.join(result_folder, hom_file_name)
             input_file_path = f"./{id}/{file}"
 
             with open(input_file_path, "wb") as seq_file:
                 for chunk in response.iter_content(chunk_size=8192):
                     seq_file.write(chunk)
+            logger.info(f'{id} Downloaded file saved to: {input_file_path}')
 
-            temp_folder = TEMP.format(id=id)
-            os.makedirs(temp_folder, exist_ok=True)
-
+            logger.info(f'{id} Computing conservation...')
             compute_conservation_for_chain(input_file_path, result_file, temp_folder)
+            logger.info(f'{id} Conservation computed')
 
             for chain in chains:
-                os.symlink(hom_file, f"{result_folder}/input{chain}.hom")
+                result_file_name = os.path.join(result_folder, f'input{chain}')
+                os.symlink(hom_file_name + ".hom", result_file_name + ".hom")
+                logger.info(f'{id} Symlink created: {hom_file_name + ".hom"} -> {result_file_name + ".hom"}')
+                os.symlink(hom_file_name + ".json", result_file_name + ".json")
+                logger.info(f'{id} Symlink created: {hom_file_name + ".json"} -> {result_file_name + ".json"}')
 
             # cleanup
             os.remove(input_file_path)
+            logger.info(f'{id} Input file {input_file_path} removed (it was no longer needed)')
+
+        shutil.rmtree(temp_folder)
+        logger.info(f'{id} Temporary folder removed: {temp_folder}')
 
         update_status(status_file_path, id, StatusType.COMPLETED.value)
 
     except HTTPError as e:
-        update_status(status_file_path, id, StatusType.FAILED.value, e)
-        print(f"HTTP error occurred: {e}") #TODO LOG
+        update_status(status_file_path, id, StatusType.FAILED.value, str(e))
+        logger.error(f'{id} HTTP error occurred: {str(e)}')
     except Exception as e:
         update_status(status_file_path, id, StatusType.FAILED.value, str(e))
-        print(f"Error computing conservation for {id}: {e}")
+        logger.error(f'{id} Error computing conservation: {str(e)}')
+ 
+    logger.info(f'{id} conservation finished')
+
 
 def _default_execute_command(command: str):
     # We do not check return code here.
@@ -109,11 +140,13 @@ def compute_conservation_for_chain(
         assert len(fasta_file_sequence) == \
                len(information_content) == \
                len(freqgap)
-        _write_tsv(result_file, fasta_file_sequence, information_content)
+        _write_tsv(result_file + ".hom", fasta_file_sequence, information_content)
+        _write_json(result_file + ".json", fasta_file_sequence, information_content)
         _write_tsv(result_file + ".freqgap", fasta_file_sequence, freqgap)
     else:  # `information_content` is `None` if no MSA was generated
         filler_values = ["-1000.0" for _ in fasta_file_sequence]
-        _write_tsv(result_file, fasta_file_sequence, filler_values)
+        _write_tsv(result_file+ ".hom", fasta_file_sequence, filler_values)
+        _write_json(result_file + ".json", fasta_file_sequence, filler_values)
         _write_tsv(result_file + ".freqgap", fasta_file_sequence, filler_values)
 
     return weighted_msa_file
@@ -220,4 +253,14 @@ def _write_tsv(target_file: str, fasta_file_sequence: str, feature):
         for (i, j), value in zip(enumerate(fasta_file_sequence), feature):
             stream.write("\t".join((str(i), value, j)) + "\n")
 
+
+def _write_json(target_file: str, fasta_file_sequence: str, feature):
+    with open(target_file, mode="w", newline="") as stream:
+        result = []
+        for (i, j), value in zip(enumerate(fasta_file_sequence), feature):
+            result.append({
+                "index": i,
+                "value": value
+            })
+        json.dump(result, stream, indent=4)
 

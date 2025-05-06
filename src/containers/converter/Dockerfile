@@ -1,8 +1,29 @@
-FROM python:3.10.7
+FROM python:3.13-slim
 
-WORKDIR /app
+# Create user
+ARG UID
+ARG GID
+RUN addgroup --gid ${GID} user \
+  && useradd --uid ${UID} --gid ${GID} user
 
-COPY requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+WORKDIR /app 
 
-COPY . .
+# Copy Python source code and install needed modules
+COPY --chown=user:user \
+        ./shared/install-requirements.sh \
+        ./shared/tasks_logger.py \
+        ./shared/mapping.json \
+        ./converter/requirements.in \
+        ./
+
+RUN chmod +x install-requirements.sh \
+    && ./install-requirements.sh \
+    && rm install-requirements.sh
+
+COPY --chown=user:user ./converter/. .
+RUN chmod u+x celery_worker.py \
+    && chown user:user /app
+
+ENV PYTHONUNBUFFERED=1
+
+USER ${UID}:${GID}

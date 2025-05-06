@@ -1,45 +1,76 @@
-import { useEffect } from "react";
-import { RcsbFv } from "@rcsb/rcsb-saguaro";
-import { BindingSite, ProcessedResult } from "../AnalyticalPage";
+import { useEffect, useState } from "react";
+import { RcsbFv, RcsbFvTrackDataElementInterface, RcsbFvBoardConfigInterface, RcsbFvRowExtendedConfigInterface } from "@rcsb/rcsb-saguaro";
+import { BindingSite, ChainResult, Conservation, Residue } from "../AnalyticalPage";
 import chroma from "chroma-js";
 
 type Props = {
-    processedResult: ProcessedResult;
+    chainResult: ChainResult;
+    squashBindingSites: boolean;
 };
 
-function RcsbSaguaro({ processedResult }: Props) {
+function RcsbSaguaro({ chainResult, squashBindingSites }: Props) {
     // ID of the DOM element where the plugin is placed
     const elementId = "application-rcsb";
+    const predictedPocketColor = "#00aa00";
+    const defaultTitleFlagColor = "lightgrey"
     /* If query seq is set to start at 0, it means some sequences might 
-     * be in negative numbers on board. */
+    * be in negative numbers on board. */
     const shouldQuerySeqStartAtZero = false;
+    const [rcsbFv, setRcsbFv] = useState<RcsbFv>(null);
 
     useEffect(() => {
-        const boardConfigData = createBoardConfigData();
-        const rowConfigData = createRowConfigData(processedResult);
+        const boardConfigData = createBoardConfigData(chainResult);
+        const rowConfigData = createRowConfigData(chainResult);
 
-        const pfv = new RcsbFv({
-            boardConfigData,
-            rowConfigData,
-            elementId
-        });
-    }, [processedResult]);
+        if (rcsbFv === null) {
+            // Initial load
+            const pfv = new RcsbFv({
+                boardConfigData,
+                rowConfigData,
+                elementId
+            });
+            setRcsbFv(pfv);
+        } else {
+            // Rerender/Update
+            const newConfig = {
+                boardConfigData: boardConfigData,
+                rowConfigData: rowConfigData
+            };
+            rcsbFv.updateBoardConfig(newConfig);
+        }
+    }, [chainResult, squashBindingSites]);
 
     return (
-        <div id={elementId} style={{ marginTop: "50px" }}></div>
-    )
+        <div id={elementId}></div>
+    );
 
-    function createBoardConfigData() {
-        const boardConfigData = {
-            length: processedResult.querySequence.length,
-            includeAxis: true
+    function createBoardConfigData(chainResult: ChainResult) {
+        const boardConfigData: RcsbFvBoardConfigInterface = {
+            length: chainResult.querySequence.length,
+            includeAxis: true,
+            highlightHoverPosition: true,
+            // TODO Implement
+            // highlightHoverCallback: (trackData: Array<RcsbFvTrackDataElementInterface>) => onHighlight(data, molstarPlugin, trackData),
+            // elementClickCallback: (trackData?: RcsbFvTrackDataElementInterface, event?: MouseEvent) => elementClicked(data, molstarPlugin, trackData, event)
         };
 
         return boardConfigData;
     }
 
-    function getAllBindingSites(processedResult: ProcessedResult) {
-        return processedResult.dataSourceExecutorsData.flatMap(dseData => dseData.bindingSites.flat());
+    function getAllBindingSites(chainResult: ChainResult) {
+        const allBindingSites: BindingSite[] = [];
+
+        for (const res of Object.values(chainResult.dataSourceExecutorResults)) {
+            allBindingSites.push(...res.bindingSites);
+
+            if (!res.similarProteins) {
+                continue;
+            }
+            res.similarProteins.forEach(simProt =>
+                allBindingSites.push(...simProt.bindingSites));
+        }
+
+        return allBindingSites;
     }
 
     function stringToColor(str: string) {
@@ -75,6 +106,9 @@ function RcsbSaguaro({ processedResult }: Props) {
         opacities: number[] = [],
         forbiddenColors: string[] = []
     ) {
+        if (strings.length === 0) {
+            return {};
+        }
         if (opacities.length > 0 && strings.length !== opacities.length) {
             throw Error("If opacities are present, they must have the same length as the strings.");
         }
@@ -85,17 +119,24 @@ function RcsbSaguaro({ processedResult }: Props) {
             if (str in colors) {
                 continue;
             }
-            const opacity = opacities !== null ? opacities[i] : null;
+
+            const opacity = opacities.length > 0 ? opacities[i] : 1;
 
             let color: string;
-            do {
-                let baseColor = stringToColor(str);
-                color = opacities !== null
-                    ? chroma(baseColor).alpha(opacity).hex()
-                    : chroma(baseColor).hex();
+            if (str.startsWith("pocket")) {
+                // Let's use fixed color for predicted binding sites
+                let baseColor = predictedPocketColor;
+                color = chroma(baseColor).alpha(opacity).hex();
+            } else {
+                let salt = 0;
+                do {
+                    let baseColor = stringToColor(str);
+                    color = chroma(baseColor).alpha(opacity).hex();
 
-                str += "salt"; // This will fix potential hash collisions
-            } while (Object.values(colors).some(existingColor => existingColor === color) || color in forbiddenColors);
+                    str += salt.toString(); // This will fix potential hash collisions
+                    salt++;
+                } while (Object.values(colors).some(existingColor => existingColor === color) || color in forbiddenColors);
+            }
 
             colors[strings[i]] = color;
         }
@@ -103,42 +144,102 @@ function RcsbSaguaro({ processedResult }: Props) {
         return colors;
     }
 
-    function getUniqueColorForEachBindingSite(bindingSites: BindingSite[]) {
+    function getUniqueColorForEachBindingSite(bindingSites: BindingSite[], forbiddenColors: string[]) {
         const ids = [];
         const confidences = [];
+        const minValue = 0.15; // Setting the min value, otherwise the lines in display are not very visible for some colors
 
         bindingSites.forEach(bindingSite => {
             ids.push(bindingSite.id);
-            confidences.push(bindingSite.confidence);
+            confidences.push(bindingSite.confidence >= minValue ? bindingSite.confidence : minValue);
         });
 
-        return getUniqueColorForEachString(ids, confidences);
+        return getUniqueColorForEachString(ids, confidences, forbiddenColors);
     }
 
-    function getUniqueColorForEachDataSource(dataSourceNames: string[], forbiddenColors: string[]) {
-        const opacities = new Array(dataSourceNames.length).fill(0.1);
-        return getUniqueColorForEachString(dataSourceNames, opacities, forbiddenColors);
+    function getUniqueColorForEachDataSource(dataSourceNames: string[]) {
+        const opacities = new Array(dataSourceNames.length).fill(0.05);
+        return getUniqueColorForEachString(dataSourceNames, opacities);
     }
 
-    function createQuerySequenceRow(querySequence: string) {
-        return {
+    function toTrackDataItem(residues: Residue[], color: string): RcsbFvTrackDataElementInterface {
+        if (residues.length === 0) {
+            return {};
+        }
+        if (residues.length === 1) {
+            return { begin: residues[0].sequenceIndex, end: residues[0].sequenceIndex, gaps: [], color: color };
+        }
+
+        residues.sort((a, b) => a.sequenceIndex - b.sequenceIndex);
+        const min = residues[0].sequenceIndex;
+        const max = residues[residues.length - 1].sequenceIndex;
+
+        const gaps = [];
+        for (let i = 1; i < residues.length; i++) {
+            const curr = residues[i].sequenceIndex;
+            const prev = residues[i - 1].sequenceIndex;
+
+            if ((curr - prev) === 1) { // No gap
+                continue;
+            }
+
+            const gap = { begin: prev, end: curr };
+            gaps.push(gap);
+        }
+
+        return { begin: min, end: max, gaps: gaps, color: color };
+    }
+
+    function createQuerySequenceRow(querySequence: string, pdbId: string | null = null) {
+        const querySequenceRow: RcsbFvRowExtendedConfigInterface = {
             trackId: "query-seq",
             trackHeight: 20,
             trackColor: "#F9F9F9",
             displayType: "sequence",
             nonEmptyDisplay: true,
-            rowTitle: "Query sequence",
+            rowTitle: pdbId ?? "Query sequence",
             trackData: [
                 {
                     begin: 0,
                     label: querySequence
                 }
-            ]
+            ],
+            titleFlagColor: defaultTitleFlagColor
         };
+
+        return querySequenceRow;
     }
 
-    function createSequenceRow(id: string, title: string, sequence: string, trackColor: string) {
-        return {
+    function createConservationRow(conservations: Conservation[]) {
+        const max = Math.max(...conservations.map(conservation => conservation.value));
+
+        const conservationData = conservations.map(conservation => ({
+            begin: conservation.index,
+            value: conservation.value / max // normalization
+        }));
+
+        const conservationRow: RcsbFvRowExtendedConfigInterface = {
+            trackId: "conservation",
+            trackHeight: 20,
+            trackColor: "#F9F9F9",
+            displayType: "area",
+            displayColor: "#6d6d6d",
+            rowTitle: "Conservation",
+            trackData: conservationData,
+            titleFlagColor: defaultTitleFlagColor
+        };
+
+        return conservationRow;
+    }
+
+    function createSimilarSequenceRow(
+        id: string,
+        title: string,
+        sequence: string,
+        trackColor: string,
+        titleFlagColor: string
+    ) {
+        const similarSequenceRow: RcsbFvRowExtendedConfigInterface = {
             trackId: id,
             trackHeight: 20,
             trackColor: trackColor,
@@ -150,68 +251,145 @@ function RcsbSaguaro({ processedResult }: Props) {
                     begin: 0,
                     label: sequence
                 }
-            ]
+            ],
+            titleFlagColor: titleFlagColor
         };
+
+        return similarSequenceRow;
     }
 
-    function createBlockRow(
+    function createBlockRowForResidues(
         id: string,
         title: string,
-        residues: Record<string, number[]>,
+        residues: Residue[],
         color: string,
-        trackColor: string
+        trackColor: string,
+        titleFlagColor: string | undefined = undefined
     ) {
-        const trackData = [];
-        Object.entries(residues).forEach(([residueName, indices]) =>
-            trackData.push(...indices.map(idx => ({
-                begin: idx,
-                end: idx,
-                color: color
-            })))
-        );
+        const trackDataItem = toTrackDataItem(residues, color);
 
-        return {
+        const blockRowForResidues: RcsbFvRowExtendedConfigInterface = {
             trackId: id,
             trackHeight: 20,
             trackColor: trackColor,
             displayType: "block",
             rowTitle: title,
-            trackData: trackData
+            trackData: [trackDataItem],
+            titleFlagColor: titleFlagColor
         };
+
+        return blockRowForResidues;
     }
 
-    function createRowConfigData(processedResult: ProcessedResult) {
-        const bindingSiteColors = getUniqueColorForEachBindingSite(getAllBindingSites(processedResult));
-        const dataSourceColors = getUniqueColorForEachDataSource(
-            processedResult.dataSourceExecutorsData.map(x => x.dataSourceName), Object.values(bindingSiteColors));
+    function createBlockRowForBindingSites(
+        id: string,
+        title: string,
+        bindingSites: BindingSite[],
+        bindingSiteColors: Record<string, string>,
+        trackColor: string,
+        titleFlagColor: string | undefined = undefined
+    ) {
+        const trackData = bindingSites.map(bindingSite => toTrackDataItem(bindingSite.residues, bindingSiteColors[bindingSite.id]));
 
-        const rowConfigData = [];
+        const blockRowForBindingSites = {
+            trackId: id,
+            trackHeight: 20,
+            trackColor: trackColor,
+            displayType: "block",
+            rowTitle: title,
+            trackData: trackData,
+            titleFlagColor: titleFlagColor
+        };
 
-        rowConfigData.push(createQuerySequenceRow(processedResult.querySequence));
+        return blockRowForBindingSites;
+    }
 
-        for (let dseIdx = 0; dseIdx < processedResult.dataSourceExecutorsData.length; dseIdx++) {
-            const dseData = processedResult.dataSourceExecutorsData[dseIdx];
-            const dataSourceColor = dataSourceColors[dseData.dataSourceName];
+    function createRowConfigData(chainResult: ChainResult) {
+        // Prepare colors
+        const dataSourceNames = Object.keys(chainResult.dataSourceExecutorResults);
+        const dataSourceColors = getUniqueColorForEachDataSource(dataSourceNames);
+        const forbiddenColors = Object.values(dataSourceColors);
 
-            for (let resIdx = 0; resIdx < dseData.similarSequences.length; resIdx++) {
-                const similarSequence = dseData.similarSequences[resIdx];
-                const bindingSites = dseData.bindingSites[resIdx];
+        const allBindingSites = getAllBindingSites(chainResult);
+        /* Data source colors are forbidden here because they are in the background, if some binding site color
+         * had the same color as its data source, it would not be visible (maybe just outline). */
+        const bindingSiteColors = getUniqueColorForEachBindingSite(allBindingSites, forbiddenColors);
 
-                if (similarSequence.sequence.length > 0) {
-                    // We don't have to have a similar sequence, maybe only binding sites are present
-                    const simSeqRowId = `${dseIdx}-${resIdx}`;
-                    const simSeqRowTitle = similarSequence.label.toUpperCase();
-                    const simSeqRow = createSequenceRow(simSeqRowId, simSeqRowTitle, similarSequence.sequence, dataSourceColor);
-                    rowConfigData.push(simSeqRow);
+        const allSimilarProteinIds: string[] = [];
+        for (const result of Object.values(chainResult.dataSourceExecutorResults)) {
+            if (!result.similarProteins) {
+                continue;
+            }
+            result.similarProteins.forEach(simProt => allSimilarProteinIds.push(simProt.pdbId));
+        }
+        const similarProteinColors = getUniqueColorForEachString(allSimilarProteinIds, [], [defaultTitleFlagColor]);
+
+        // Create rows
+        const rowConfigData: RcsbFvRowExtendedConfigInterface[] = [];
+
+        rowConfigData.push(createQuerySequenceRow(chainResult.querySequence));
+
+        for (const [dataSourceName, result] of Object.entries(chainResult.dataSourceExecutorResults)) {
+            const dataSourceColor = dataSourceColors[dataSourceName];
+
+            if (squashBindingSites) {
+                if (result.bindingSites.length > 0) {
+                    const id = `${dataSourceName}-bindingSites`;
+                    const title = "Query protein's binding sites";
+
+                    const bindingSitesRow = createBlockRowForBindingSites(
+                        id, title, result.bindingSites, bindingSiteColors, dataSourceColor, defaultTitleFlagColor)
+                    rowConfigData.push(bindingSitesRow);
                 }
-
-                bindingSites.forEach(bindingSite => {
-                    const id = `${dseIdx}-${resIdx}-${bindingSite.id}`;
+            } else {
+                result.bindingSites.forEach((bindingSite, idx) => {
+                    const id = `${dataSourceName}-${bindingSite.id}-${idx}`;
                     const title = bindingSite.id;
-                    const bindingSiteRow = createBlockRow(id, title, bindingSite.residues, bindingSiteColors[bindingSite.id], dataSourceColor);
+
+                    const bindingSiteRow = createBlockRowForResidues(
+                        id, title, bindingSite.residues, bindingSiteColors[bindingSite.id], dataSourceColor, defaultTitleFlagColor);
                     rowConfigData.push(bindingSiteRow)
                 });
             }
+
+            if (!result.similarProteins) {
+                continue;
+            }
+            for (const simProt of result.similarProteins) {
+                const id = `${dataSourceName}-${simProt.pdbId}-${simProt.chain}`;
+                const title = simProt.pdbId;
+                const simProtColor = similarProteinColors[simProt.pdbId];
+                const simProtColorTransparent = similarProteinColors[simProt.pdbId] + "80"; // Add alpha channel
+
+                const similarSequenceRow = createSimilarSequenceRow(
+                    id, title, simProt.sequence, dataSourceColor, simProtColor);
+                rowConfigData.push(similarSequenceRow);
+
+                if (squashBindingSites) {
+                    if (simProt.bindingSites.length > 0) {
+                        const id = `${dataSourceName}-${simProt.pdbId}-bindingSites`;
+                        const title = `${simProt.pdbId}'s binding sites`;
+
+                        const bindingSitesRow = createBlockRowForBindingSites(
+                            id, title, simProt.bindingSites, bindingSiteColors, dataSourceColor, simProtColorTransparent);
+                        rowConfigData.push(bindingSitesRow);
+                    }
+                } else {
+                    simProt.bindingSites.forEach((bindingSite, idx) => {
+                        const id = `${dataSourceName}-${simProt.pdbId}-${bindingSite.id}-${idx}`;
+                        const title = bindingSite.id;
+
+                        const simProtBindingSiteRow = createBlockRowForResidues(
+                            id, title, bindingSite.residues, bindingSiteColors[bindingSite.id], dataSourceColor, simProtColorTransparent);
+                        rowConfigData.push(simProtBindingSiteRow)
+                    });
+                }
+            }
+        }
+
+        if (chainResult.conservations.length > 0) {
+            const conservationRow = createConservationRow(chainResult.conservations);
+            rowConfigData.push(conservationRow);
         }
 
         return rowConfigData;

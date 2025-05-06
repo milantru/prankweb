@@ -11,6 +11,7 @@ node_modules
 
 *.pdb
 *.fasta
+*.cif
 
 # C extensions
 *.so
@@ -131,7 +132,7 @@ celerybeat.pid
 *.sage.py
 
 # Environments
-.env
+# .env
 .venv
 env/
 venv/

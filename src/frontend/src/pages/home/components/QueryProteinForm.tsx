@@ -1,4 +1,4 @@
-import { ChangeEvent, FormEvent, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useState } from "react";
 import InputPdbBlock, { InputPdbBlockData } from "./InputPdbBlock";
 import InputUniprotBlock, { InputUniprotBlockData } from "./InputUniprotBlock";
 import InputUserFileBlock, { InputUserFileBlockData, UserInputModel } from "./InputUserFileBlock";
@@ -25,6 +25,8 @@ type FormState = {
 };
 
 function QueryProteinForm() {
+    // ESMFold has a sequence length constraint, which is why the length is restricted
+    const maxSequenceLength = 400;
     const [formState, setFormState] = useState<FormState>({
         inputMethod: InputMethods.InputPdbBlock,
         inputBlockData: Object.fromEntries(
@@ -36,6 +38,10 @@ function QueryProteinForm() {
     const [errorMessage, setErrorMessage] = useState<string>("");
     const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
     const navigate = useNavigate();
+
+    useEffect(() => {
+        setErrorMessage("");
+    }, [formState])
 
     return (
         <form name="input-form" onSubmit={handleSubmit}>
@@ -160,7 +166,8 @@ function QueryProteinForm() {
                 return <InputSequenceBlock
                     data={formState.inputBlockData[inputMethod] as InputSequenceBlockData}
                     setData={setData}
-                    setErrorMessage={setErrorMessage} />;
+                    setErrorMessage={setErrorMessage}
+                    maxSequenceLength={maxSequenceLength} />;
             default:
                 throw new Error("Unknown input method.");
         }
@@ -187,7 +194,25 @@ function QueryProteinForm() {
             return;
         }
 
-        navigate(`/analytical-page?id=${id}`);
+        const chains = formState.inputMethod === InputMethods.InputPdbBlock
+            || formState.inputMethod === InputMethods.InputUserFileBlock
+            ? (selectedInputBlockData as InputPdbBlockData | InputUserFileBlockData).chains
+            : "";
+
+        const useConservation = formState.inputMethod === InputMethods.InputPdbBlock
+            || formState.inputMethod === InputMethods.InputUniprotBlock
+            || formState.inputMethod === InputMethods.InputSequenceBlock
+            ? (selectedInputBlockData as InputPdbBlockData | InputUniprotBlockData | InputSequenceBlockData).useConservation
+            : false;
+
+        let url = `/analytical-page?id=${id}`;
+        if (chains) {
+            url += `&chains=${chains}`;
+        }
+        if (useConservation) {
+            url += `&useConservation=${useConservation}`;
+        }
+        navigate(url);
         setIsSubmitting(false);
     }
 
@@ -225,9 +250,14 @@ function QueryProteinForm() {
             case InputMethods.InputSequenceBlock:
                 const inputSequenceBlockData = formState.inputBlockData[formState.inputMethod] as InputSequenceBlockData;
 
-                const isSequenceValid = inputSequenceBlockData.sequence.length > 0;
+                const isSequenceMissing = inputSequenceBlockData.sequence.length === 0;
 
-                return isSequenceValid;
+                const isSequenceTooLong = inputSequenceBlockData.sequence.length > maxSequenceLength;
+                if (isSequenceTooLong) {
+                    setErrorMessage(`Max allowed sequence size is ${maxSequenceLength}.`);
+                }
+
+                return !isSequenceMissing && !isSequenceTooLong;
             default:
                 throw new Error("Unknown input method.");
         }

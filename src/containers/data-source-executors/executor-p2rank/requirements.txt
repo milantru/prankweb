@@ -1,5 +1,0 @@
-amqp==5.3.1
-biopython==1.85
-celery==5.4.0
-Flask==3.1.0
-requests==2.32.3

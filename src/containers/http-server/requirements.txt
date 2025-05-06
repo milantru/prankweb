@@ -1,6 +1,0 @@
-celery
-flask
-pyhumps
-requests
-biopython
-gunicorn

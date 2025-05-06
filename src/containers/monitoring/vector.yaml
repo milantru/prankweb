@@ -1,0 +1,32 @@
+sources:
+  docker:
+    type: docker_logs
+    include_containers:
+      - http-server
+      - id-provider
+      - metatask
+      - converter
+      - conservation
+      - ds-foldseek
+      - ds-p2rank
+
+transforms:
+  clean_logs:
+    type: remap
+    inputs: ["docker"]
+    source: |
+      . = {
+        "container_name": .container_name,
+        "message": .message
+      }
+
+sinks:
+  loki:
+    type: loki
+    inputs: ["clean_logs"]
+    endpoint: http://loki:3100
+    encoding:
+      codec: text
+      only_fields: ["message"]
+    labels:
+      container: "{{ container_name }}"

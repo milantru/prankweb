@@ -1,0 +1,6 @@
+biopython
+celery
+requests
+
+# logger requirements
+pytz

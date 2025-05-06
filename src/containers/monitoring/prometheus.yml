@@ -1,0 +1,28 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: 'gateway'
+    static_configs:
+      - targets: ['gateway-exporter:9113']
+
+  - job_name: 'id-database'
+    static_configs:
+      - targets: ['id-database-exporter:9121']
+
+  - job_name: 'celery-backend'
+    static_configs:
+      - targets: ['celery-backend-exporter:9121']
+
+  - job_name: "message-broker"
+    static_configs:
+      - targets: ["message-broker:15692"]
+
+  - job_name: 'executor-http-api'
+    static_configs:
+      - targets: ['apache-exporter:9117']
+
+  - job_name: 'flower'
+    metrics_path: /service/flower/metrics
+    static_configs:
+      - targets: ['flower:5555']
