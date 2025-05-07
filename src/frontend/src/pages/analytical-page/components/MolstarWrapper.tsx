@@ -454,6 +454,7 @@ export const MolStarWrapper = forwardRef(({ chainResults, selectedChain, onStruc
 			// Create representations of similar protein ligands
 			await createLigandsRepresentationForStructs(plugin, structuresTmp, similarProteinLigandsExpression, false);
 
+			// Reset camera (this should make the structures more visible)
 			plugin.canvas3d?.requestCameraReset();
 			plugin.managers.camera.reset()
 		});
@@ -501,6 +502,7 @@ export const MolStarWrapper = forwardRef(({ chainResults, selectedChain, onStruc
 		}
 
 		// TODO maybe to other functions as well?
+		// Reset camera (this should make the structures more visible)
 		window.molstar?.canvas3d?.requestCameraReset();
 		window.molstar?.managers.camera.reset()
 	}
