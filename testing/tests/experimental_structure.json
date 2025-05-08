@@ -6,7 +6,7 @@
       "chains": "",
       "useConservation": "true"
     },
-    "description": "Valid PDB ID with chains A,B,C, Chains: original structure (empty string), Conservation enabled",
+    "description": "Valid PDB ID with multiple chains, Chains: original structure (empty string), Conservation enabled",
     "result": "pdb_6xez"
   },
   {
@@ -16,7 +16,7 @@
       "chains": "",
       "useConservation": "false"
     },
-    "description": "Valid PDB ID with chains A,B,C, Chains: original structure (empty string), Conservation disabled",
+    "description": "Valid PDB ID with multiple chains, Chains: original structure (empty string), Conservation disabled",
     "result": "pdb_6xez"
   },
   {
@@ -25,7 +25,7 @@
       "pdbCode": "6XEZ",
       "chains": ""
     },
-    "description": "Valid PDB ID with chains A,B,C, Chains: original structure (empty string), Conservation missing",
+    "description": "Valid PDB ID with multiple chains, Chains: original structure (empty string), Conservation missing",
     "result": { "error": "useConservation not found" }
   },
   {
@@ -35,7 +35,7 @@
       "chains": "B,D",
       "useConservation": "true"
     },
-    "description": "Valid PDB ID with chains A,B,C, Chains: valid subset of real chain IDs, Conservation enabled",
+    "description": "Valid PDB ID with multiple chains, Chains: valid subset of real chain IDs, Conservation enabled",
     "result": "pdb_6xez"
   },
   {
@@ -45,7 +45,7 @@
       "chains": "B,D",
       "useConservation": "false"
     },
-    "description": "Valid PDB ID with chains A,B,C, Chains: valid subset of real chain IDs, Conservation disabled",
+    "description": "Valid PDB ID with multiple chains, Chains: valid subset of real chain IDs, Conservation disabled",
     "result": "pdb_6xez"
   },
   {
@@ -54,7 +54,7 @@
       "pdbCode": "6XEZ",
       "chains": "B,D"
     },
-    "description": "Valid PDB ID with chains A,B,C, Chains: valid subset of real chain IDs, Conservation missing",
+    "description": "Valid PDB ID with multiple chains, Chains: valid subset of real chain IDs, Conservation missing",
     "result": { "error": "useConservation not found" }
   },
   {
@@ -64,7 +64,7 @@
       "chains": "1,2,X",
       "useConservation": "true"
     },
-    "description": "Valid PDB ID with chains A,B,C, Chains: invalid chain IDs, Conservation enabled",
+    "description": "Valid PDB ID with multiple chains, Chains: invalid chain IDs, Conservation enabled",
     "result": { "error": "Wrong chains selected" }
   },
   {
@@ -74,7 +74,7 @@
       "chains": "1,2,X",
       "useConservation": "false"
     },
-    "description": "Valid PDB ID with chains A,B,C, Chains: invalid chain IDs, Conservation disabled",
+    "description": "Valid PDB ID with multiple chains, Chains: invalid chain IDs, Conservation disabled",
     "result": { "error": "Wrong chains selected" }
   },
   {
@@ -83,7 +83,7 @@
       "pdbCode": "6XEZ",
       "chains": "1,2,X"
     },
-    "description": "Valid PDB ID with chains A,B,C, Chains: invalid chain IDs, Conservation missing",
+    "description": "Valid PDB ID with multiple chains, Chains: invalid chain IDs, Conservation missing",
     "result": { "error": "useConservation not found" }
   },
   {
@@ -92,7 +92,7 @@
       "pdbCode": "6XEZ",
       "useConservation": "true"
     },
-    "description": "Valid PDB ID with chains A,B,C, Chains: missing, Conservation enabled",
+    "description": "Valid PDB ID with multiple chains, Chains: missing, Conservation enabled",
     "result": { "error": "chains not found" }
   },
   {
@@ -101,7 +101,7 @@
       "pdbCode": "6XEZ",
       "useConservation": "false"
     },
-    "description": "Valid PDB ID with chains A,B,C, Chains: missing, Conservation disabled",
+    "description": "Valid PDB ID with multiple chains, Chains: missing, Conservation disabled",
     "result": { "error": "chains not found" }
   },
   {
@@ -109,7 +109,7 @@
       "inputMethod": "0",
       "pdbCode": "6XEZ"
     },
-    "description": "Valid PDB ID with chains A,B,C, Chains: missing, Conservation missing",
+    "description": "Valid PDB ID with multiple chains, Chains: missing, Conservation missing",
     "result": { "error": "chains not found" }
   },
   {

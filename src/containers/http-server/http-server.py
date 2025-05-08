@@ -133,7 +133,7 @@ def _try_parse_pdb(pdb_file: str, user_chains: list) -> ErrorStr | None:
     structure = None
     
     try:
-        parser = PDB.PDBParser(PERMISSIVE=False)
+        parser = PDB.PDBParser(PERMISSIVE=False, QUIET=True)
         structure = parser.get_structure('Custom structure', pdb_file)  
 
         file_chains = set()  # To avoid duplicates
@@ -210,7 +210,7 @@ def _validate_custom_str(input_data: dict, input_file: FileStorage | None) -> Va
 
     err = _check_form_fields(input_data, CUSTOM_STR_FORM_FIELDS)    
     if err:
-        ValidationResult(err_msg=err)
+        return ValidationResult(err_msg=err)
         
     if not input_file:
         return ValidationResult(err_msg='userFile not found')
