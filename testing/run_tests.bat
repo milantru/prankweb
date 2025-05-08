@@ -10,4 +10,4 @@ CALL venv\Scripts\activate.bat
 pip install --upgrade pip
 pip install requests pytest
 
-pytest plankweb-tests.py
+pytest -v plankweb-tests.py

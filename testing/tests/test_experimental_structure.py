@@ -1,14 +1,27 @@
 import requests
 
-BASE_URL = 'http://localhost:80'
-INPUT_METHOD = '0'
+import json
+import pytest
+import requests
 
-def test_health_check():
-    response = requests.get(f"{BASE_URL}/api/health")
-    assert response.status_code == 200
-    assert response.json() == {"status": "ok"}
+API_URL = "http://localhost:8000/upload-data"
 
-def test_users_endpoint():
-    response = requests.get(f"{BASE_URL}/api/users")
-    assert response.status_code == 200
-    assert isinstance(response.json(), list)
+with open("alphafold_structure.json") as f:
+    test_cases = json.load(f)
+
+@pytest.mark.parametrize("case", test_cases)
+def test_uniprot_payload(case):
+    payload = case["payload"]
+    expected_result = case["result"]
+    description = case["description"]
+
+    response = requests.post(API_URL, json=payload)
+
+    assert response.status_code == 200, f"{description}: Unexpected status code {response.status_code}"
+
+    try:
+        actual_result = response.json()
+    except ValueError:
+        pytest.fail(f"{description}: Response is not valid JSON:\n{response.text}")
+
+    assert actual_result == expected_result, f"{description}: Mismatch\nExpected: {expected_result}\nGot: {actual_result}"
