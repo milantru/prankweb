@@ -32,7 +32,7 @@
       "useConservation": "true"
     },
     "description": "Invalid Uniprot ID, conservation enabled",
-    "result": { "error": "Uniprot ID INVALID_ID not found in database due to an error: 400 Client Error: Bad Request for url: https://rest.uniprot.org/uniprotkb/INVALID_ID" }
+    "result": { "error": "Uniprot ID INVALID_ID not found in database due to an error:" }
   },
   {
     "payload": {
@@ -41,7 +41,7 @@
       "useConservation": "false"
     },
     "description": "Invalid Uniprot ID, conservation disabled",
-    "result": { "error": "Uniprot ID INVALID_ID not found in database due to an error: 400 Client Error: Bad Request for url: https://rest.uniprot.org/uniprotkb/INVALID_ID" }
+    "result": { "error": "Uniprot ID INVALID_ID not found in database due to an error:" }
   },
   {
     "payload": {

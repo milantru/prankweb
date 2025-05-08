@@ -116,7 +116,14 @@ def _download_file_from_url(url: str, filename: str) -> bool:
 def _text_is_fasta_format(text: str) -> bool:
     try:
         records = list(SeqIO.parse(StringIO(text), 'fasta'))
-        return len(records) > 0  # At least one valid record
+        amino_acids = set("ARNDCQEGHILKMFPSTWYV")
+        if len(records) == 0:
+            return False
+        for record in records:
+            sequence_set = set(str(record.seq).upper())
+            if not sequence_set.issubset(amino_acids):
+                return False
+        return True
     except Exception:
         return False
 
@@ -156,13 +163,18 @@ def _validate_pdb(input_data: dict) -> ValidationResult:
         logger.info(f'Downloading protein metadata from: {url}')
         response = requests.get(url, timeout=(15,30))
         response.raise_for_status()
-        response_data = response.json()[pdb_id][0]
+        response_data = response.json()[pdb_id]
         logger.info('Protein metadata downloaded successfully')
-
+                
         # check chains, empty string means no chain restriction
         chains_str = input_data['chains']
         selected_chains = set((chains_str.split(',') if chains_str else []))
-        pdb_chains = set(response_data['in_chains'])
+
+        pdb_chains = set()
+        for entry in response_data:
+            if 'in_chains' in entry:
+                pdb_chains.update(set(entry['in_chains']))
+
         if not (selected_chains <= pdb_chains):
             return ValidationResult(err_msg='Wrong chains selected')
 

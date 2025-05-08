@@ -11,10 +11,10 @@
 |                 |                                                                    | - Valid                                                    |
 |                 |                                                                    | - Invalid                                                  |
 |                 |                                                                    | - Missing (not provided)                                   |
-| **Chains**      | *Use original structure* checkbox:                                 | `chains: "<user input>"`                                   |
+| **Chains**      | *Use original structure* checkbox:                                 | `chains: "<user input> or <empty_string>"`                 |
 |                 | - **Checked**: hide chain input                                    | - `""` (empty string)                                      |
-|                 | - **Unchecked**: show chain input field                            | - `"<comma-separated chain IDs>"`, or Missing              |
-|                 |                                                                    | - Missing (not provided)                                    |
+|                 | - **Unchecked**: show chain input field                            | - `"<comma-separated valid/invalid chain IDs>"`            |
+|                 |                                                                    | - Missing (not provided)                                   |
 | **Conservation**| Check / Uncheck *Use conservation* checkbox                        | `useConservation: true` / `false` / (Missing)              |
 
 
