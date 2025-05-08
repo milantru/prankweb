@@ -1,13 +1,22 @@
-# Plankweb testing scenarios
+# POST request testing scenarios
 
 ## Experimental structure
 
-|              | FE                                     | BE (POST request fields)                |
-| ------------ | -------------------------------------- | --------------------------------------- |
-| Input method | Select Experimental structure combobox | inputMethod: '0'                        |
-| PDB ID       | Write PDB code to textbox              | pdbCode: valid / invalid / missing      |
-| Chains       | Check / uncheck Use original structure:<br><ul><li>If **unchecked**, chains should show up</li></ul> | chains: empty string / string of chain IDs separated by commas / missing |
-| Conservation | Check / Uncheck Use conservation   | useConservation: true / false / missing |
+### Input Mapping: Front-End to Back-End (POST Request)
+
+| Field           | Front-End (FE) Interaction                                         | Back-End (BE) Payload                                      |
+|-----------------|--------------------------------------------------------------------|------------------------------------------------------------|
+| **Input Method**| Select from *Experimental structure* combobox                      | `inputMethod: '0'`                                         |
+| **PDB ID**      | Type into *PDB code* textbox                                       | `pdbCode: "<user input>"`                                  |
+|                 |                                                                    | - Valid                                                    |
+|                 |                                                                    | - Invalid                                                  |
+|                 |                                                                    | - Missing (not provided)                                   |
+| **Chains**      | *Use original structure* checkbox:                                 | `chains: "<user input>"`                                   |
+|                 | - **Checked**: hide chain input                                    | - `""` (empty string)                                      |
+|                 | - **Unchecked**: show chain input field                            | - `"<comma-separated chain IDs>"`, or Missing              |
+|                 |                                                                    | - Missing (not provided)                                    |
+| **Conservation**| Check / Uncheck *Use conservation* checkbox                        | `useConservation: true` / `false` / (Missing)              |
+
 
 ## Custom structure
 
@@ -24,14 +33,34 @@
 
 ## AlphaFold structure
 
-|              | FE                                  | BE (POST request fields)                |
-| ------------ | ----------------------------------- | --------------------------------------- |
-| Input method | Select AlphaFold structure combobox | inputMethod: '2'                        |
-| Uniprot ID   | Write Uniprot ID to textbox         | uniprotCode: valid / invalid/ missing   |
-| Conservation | Check / Uncheck Use conservation    | useConservation: true / false / missing |
+### Input Mapping: Front-End to Back-End (POST Request)
+
+| Field           | Front-End (FE) Interaction                       | Back-End (BE) Payload                             |
+|-----------------|--------------------------------------------------|---------------------------------------------------|
+| **Input Method**| Select from *AlphaFold structure* combobox       | `inputMethod: '2'`                                |
+| **Uniprot ID**  | Type into *Uniprot ID* textbox                   | `uniprotCode: '<user input>'`                     |
+|                 |                                                  | - Valid                                           |
+|                 |                                                  | - Invalid                                         |
+|                 |                                                  | - Missing (not provided)                          |
+| **Conservation**| Check / Uncheck *Use conservation* checkbox      | `useConservation: 'true'` / `'false'` / (Missing) |
+
 
 ## Sequence
 
-- inputMethod: '3'
+### Input Mapping: Front-End to Back-End (POST Request)
+
+| Field           | Front-End (FE) Interaction                       | Back-End (BE) Payload                           |
+|-----------------|--------------------------------------------------|-------------------------------------------------|
+| **Input Method**| Select from *AlphaFold structure* combobox       | `inputMethod: '3'`                              |
+| **Sequence**    | Type into sequence textbox                       | `sequence: "<user input>"`                      |
+|                 |                                                  | - Valid                                         |
+|                 |                                                  | - Invalid: too short / too long / invalid chars |
+|                 |                                                  | - Missing (not provided)                        |
+| **Conservation**| Check / Uncheck *Use conservation* checkbox      | `useConservation: true` / `false` / (Missing)   |
+
 
 ## Invalid/No input method (BE only, cannot happend on FE)
+
+# Get ID testing scenarios
+
+- curl get_id

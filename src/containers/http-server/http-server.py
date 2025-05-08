@@ -365,6 +365,7 @@ def upload_data() -> Response:
         response = requests.post(ID_PROVIDER_URL, json=id_payload, timeout=(10,20))
         response.raise_for_status()
     except:
+        # should not happen
         logger.error('Failed to get ID from id-provider')
         return jsonify({'error': 'Failed to get ID from id-provider'}), 500
     

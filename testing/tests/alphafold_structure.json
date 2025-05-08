@@ -5,8 +5,8 @@
       "uniprotCode": "P12345",
       "useConservation": "true"
     },
-    "description": "Input method '2', Valid Uniprot ID 'P12345', Use conservation",
-    "result": null
+    "description": "Valid Uniprot ID, conservation enabled",
+    "result": "uniprot_p12345"
   },
   {
     "payload": {
@@ -14,64 +14,64 @@
       "uniprotCode": "P12345",
       "useConservation": "false"
     },
-    "description": "Input method '2', Valid Uniprot ID 'P12345', Do not use conservation",
-    "result": null
+    "description": "Valid Uniprot ID, conservation disabled",
+    "result": "uniprot_p12345"
   },
   {
     "payload": {
       "inputMethod": "2",
       "uniprotCode": "P12345"
     },
-    "description": "Input method '2', Valid Uniprot ID 'P12345', Conservation missing",
-    "result": null
+    "description": "Valid Uniprot ID, conservation missing",
+    "result": { "error": "useConservation not found" }
   },
   {
     "payload": {
       "inputMethod": "2",
-      "uniprotCode": "123456",
+      "uniprotCode": "INVALID_ID",
       "useConservation": "true"
     },
-    "description": "Input method '2', Invalid Uniprot ID '123456', Use conservation",
-    "result": null
+    "description": "Invalid Uniprot ID, conservation enabled",
+    "result": { "error":  }
   },
   {
     "payload": {
       "inputMethod": "2",
-      "uniprotCode": "123456",
+      "uniprotCode": "INVALID_ID",
       "useConservation": "false"
     },
-    "description": "Input method '2', Invalid Uniprot ID '123456', Do not use conservation",
-    "result": null
+    "description": "Invalid Uniprot ID, conservation disabled",
+    "result": { "error":  }
   },
   {
     "payload": {
       "inputMethod": "2",
-      "uniprotCode": "123456"
+      "uniprotCode": "INVALID_ID"
     },
-    "description": "Input method '2', Invalid Uniprot ID '123456', Conservation missing",
-    "result": null
+    "description": "Invalid Uniprot ID, conservation missing",
+    "result": { "error": "useConservation not found" }
   },
   {
     "payload": {
       "inputMethod": "2",
       "useConservation": "true"
     },
-    "description": "Input method '2', Missing Uniprot ID, Use conservation",
-    "result": null
+    "description": "Missing Uniprot ID, conservation enabled",
+    "result": { "error": "uniprotCode not found" }
   },
   {
     "payload": {
       "inputMethod": "2",
       "useConservation": "false"
     },
-    "description": "Input method '2', Missing Uniprot ID, Do not use conservation",
-    "result": null
+    "description": "Missing Uniprot ID, conservation disabled",
+    "result": { "error": "uniprotCode not found" }
   },
   {
     "payload": {
       "inputMethod": "2"
     },
-    "description": "Input method '2', Missing Uniprot ID, Conservation missing",
-    "result": null
+    "description": "Missing Uniprot ID and conservation",
+    "result": { "error": "uniprotCode not found" }
   }
 ]
