@@ -369,7 +369,10 @@ def upload_data() -> Response:
 
     id_payload = {
         'input_method': input_method,
-        'input_protein': validation_result.protein_id.lower()
+        'input_protein': (
+            validation_result.protein_id.lower() if validation_result.protein_id 
+            else None
+        )
     }
 
     logger.info(f'Sending POST request to id-provider: {ID_PROVIDER_URL}, payload:\n {json.dumps(id_payload, indent=2)}')

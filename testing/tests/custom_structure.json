@@ -1,0 +1,329 @@
+[
+  {
+    "payload": {
+      "inputMethod": "1",
+      "userFile": "valid_file.pdb",
+      "chains": "",
+      "userInputModel": "0"
+    },
+    "description": "Valid file, Chains: empty string, Valid input model (0)",
+    "result": "custom_str_"
+  },
+  {
+    "payload": {
+      "inputMethod": "1",
+      "userFile": "valid_file.pdb",
+      "chains": "",
+      "userInputModel": "invalid"
+    },
+    "description": "Valid file, Chains: empty string, Invalid input model",
+    "result": { "error": "Selected input model (invalid) not supported" }
+  },
+  {
+    "payload": {
+      "inputMethod": "1",
+      "userFile": "valid_file.pdb",
+      "chains": ""
+    },
+    "description": "Valid file, Chains: empty string, Missing input model",
+    "result": { "error": "userInputModel not found" }
+  },
+  {
+    "payload": {
+      "inputMethod": "1",
+      "userFile": "valid_file.pdb",
+      "chains": "A,B",
+      "userInputModel": "0"
+    },
+    "description": "Valid file, Chains: valid chain IDs, Valid input model (0)",
+    "result": "custom_str_"
+  },
+  {
+    "payload": {
+      "inputMethod": "1",
+      "userFile": "valid_file.pdb",
+      "chains": "A,B",
+      "userInputModel": "invalid"
+    },
+    "description": "Valid file, Chains: valid chain IDs, Invalid input model",
+    "result": { "error":"Selected input model (invalid) not supported" }
+  },
+  {
+    "payload": {
+      "inputMethod": "1",
+      "userFile": "valid_file.pdb",
+      "chains": "A,B"
+    },
+    "description": "Valid file, Chains: valid chain IDs, Missing input model",
+    "result": { "error":"userInputModel not found" }
+  },
+  {
+    "payload": {
+      "inputMethod": "1",
+      "userFile": "valid_file.pdb",
+      "chains": "1,2",
+      "userInputModel": "0"
+    },
+    "description": "Valid file, Chains: invalid chain IDs, Valid input model (0)",
+    "result": { "error": "Wrong chains selected for parsing user file" }
+  },
+  {
+      "payload": {
+      "inputMethod": "1",
+      "userFile": "valid_file.pdb",
+      "chains": "1,2",
+      "userInputModel": "invalid"
+      },
+      "description": "Valid file, Chains: invalid chain IDs, Invalid input model",
+      "result": null
+  },
+  {
+      "payload": {
+      "inputMethod": "1",
+      "userFile": "valid_file.pdb",
+      "chains": "1,2"
+      },
+      "description": "Valid file, Chains: invalid chain IDs, Missing input model",
+      "result": null
+  },
+  {
+      "payload": {
+      "inputMethod": "1",
+      "userFile": "valid_file.pdb",
+      "userInputModel": "0"
+      },
+      "description": "Valid file, Missing chains, Valid input model (0)",
+      "result": null
+  },
+  {
+      "payload": {
+      "inputMethod": "1",
+      "userFile": "valid_file.pdb",
+      "userInputModel": "invalid"
+      },
+      "description": "Valid file, Missing chains, Invalid input model",
+      "result": null
+  },
+  {
+      "payload": {
+      "inputMethod": "1",
+      "userFile": "valid_file.pdb"
+      },
+      "description": "Valid file, Missing chains, Missing input model",
+      "result": null
+  },
+  {
+      "payload": {
+      "inputMethod": "1",
+      "userFile": "invalid_file.txt",
+      "chains": "",
+      "userInputModel": "0"
+      },
+      "description": "Invalid file, Chains: empty string, Valid input model (0)",
+      "result": null
+  },
+  {
+      "payload": {
+      "inputMethod": "1",
+      "userFile": "invalid_file.txt",
+      "chains": "",
+      "userInputModel": "invalid"
+      },
+      "description": "Invalid file, Chains: empty string, Invalid input model",
+      "result": null
+  },
+  {
+      "payload": {
+      "inputMethod": "1",
+      "userFile": "invalid_file.txt",
+      "chains": ""
+      },
+      "description": "Invalid file, Chains: empty string, Missing input model",
+      "result": null
+  },
+  {
+      "payload": {
+      "inputMethod": "1",
+      "userFile": "invalid_file.txt",
+      "chains": "A,B",
+      "userInputModel": "0"
+      },
+      "description": "Invalid file, Chains: valid chain IDs, Valid input model (0)",
+      "result": null
+  },
+  {
+      "payload": {
+      "inputMethod": "1",
+      "userFile": "invalid_file.txt",
+      "chains": "A,B",
+      "userInputModel": "invalid"
+      },
+      "description": "Invalid file, Chains: valid chain IDs, Invalid input model",
+      "result": null
+  },
+  {
+      "payload": {
+      "inputMethod": "1",
+      "userFile": "invalid_file.txt",
+      "chains": "A,B"
+      },
+      "description": "Invalid file, Chains: valid chain IDs, Missing input model",
+      "result": null
+  },
+  {
+      "payload": {
+      "inputMethod": "1",
+      "userFile": "invalid_file.txt",
+      "chains": "1,2",
+      "userInputModel": "0"
+      },
+      "description": "Invalid file, Chains: invalid chain IDs, Valid input model (0)",
+      "result": null
+  },
+  {
+      "payload": {
+      "inputMethod": "1",
+      "userFile": "invalid_file.txt",
+      "chains": "1,2",
+      "userInputModel": "invalid"
+      },
+      "description": "Invalid file, Chains: invalid chain IDs, Invalid input model",
+      "result": null
+  },
+  {
+      "payload": {
+      "inputMethod": "1",
+      "userFile": "invalid_file.txt",
+      "chains": "1,2"
+      },
+      "description": "Invalid file, Chains: invalid chain IDs, Missing input model",
+      "result": null
+  },
+  {
+      "payload": {
+      "inputMethod": "1",
+      "userFile": "invalid_file.txt",
+      "userInputModel": "0"
+      },
+      "description": "Invalid file, Missing chains, Valid input model (0)",
+      "result": null
+  },
+  {
+      "payload": {
+      "inputMethod": "1",
+      "userFile": "invalid_file.txt",
+      "userInputModel": "invalid"
+      },
+      "description": "Invalid file, Missing chains, Invalid input model",
+      "result": null
+  },
+  {
+      "payload": {
+      "inputMethod": "1",
+      "userFile": "invalid_file.txt"
+      },
+      "description": "Invalid file, Missing chains, Missing input model",
+      "result": null
+  },
+  {
+      "payload": {
+      "inputMethod": "1",
+      "chains": "",
+      "userInputModel": "0"
+      },
+      "description": "Missing file, Chains: empty string, Valid input model (0)",
+      "result": null
+  },
+  {
+      "payload": {
+      "inputMethod": "1",
+      "chains": "",
+      "userInputModel": "invalid"
+      },
+      "description": "Missing file, Chains: empty string, Invalid input model",
+      "result": null
+  },
+  {
+      "payload": {
+      "inputMethod": "1",
+      "chains": ""
+      },
+      "description": "Missing file, Chains: empty string, Missing input model",
+      "result": null
+  },
+  {
+      "payload": {
+      "inputMethod": "1",
+      "chains": "A,B",
+      "userInputModel": "0"
+      },
+      "description": "Missing file, Chains: valid chain IDs, Valid input model (0)",
+      "result": null
+  },
+  {
+      "payload": {
+      "inputMethod": "1",
+      "chains": "A,B",
+      "userInputModel": "invalid"
+      },
+      "description": "Missing file, Chains: valid chain IDs, Invalid input model",
+      "result": null
+  },
+  {
+      "payload": {
+      "inputMethod": "1",
+      "chains": "A,B"
+      },
+      "description": "Missing file, Chains: valid chain IDs, Missing input model",
+      "result": null
+  },
+  {
+      "payload": {
+      "inputMethod": "1",
+      "chains": "1,2",
+      "userInputModel": "0"
+      },
+      "description": "Missing file, Chains: invalid chain IDs, Valid input model (0)",
+      "result": null
+  },
+  {
+      "payload": {
+      "inputMethod": "1",
+      "chains": "1,2",
+      "userInputModel": "invalid"
+      },
+      "description": "Missing file, Chains: invalid chain IDs, Invalid input model",
+      "result": null
+  },
+  {
+      "payload": {
+      "inputMethod": "1",
+      "chains": "1,2"
+      },
+      "description": "Missing file, Chains: invalid chain IDs, Missing input model",
+      "result": null
+  },
+  {
+      "payload": {
+      "inputMethod": "1",
+      "userInputModel": "0"
+      },
+      "description": "Missing file, Missing chains, Valid input model (0)",
+      "result": null
+  },
+  {
+      "payload": {
+      "inputMethod": "1",
+      "userInputModel": "invalid"
+      },
+      "description": "Missing file, Missing chains, Invalid input model",
+      "result": null
+  },
+  {
+      "payload": {
+      "inputMethod": "1"
+      },
+      "description": "Missing file, Missing chains, Missing input model",
+      "result": null
+  }
+]  
