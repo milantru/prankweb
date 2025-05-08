@@ -243,7 +243,7 @@ def _validate_uniprot(input_data: dict) -> ValidationResult:
     if err:
         return ValidationResult(err_msg=err)
         
-    uniprot_id = input_data['uniprotCode']
+    uniprot_id = input_data['uniprotCode'].upper()
     
     try:
         # check whether given Uniprot ID exists
@@ -357,7 +357,7 @@ def upload_data() -> Response:
 
     id_payload = {
         'input_method': input_method,
-        'input_protein': validation_result.protein_id
+        'input_protein': validation_result.protein_id.lower()
     }
 
     logger.info(f'Sending POST request to id-provider: {ID_PROVIDER_URL}, payload:\n {json.dumps(id_payload, indent=2)}')
