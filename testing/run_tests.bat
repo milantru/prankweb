@@ -7,6 +7,6 @@ python -m venv venv
 
 CALL venv\Scripts\activate.bat
 
-pip install requests pytest
+pip install -q requests pytest
 
 pytest -v plankweb-tests.py
