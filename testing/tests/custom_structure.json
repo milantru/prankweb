@@ -2,7 +2,7 @@
   {
     "payload": {
       "inputMethod": "1",
-      "userFile": "files/valid_file.pdb",
+      "userFile": "files/valid_file.pdb.test",
       "chains": "",
       "userInputModel": "0"
     },
@@ -12,7 +12,7 @@
   {
     "payload": {
       "inputMethod": "1",
-      "userFile": "files/valid_file.pdb",
+      "userFile": "files/valid_file.pdb.test",
       "chains": "",
       "userInputModel": "invalid"
     },
@@ -22,7 +22,7 @@
   {
     "payload": {
       "inputMethod": "1",
-      "userFile": "files/valid_file.pdb",
+      "userFile": "files/valid_file.pdb.test",
       "chains": ""
     },
     "description": "Valid file, Chains: empty string, Missing input model",
@@ -31,7 +31,7 @@
   {
     "payload": {
       "inputMethod": "1",
-      "userFile": "files/valid_file.pdb",
+      "userFile": "files/valid_file.pdb.test",
       "chains": "B,C",
       "userInputModel": "1"
     },
@@ -41,7 +41,7 @@
   {
     "payload": {
       "inputMethod": "1",
-      "userFile": "files/valid_file.pdb",
+      "userFile": "files/valid_file.pdb.test",
       "chains": "B,C",
       "userInputModel": "invalid"
     },
@@ -51,7 +51,7 @@
   {
     "payload": {
       "inputMethod": "1",
-      "userFile": "files/valid_file.pdb",
+      "userFile": "files/valid_file.pdb.test",
       "chains": "B,C"
     },
     "description": "Valid file, Chains: valid chain IDs, Missing input model",
@@ -60,7 +60,7 @@
   {
     "payload": {
       "inputMethod": "1",
-      "userFile": "files/valid_file.pdb",
+      "userFile": "files/valid_file.pdb.test",
       "chains": "1,2",
       "userInputModel": "0"
     },
@@ -70,7 +70,7 @@
   {
     "payload": {
       "inputMethod": "1",
-      "userFile": "files/valid_file.pdb",
+      "userFile": "files/valid_file.pdb.test",
       "chains": "1,2",
       "userInputModel": "invalid"
     },
@@ -80,7 +80,7 @@
   {
     "payload": {
       "inputMethod": "1",
-      "userFile": "files/valid_file.pdb",
+      "userFile": "files/valid_file.pdb.test",
       "chains": "1,2"
     },
     "description": "Valid file, Chains: invalid chain IDs, Missing input model",
@@ -89,7 +89,7 @@
   {
     "payload": {
       "inputMethod": "1",
-      "userFile": "files/valid_file.pdb",
+      "userFile": "files/valid_file.pdb.test",
       "userInputModel": "0"
     },
     "description": "Valid file, Missing chains, Valid input model (0)",
@@ -98,7 +98,7 @@
   {
     "payload": {
       "inputMethod": "1",
-      "userFile": "files/valid_file.pdb",
+      "userFile": "files/valid_file.pdb.test",
       "userInputModel": "invalid"
     },
     "description": "Valid file, Missing chains, Invalid input model",
@@ -107,7 +107,7 @@
   {
     "payload": {
       "inputMethod": "1",
-      "userFile": "files/valid_file.pdb"
+      "userFile": "files/valid_file.pdb.test"
     },
     "description": "Valid file, Missing chains, Missing input model",
     "result": { "error":"chains not found" }
@@ -115,7 +115,7 @@
   {
     "payload": {
       "inputMethod": "1",
-      "userFile": "files/invalid_file.pdb",
+      "userFile": "files/invalid_file.pdb.test.test",
       "chains": "",
       "userInputModel": "0"
     },
@@ -125,7 +125,7 @@
   {
     "payload": {
       "inputMethod": "1",
-      "userFile": "files/invalid_file.pdb",
+      "userFile": "files/invalid_file.pdb.test.test",
       "chains": "",
       "userInputModel": "invalid"
     },
@@ -135,7 +135,7 @@
   {
     "payload": {
       "inputMethod": "1",
-      "userFile": "files/invalid_file.pdb",
+      "userFile": "files/invalid_file.pdb.test.test",
       "chains": ""
     },
     "description": "Invalid file, Chains: empty string, Missing input model",
@@ -144,7 +144,7 @@
   {
     "payload": {
       "inputMethod": "1",
-      "userFile": "files/invalid_file.pdb",
+      "userFile": "files/invalid_file.pdb.test.test",
       "chains": "B,C",
       "userInputModel": "0"
     },
@@ -154,7 +154,7 @@
   {
     "payload": {
       "inputMethod": "1",
-      "userFile": "files/invalid_file.pdb",
+      "userFile": "files/invalid_file.pdb.test.test",
       "chains": "B,C",
       "userInputModel": "invalid"
     },
@@ -164,7 +164,7 @@
   {
     "payload": {
       "inputMethod": "1",
-      "userFile": "files/invalid_file.pdb",
+      "userFile": "files/invalid_file.pdb.test.test",
       "chains": "B,C"
     },
     "description": "Invalid file, Chains: not relevant, Missing input model",
@@ -173,7 +173,7 @@
   {
     "payload": {
       "inputMethod": "1",
-      "userFile": "files/invalid_file.pdb",
+      "userFile": "files/invalid_file.pdb.test.test",
       "chains": "1,2",
       "userInputModel": "0"
     },
@@ -183,7 +183,7 @@
   {
     "payload": {
       "inputMethod": "1",
-      "userFile": "files/invalid_file.pdb",
+      "userFile": "files/invalid_file.pdb.test.test",
       "chains": "1,2",
       "userInputModel": "invalid"
     },
@@ -193,7 +193,7 @@
   {
     "payload": {
       "inputMethod": "1",
-      "userFile": "files/invalid_file.pdb",
+      "userFile": "files/invalid_file.pdb.test.test",
       "chains": "1,2"
     },
     "description": "Invalid file, Chains: invalid chain IDs, Missing input model",
@@ -202,7 +202,7 @@
   {
     "payload": {
       "inputMethod": "1",
-      "userFile": "files/invalid_file.pdb",
+      "userFile": "files/invalid_file.pdb.test.test",
       "userInputModel": "0"
     },
     "description": "Invalid file, Missing chains, Valid input model (0)",
@@ -211,7 +211,7 @@
   {
     "payload": {
       "inputMethod": "1",
-      "userFile": "files/invalid_file.pdb",
+      "userFile": "files/invalid_file.pdb.test.test",
       "userInputModel": "invalid"
     },
     "description": "Invalid file, Missing chains, Invalid input model",
@@ -220,7 +220,7 @@
   {
     "payload": {
       "inputMethod": "1",
-      "userFile": "files/invalid_file.pdb"
+      "userFile": "files/invalid_file.pdb.test.test"
     },
     "description": "Invalid file, Missing chains, Missing input model",
     "result": { "error": "chains not found" }
