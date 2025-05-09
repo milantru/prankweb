@@ -85,8 +85,12 @@ def get_id():
     if not input_method:
         logger.info('input_method not specified, status code 400')
         return jsonify({'error': 'input_method not specified'}), 400
+    
+    if not input_protein:
+        logger.info(f'{key} Input protein not specified, status code 400')
+        return jsonify({'error': 'input_protein not specified'}), 400
 
-    key = f'{InputMethods[input_method.upper()].value}:{input_protein}'
+    key = f'{InputMethods[input_method.upper()].value}:{input_protein.lower()}'
     logger.info(f'Key for database search created from input: {key}')
 
     if input_method not in (
@@ -96,10 +100,6 @@ def get_id():
     ):
         logger.info(f'{key} Unsupported input method ({input_method}), status code 400')
         return jsonify({'error': f'Input method {input_method} not supported'}), 400
-    
-    if not input_protein:
-        logger.info(f'{key} Input protein not specified, status code 400')
-        return jsonify({'error': 'input_protein not specified'}), 400
     
     id = _check(key)
 

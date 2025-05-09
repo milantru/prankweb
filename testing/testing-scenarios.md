@@ -75,4 +75,6 @@
 
 # Get ID testing scenarios
 
-- curl get_id
+- get-id
+- input_method: Valid / Invalid / Missing
+- input_protein: In database / Not in database / Missing

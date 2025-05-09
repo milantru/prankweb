@@ -307,8 +307,9 @@ def _validate_seq(input_data: dict) -> ValidationResult:
             err_msg=f'Invalid sequence length: {len(sequence)}, should be in interval [1, 400]'
         )
 
-    if not sequence.startswith('>'): sequence = '>PLANKWEB_SEQ\n' + sequence
-    if not _text_is_fasta_format(sequence):
+    fasta_sequence = '>PLANKWEB_SEQ\n' + sequence
+    # if not sequence.startswith('>'): sequence = '>PLANKWEB_SEQ\n' + sequence
+    if not _text_is_fasta_format(fasta_sequence):
         return ValidationResult(err_msg='Sequence not in FASTA format')
     del input_data['sequence']
     
@@ -321,7 +322,7 @@ def _validate_seq(input_data: dict) -> ValidationResult:
         delete=False
     ) as f:
         tmp_file = os.path.relpath(f.name, os.getcwd())
-        f.write(sequence)
+        f.write(fasta_sequence)
 
     # input model setup for p2rank
     input_data['inputModel'] = 'alphafold'
@@ -370,7 +371,7 @@ def upload_data() -> Response:
     id_payload = {
         'input_method': input_method,
         'input_protein': (
-            validation_result.protein_id.lower() if validation_result.protein_id 
+            validation_result.protein_id.lower() if validation_result.protein_id
             else None
         )
     }
