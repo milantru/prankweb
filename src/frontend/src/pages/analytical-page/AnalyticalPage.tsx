@@ -162,7 +162,7 @@ function AnalyticalPage() {
 	}, pollingInterval);
 
 	return (
-		<div>
+		<div style={{ width: "98vw" }}>
 			{errorMessages.some(errMsg => errMsg.length > 0) && (
 				<ErrorMessageBox errorMessages={errorMessages} onClose={clearErrorMessages} />
 			)}
@@ -197,12 +197,13 @@ function AnalyticalPage() {
 				</div>
 				<div id="visualization-molstar" className="col-xs-12 col-md-6 col-xl-6">
 					{chainResults && selectedChain ? (<>
-						<MolStarWrapper ref={molstarWrapperRef}
-							chainResults={chainResults}
-							selectedChain={selectedChain}
-							onStructuresLoadingStart={() => setIsSettingsPanelDisabled(true)}
-							onStructuresLoadingEnd={() => setIsSettingsPanelDisabled(false)} />
-						<div id="visualization-toolbox">TODO Toolbox</div>
+						<div className="d-flex justify-content-center align-items-center mb-2">
+							<MolStarWrapper ref={molstarWrapperRef}
+								chainResults={chainResults}
+								selectedChain={selectedChain}
+								onStructuresLoadingStart={() => setIsSettingsPanelDisabled(true)}
+								onStructuresLoadingEnd={() => setIsSettingsPanelDisabled(false)} />
+						</div>
 						{queryProteinLigandData && similarProteinLigandData && (
 							<LigandToggler queryProteinLigandsData={queryProteinLigandData}
 								similarProteinsLigandsData={similarProteinLigandData}
@@ -700,7 +701,7 @@ function AnalyticalPage() {
 			}
 		}));
 
-		molstarWrapperRef.current?.toggleSimilarProteinLigand(dataSourceName, pdbCode, chain, ligandId, show);
+		molstarWrapperRef.current?.toggleSimilarProteinBindingSite(dataSourceName, pdbCode, chain, ligandId, show);
 	}
 
 	function handleChainSelect(chainResult: ChainResult, selectedChain: string) {
@@ -715,7 +716,7 @@ function AnalyticalPage() {
 		setSimilarProteinLigandData(similarProteinLigandDataTmp);
 
 		// User selected some structures, we hide them all, and then display only the selected ones
-		molstarWrapperRef.current?.hideAllSimilarProteinStructures();
+		molstarWrapperRef.current?.hideAllSimilarProteinStructures(selectedStructureOptions);
 		for (const option of selectedStructureOptions) {
 			molstarWrapperRef.current?.toggleSimilarProteinStructure(
 				option.value.dataSourceName,
