@@ -82,6 +82,10 @@ def get_id():
     input_protein = request.args.get('input_protein')
     logger.info(f'get-id GET request received: input_method -> {input_method}, input_protein -> {input_protein}')
 
+    if not input_method:
+        logger.info('input_method not specified, status code 400')
+        return jsonify({'error': 'input_method not specified'}), 400
+
     key = f'{InputMethods[input_method.upper()].value}:{input_protein}'
     logger.info(f'Key for database search created from input: {key}')
 
@@ -95,7 +99,7 @@ def get_id():
     
     if not input_protein:
         logger.info(f'{key} Input protein not specified, status code 400')
-        return jsonify({'error': 'Input protein not specified'}), 400
+        return jsonify({'error': 'input_protein not specified'}), 400
     
     id = _check(key)
 
