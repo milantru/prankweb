@@ -11,26 +11,16 @@ UPLOAD_DATA_URL = f"{SERVER_URL}/upload-data"
 ID_PROVIDER_URL = f"{SERVER_URL}/get-id"
 RESULTS_URL = f"{SERVER_URL}/data/"
 
-with \
-  open("tests/sequence.json") as f1,\
-  open("tests/alphafold_structure.json") as f2,\
-  open("tests/experimental_structure.json") as f3,\
-  open("tests/custom_structure.json") as f4,\
-  open("tests/invalid_input_method.json") as f5:
-    sequence_cases = json.load(f1)
-    uniprot_cases = json.load(f2)
-    pdb_cases = json.load(f3)
-    custom_str_cases = json.load(f4)
-    invalid_input_method_cases = json.load(f5)
-    test_cases_upload_data =  sequence_cases + uniprot_cases + pdb_cases + custom_str_cases + invalid_input_method_cases
+def _load_test_cases(test_files: list) -> list:
+    
+    test_cases = []
+    for test_file in test_files:
+        with open(test_file) as f:
+            test_cases += json.load(f)
 
-with open("tests/get_id.json") as f1:
-    test_cases_get_id = json.load(f1)
+    return test_cases
 
-with open("tests/results.json") as f1:
-    test_cases_get_results = json.load(f1)
-
-def process_post_request(payload: dict) -> str | dict:
+def _process_post_request(payload: dict) -> str | dict:
     if 'userFile' in payload:
         # Custom structure
         with open(payload['userFile']) as f:
@@ -52,7 +42,7 @@ def process_post_request(payload: dict) -> str | dict:
 
     return response.json()
 
-def wait_for_status(results_folder: str, attempts=30) -> int:
+def _wait_for_status(results_folder: str) -> int:
 
     status_file = urllib.parse.urljoin(
         RESULTS_URL,
@@ -72,14 +62,23 @@ def wait_for_status(results_folder: str, attempts=30) -> int:
 
     return status
 
+#################################################################################################################
 
-@pytest.mark.parametrize("case", test_cases_upload_data, ids=[tc["description"] for tc in test_cases_upload_data])
-def test_plankweb_upload_data(case):
-    payload = case["payload"]
-    expected_result = case["result"]
-    description = case["description"]
+_upload_data_tests = _load_test_cases([
+    "tests/experimental_structure.json",
+    "tests/custom_structure.json",
+    "tests/alphafold_structure.json",
+    "tests/sequence.json",
+    "tests/invalid_input_method.json"
+])
 
-    actual_result = process_post_request(payload)
+@pytest.mark.parametrize("test", _upload_data_tests, ids=[test["description"] for test in _upload_data_tests])
+def test_plankweb_upload_data(test):
+    payload = test["payload"]
+    expected_result = test["result"]
+    description = test["description"]
+
+    actual_result = _process_post_request(payload)
 
    # assert response.status_code == 200, f"{description}: Unexpected status code {response.status_code}"
 
@@ -90,12 +89,15 @@ def test_plankweb_upload_data(case):
         assert isinstance(actual_result, str)
         assert actual_result.startswith(expected_result), f"{description}: Mismatch\nExpected: {expected_result}\nGot: {actual_result}"
 
+#################################################################################################################
 
-@pytest.mark.parametrize("case", test_cases_get_id, ids=[tc["description"] for tc in test_cases_get_id])
-def test_plankweb_get_id(case):
-    payload = case["payload"]
-    expected_result = case["result"]
-    description = case["description"]
+_get_id_tests = _load_test_cases(["tests/get_id.json"])
+
+@pytest.mark.parametrize("test", _get_id_tests, ids=[test["description"] for test in _get_id_tests])
+def test_plankweb_get_id(test):
+    payload = test["payload"]
+    expected_result = test["result"]
+    description = test["description"]
 
     response = requests.get(ID_PROVIDER_URL, params=payload)
     actual_result = response.json()
@@ -113,14 +115,17 @@ def test_plankweb_get_id(case):
         assert isinstance(actual_result, dict)
         assert actual_result["error"].startswith(expected_result["error"]), f"{description}: Mismatch\nExpected: {expected_result}\nGot: {actual_result}"
 
+#################################################################################################################
 
-@pytest.mark.parametrize("case", test_cases_get_results, ids=[tc["description"] for tc in test_cases_get_results])
-def test_plankweb_ds_results(case):
-    payload = case["payload"]
-    expected_id = case["id"]
-    description = case["description"]
+_results_tests = _load_test_cases(["tests/results.json"])
 
-    id = process_post_request(payload)
+@pytest.mark.parametrize("test", _results_tests, ids=[test["description"] for test in _results_tests])
+def test_plankweb_ds_results(test):
+    payload = test["payload"]
+    expected_id = test["id"]
+    description = test["description"]
+
+    id = _process_post_request(payload)
     assert id.startswith(expected_id), f"{description}: Unexpected id {response.status_code}"
     
     # get result format of data source executors
@@ -129,10 +134,10 @@ def test_plankweb_ds_results(case):
 
     for ds_results_folder in [ f'ds_foldseek/{id}', f'ds_p2rank/{id}', f'ds_p2rank/{id}/conservation' ]:
     
-        status = wait_for_status(ds_results_folder)
+        status = _wait_for_status(ds_results_folder)
         assert status == 1, f"{description}[{ds_results_folder}]: Unexpected status: {status}"
 
-        for chain in case["chains"]:
+        for chain in test["chains"]:
             # download result file
             result_file = urllib.parse.urljoin(
                 RESULTS_URL,
@@ -154,13 +159,13 @@ def test_plankweb_ds_results(case):
                 f"{description}: Unexpected data source in metadata\nExpected: {ds_results_folder.split('/')[0][3:]}\nGot: {result['metadata']['dataSource']}"
 
 
-@pytest.mark.parametrize("case", test_cases_get_results, ids=[tc["description"] for tc in test_cases_get_results])
-def test_plankweb_conservation_results(case):
-    payload = case["payload"]
-    expected_id = case["id"]
-    description = case["description"]
+@pytest.mark.parametrize("test", _results_tests, ids=[test["description"] for test in _results_tests])
+def test_plankweb_conservation_results(test):
+    payload = test["payload"]
+    expected_id = test["id"]
+    description = test["description"]
 
-    id = process_post_request(payload)
+    id = _process_post_request(payload)
     assert id.startswith(expected_id), f"{description}: Unexpected id {response.status_code}"
     
     # get result format of data source executors
@@ -169,10 +174,10 @@ def test_plankweb_conservation_results(case):
 
     results_folder = f'conservation/{id}'
 
-    status = wait_for_status(results_folder)
+    status = _wait_for_status(results_folder)
     assert status == 1, f"{description}: Unexpected status: {status}"
 
-    for chain in case["chains"]:
+    for chain in test["chains"]:
         # download result file
         result_file = urllib.parse.urljoin(
             RESULTS_URL,
