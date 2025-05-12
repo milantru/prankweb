@@ -13,7 +13,7 @@ jobs:
 
       - name: Set up Docker Compose environment
         working-directory: ./src
-        run: docker compose up
+        run: docker compose up -d --build > /dev/null 2>&1
 
       - name: Run integration tests
         working-directory: ./testing
