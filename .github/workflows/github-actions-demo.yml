@@ -13,7 +13,7 @@ jobs:
 
       - name: Set up Docker Compose environment
         working-directory: ./src
-        run: docker compose up -d --build > /dev/null 2>&1
+        run: docker compose -f docker-compose.test.yml up -d --build > /dev/null 2>&1
 
       - name: Make test script executable
         run: chmod +x ./testing/run_tests.sh
