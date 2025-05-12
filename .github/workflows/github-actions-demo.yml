@@ -15,6 +15,9 @@ jobs:
         working-directory: ./src
         run: docker compose up -d --build > /dev/null 2>&1
 
+      - name: Make test script executable
+        run: chmod +x ./testing/run_tests.sh
+
       - name: Run integration tests
         working-directory: ./testing
         run: ./run_tests.sh
