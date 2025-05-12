@@ -126,7 +126,8 @@ def test_plankweb_ds_results(test):
     description = test["description"]
 
     id = _process_post_request(payload)
-    assert id.startswith(expected_id), f"{description}: Unexpected id {response.status_code}"
+    assert type(id) == str, f"{description}: Unexpected id {id}"
+    assert id.startswith(expected_id), f"{description}: Unexpected id {id}"
     
     # get result format of data source executors
     with open('files/ds_result_format.json') as ds_format_file:
@@ -158,15 +159,17 @@ def test_plankweb_ds_results(test):
             assert result["metadata"]["dataSource"] == ds_results_folder.split('/')[0][3:],\
                 f"{description}: Unexpected data source in metadata\nExpected: {ds_results_folder.split('/')[0][3:]}\nGot: {result['metadata']['dataSource']}"
 
+_results_conservation_tests = _load_test_cases(["tests/results.json"])
 
-@pytest.mark.parametrize("test", _results_tests, ids=[test["description"] for test in _results_tests])
+@pytest.mark.parametrize("test", _results_conservation_tests, ids=[test["description"] for test in _results_conservation_tests])
 def test_plankweb_conservation_results(test):
     payload = test["payload"]
     expected_id = test["id"]
     description = test["description"]
 
     id = _process_post_request(payload)
-    assert id.startswith(expected_id), f"{description}: Unexpected id {response.status_code}"
+    assert type(id) == str, f"{description}: Unexpected id {id}"
+    assert id.startswith(expected_id), f"{description}: Unexpected id {id}"
     
     # get result format of data source executors
     with open('files/conservation_result_format.json') as conservation_format_file:
