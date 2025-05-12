@@ -1,6 +1,7 @@
 import json
 import pytest
 import requests
+import time
 import os
 import urllib.parse
 from jsonschema import validate, ValidationError
@@ -10,6 +11,8 @@ SERVER_URL = "http://localhost:80"
 UPLOAD_DATA_URL = f"{SERVER_URL}/upload-data"
 ID_PROVIDER_URL = f"{SERVER_URL}/get-id"
 RESULTS_URL = f"{SERVER_URL}/data/"
+
+MAX_WAIT_SECONDS = 300  # 5 min timeout
 
 def _load_test_cases(test_files: list) -> list:
     
@@ -42,25 +45,36 @@ def _process_post_request(payload: dict) -> str | dict:
 
     return response.json()
 
+import time
+import requests
+import urllib.parse
+
+MAX_WAIT_SECONDS = 300  # 5 min timeout
+
 def _wait_for_status(results_folder: str) -> int:
+    status_file = urllib.parse.urljoin(RESULTS_URL, f"{results_folder}/status.json")
+    start_time = time.time()
 
-    status_file = urllib.parse.urljoin(
-        RESULTS_URL,
-        f"{results_folder}/status.json"
-    )
+    while True: # Should eventually timeout after 5 minutes
+        try:
+            response = requests.get(status_file, timeout=(15, 30))
+            if response.status_code == 200:
+                try:
+                    status = response.json().get("status")
+                    if status != 0:
+                        return status
+                except ValueError:
+                    print("Invalid JSON in status file, retrying...")
+            else:
+                print(f"Status file not found yet (HTTP {response.status_code})")
+        except requests.RequestException as e:
+            print(f"Request error: {e}")
 
-    # polling status file existence
-    response = requests.get(status_file, timeout=(15,30))
-    while response.status_code != 200:
-        response = requests.get(status_file, timeout=(15,30))
+        if time.time() - start_time > MAX_WAIT_SECONDS:
+            raise TimeoutError("Timed out waiting for status to change.")
+        
+        time.sleep(2)
 
-    # polling status
-    status = response.json()["status"]
-    while status == 0:
-        response = requests.get(status_file)
-        status = response.json()["status"]
-
-    return status
 
 #################################################################################################################
 
