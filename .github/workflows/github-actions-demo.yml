@@ -13,7 +13,7 @@ jobs:
 
       - name: Set up Docker Compose environment
         working-directory: ./src
-        run: docker-compose up
+        run: docker compose up
 
       - name: Run integration tests
         working-directory: ./testing
@@ -22,4 +22,4 @@ jobs:
       - name: Tear down Docker environment
         if: always()
         working-directory: ./src
-        run: docker-compose down
+        run: docker compose down
