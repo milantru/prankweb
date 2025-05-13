@@ -37,6 +37,7 @@ declare -A TESTS=(
     ["ds-results"]="test_plankweb_ds_results"
     ["conservation-results"]="test_plankweb_conservation_results"
     ["inputs"]="test_plankweb_inputs"
+    ["builder"]="test_builder_"
 )
 
 if [ -n "$1" ]; then
