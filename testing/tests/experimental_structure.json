@@ -1,0 +1,329 @@
+[
+  {
+    "payload": {
+      "inputMethod": "0",
+      "pdbCode": "6XEZ",
+      "chains": "",
+      "useConservation": "true"
+    },
+    "description": "Valid PDB ID with multiple chains, Chains: original structure (empty string), Conservation enabled",
+    "result": "pdb_6xez"
+  },
+  {
+    "payload": {
+      "inputMethod": "0",
+      "pdbCode": "6XEZ",
+      "chains": "",
+      "useConservation": "false"
+    },
+    "description": "Valid PDB ID with multiple chains, Chains: original structure (empty string), Conservation disabled",
+    "result": "pdb_6xez"
+  },
+  {
+    "payload": {
+      "inputMethod": "0",
+      "pdbCode": "6XEZ",
+      "chains": ""
+    },
+    "description": "Valid PDB ID with multiple chains, Chains: original structure (empty string), Conservation missing",
+    "result": { "error": "useConservation not found" }
+  },
+  {
+    "payload": {
+      "inputMethod": "0",
+      "pdbCode": "6XEZ",
+      "chains": "B,D",
+      "useConservation": "true"
+    },
+    "description": "Valid PDB ID with multiple chains, Chains: valid subset of real chain IDs, Conservation enabled",
+    "result": "pdb_6xez"
+  },
+  {
+    "payload": {
+      "inputMethod": "0",
+      "pdbCode": "6XEZ",
+      "chains": "B,D",
+      "useConservation": "false"
+    },
+    "description": "Valid PDB ID with multiple chains, Chains: valid subset of real chain IDs, Conservation disabled",
+    "result": "pdb_6xez"
+  },
+  {
+    "payload": {
+      "inputMethod": "0",
+      "pdbCode": "6XEZ",
+      "chains": "B,D"
+    },
+    "description": "Valid PDB ID with multiple chains, Chains: valid subset of real chain IDs, Conservation missing",
+    "result": { "error": "useConservation not found" }
+  },
+  {
+    "payload": {
+      "inputMethod": "0",
+      "pdbCode": "6XEZ",
+      "chains": "1,2,X",
+      "useConservation": "true"
+    },
+    "description": "Valid PDB ID with multiple chains, Chains: invalid chain IDs, Conservation enabled",
+    "result": { "error": "Wrong chains selected" }
+  },
+  {
+    "payload": {
+      "inputMethod": "0",
+      "pdbCode": "6XEZ",
+      "chains": "1,2,X",
+      "useConservation": "false"
+    },
+    "description": "Valid PDB ID with multiple chains, Chains: invalid chain IDs, Conservation disabled",
+    "result": { "error": "Wrong chains selected" }
+  },
+  {
+    "payload": {
+      "inputMethod": "0",
+      "pdbCode": "6XEZ",
+      "chains": "1,2,X"
+    },
+    "description": "Valid PDB ID with multiple chains, Chains: invalid chain IDs, Conservation missing",
+    "result": { "error": "useConservation not found" }
+  },
+  {
+    "payload": {
+      "inputMethod": "0",
+      "pdbCode": "6XEZ",
+      "useConservation": "true"
+    },
+    "description": "Valid PDB ID with multiple chains, Chains: missing, Conservation enabled",
+    "result": { "error": "chains not found" }
+  },
+  {
+    "payload": {
+      "inputMethod": "0",
+      "pdbCode": "6XEZ",
+      "useConservation": "false"
+    },
+    "description": "Valid PDB ID with multiple chains, Chains: missing, Conservation disabled",
+    "result": { "error": "chains not found" }
+  },
+  {
+    "payload": {
+      "inputMethod": "0",
+      "pdbCode": "6XEZ"
+    },
+    "description": "Valid PDB ID with multiple chains, Chains: missing, Conservation missing",
+    "result": { "error": "chains not found" }
+  },
+  {
+    "payload": {
+      "inputMethod": "0",
+      "pdbCode": "XYZ1",
+      "chains": "",
+      "useConservation": "true"
+    },
+    "description": "Invalid PDB ID, Chains: original structure (empty string), Conservation enabled",
+    "result": { "error": "PDB ID xyz1 not found in database due to an error:" }
+  },
+  {
+    "payload": {
+      "inputMethod": "0",
+      "pdbCode": "XYZ1",
+      "chains": "",
+      "useConservation": "false"
+    },
+    "description": "Invalid PDB ID, Chains: original structure (empty string), Conservation disabled",
+    "result": { "error": "PDB ID xyz1 not found in database due to an error:" }
+  },
+  {
+    "payload": {
+      "inputMethod": "0",
+      "pdbCode": "XYZ1",
+      "chains": ""
+    },
+    "description": "Invalid PDB ID, Chains: original structure (empty string), Conservation missing",
+    "result": { "error": "useConservation not found" }
+  },
+  {
+    "payload": {
+      "inputMethod": "0",
+      "pdbCode": "XYZ1",
+      "chains": "B,D",
+      "useConservation": "true"
+    },
+    "description": "Invalid PDB ID, Chains: not relevant, Conservation enabled",
+    "result": { "error": "PDB ID xyz1 not found in database due to an error:" }
+  },
+  {
+    "payload": {
+      "inputMethod": "0",
+      "pdbCode": "XYZ1",
+      "chains": "B,D",
+      "useConservation": "false"
+    },
+    "description": "Invalid PDB ID, Chains: not relevant, Conservation disabled",
+      "result": { "error": "PDB ID xyz1 not found in database due to an error:" }
+  },
+  {
+    "payload": {
+      "inputMethod": "0",
+      "pdbCode": "XYZ1",
+      "chains": "B,D"
+    },
+    "description": "Invalid PDB ID, Chains: not relevant, Conservation missing",
+    "result": { "error": "useConservation not found" }
+  },
+  {
+    "payload": {
+      "inputMethod": "0",
+      "pdbCode": "XYZ1",
+      "chains": "1,2,X",
+      "useConservation": "true"
+    },
+    "description": "Invalid PDB ID, Chains: not relevant, Conservation enabled",
+    "result": { "error": "PDB ID xyz1 not found in database due to an error:" }
+  },
+  {
+    "payload": {
+      "inputMethod": "0",
+      "pdbCode": "XYZ1",
+      "chains": "1,2,X",
+      "useConservation": "false"
+    },
+    "description": "Invalid PDB ID, Chains: not relevant, Conservation disabled",
+    "result": { "error": "PDB ID xyz1 not found in database due to an error:" }
+  },
+  {
+    "payload": {
+      "inputMethod": "0",
+      "pdbCode": "XYZ1",
+      "chains": "1,2,X"
+    },
+    "description": "Invalid PDB ID, Chains: invalid chain IDs, Conservation missing",
+    "result": { "error": "useConservation not found" }
+  },
+  {
+    "payload": {
+      "inputMethod": "0",
+      "pdbCode": "XYZ1",
+      "useConservation": "true"
+    },
+    "description": "Invalid PDB ID, Chains: missing, Conservation enabled",
+    "result": { "error": "chains not found" }
+  },
+  {
+    "payload": {
+      "inputMethod": "0",
+      "pdbCode": "XYZ1",
+      "useConservation": "false"
+    },
+    "description": "Invalid PDB ID, Chains: missing, Conservation disabled",
+    "result": { "error": "chains not found" }
+  },
+  {
+    "payload": {
+      "inputMethod": "0",
+      "pdbCode": "XYZ1"
+    },
+    "description": "Invalid PDB ID, Chains: missing, Conservation missing",
+    "result": { "error": "chains not found" }
+  },
+  {
+    "payload": {
+      "inputMethod": "0",
+      "chains": "",
+      "useConservation": "true"
+    },
+    "description": "Missing PDB ID, Chains: original structure (empty string), Conservation enabled",
+    "result": { "error": "pdbCode not found" }
+  },
+  {
+    "payload": {
+      "inputMethod": "0",
+      "chains": "",
+      "useConservation": "false"
+    },
+    "description": "Missing PDB ID, Chains: original structure (empty string), Conservation disabled",
+    "result": { "error": "pdbCode not found" }
+  },
+  {
+    "payload": {
+      "inputMethod": "0",
+      "chains": ""
+    },
+    "description": "Missing PDB ID, Chains: original structure (empty string), Conservation missing",
+    "result": { "error": "pdbCode not found" }
+  },
+  {
+    "payload": {
+      "inputMethod": "0",
+      "chains": "B,D",
+      "useConservation": "true"
+    },
+    "description": "Missing PDB ID, Chains: not relevant, Conservation enabled",
+    "result": { "error": "pdbCode not found" }
+  },
+  {
+    "payload": {
+      "inputMethod": "0",
+      "chains": "B,D",
+      "useConservation": "false"
+    },
+    "description": "Missing PDB ID, Chains: not relevant, Conservation disabled",
+    "result": { "error": "pdbCode not found" }
+  },
+  {
+    "payload": {
+      "inputMethod": "0",
+      "chains": "B,D"
+    },
+    "description": "Missing PDB ID, Chains: not relevant, Conservation missing",
+    "result": { "error": "pdbCode not found" }
+  },
+  {
+    "payload": {
+      "inputMethod": "0",
+      "chains": "1,2,X",
+      "useConservation": "true"
+    },
+    "description": "Missing PDB ID, Chains: not relevant, Conservation enabled",
+    "result": { "error": "pdbCode not found" }
+  },
+  {
+    "payload": {
+      "inputMethod": "0",
+      "chains": "1,2,X",
+      "useConservation": "false"
+    },
+    "description": "Missing PDB ID, Chains: not relevant, Conservation disabled",
+    "result": { "error": "pdbCode not found" }
+  },
+  {
+    "payload": {
+      "inputMethod": "0",
+      "chains": "1,2,X"
+    },
+    "description": "Missing PDB ID, Chains: not relevant, Conservation missing",
+    "result": { "error": "pdbCode not found" }
+  },
+  {
+    "payload": {
+      "inputMethod": "0",
+      "useConservation": "true"
+    },
+    "description": "Missing PDB ID, Chains: missing, Conservation enabled",
+    "result": { "error": "pdbCode not found" }
+  },
+  {
+    "payload": {
+      "inputMethod": "0",
+      "useConservation": "false"
+    },
+    "description": "Missing PDB ID, Chains: missing, Conservation disabled",
+    "result": { "error": "pdbCode not found" }
+  },
+  {
+    "payload": {
+      "inputMethod": "0"
+    },
+    "description": "Missing PDB ID, Chains: missing, Conservation missing",
+    "result": { "error": "pdbCode not found" }
+  }
+]

@@ -1,0 +1,44 @@
+[
+  {
+    "payload": {
+      "inputMethod": "0",
+      "pdbCode": "6XEZ",
+      "chains": "B,D",
+      "useConservation": "true"
+    },
+    "description": "PDB ID: 6XEZ, Chains: [B,D]",
+    "id": "pdb_6xez", 
+    "chains": ["B","D"]
+  },
+  {
+    "payload": {
+      "inputMethod": "1",
+      "userFile": "files/valid_file.pdb.test",
+      "chains": "B,C",
+      "userInputModel": "1"
+    },
+    "description": "Valid file, Chains: [B,C], Input model 1 (default with conservation)",
+    "id": "custom_str_",
+    "chains": ["B","C"]
+  },
+  {
+    "payload": {
+      "inputMethod": "2",
+      "uniprotCode": "P12345",
+      "useConservation": "true"
+    },
+    "description": "Uniprot ID: P12345",
+    "id": "uniprot_p12345",
+    "chains": ["A"]
+  },
+  {
+    "payload": {
+      "inputMethod": "3",
+      "sequence": "MVLSPADKTNVKAAWGKVGAHAGEYGAEALERMFLSFPTTKTYFPHF",
+      "useConservation": "true"
+    },
+    "description": "Sequence: MVLSPADKTNVKAAWGKVGAHAGEYGAEALERMFLSFPTTKTYFPHF",
+    "id": "sequence_",
+    "chains": ["A"]
+  }
+]
