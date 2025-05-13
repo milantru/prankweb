@@ -1,0 +1,19 @@
+{
+    "type": "object",
+    "required": [ "chains", "fasta" ],
+    "properties": {
+        "chains": {
+            "type": "array",
+            "items": { "type": "string" }
+        },
+        "fasta": {
+            "type": "object",
+            "patternProperties": {
+                "^sequence_\\d+\\.fasta$": {
+                    "type": "array",
+                    "items": { "type": "string" }
+                }
+            }
+        }
+    }
+}

@@ -2,8 +2,9 @@ import json
 import pytest
 import requests
 import time
-import os
 import urllib.parse
+from Bio import SeqIO, PDB
+from io import StringIO
 from jsonschema import validate, ValidationError
 
 SERVER_URL = "http://localhost:80"
@@ -45,11 +46,6 @@ def _process_post_request(payload: dict) -> str | dict:
 
     return response.json()
 
-import time
-import requests
-import urllib.parse
-
-MAX_WAIT_SECONDS = 300  # 5 min timeout
 
 def _wait_for_status(results_folder: str) -> int:
     status_file = urllib.parse.urljoin(RESULTS_URL, f"{results_folder}/status.json")
@@ -74,6 +70,25 @@ def _wait_for_status(results_folder: str) -> int:
             raise TimeoutError("Timed out waiting for status to change.")
         
         time.sleep(2)
+
+
+def _get_file(file: str) -> str | None:
+
+    start_time = time.time()
+    while True: # Should eventually timeout after 5 minutes
+        try:
+            response = requests.get(file, timeout=(15, 30))
+            if response.status_code == 200:
+                return response.text
+        except requests.RequestException as e:
+            break
+
+        if time.time() - start_time > MAX_WAIT_SECONDS:
+            break
+        
+        time.sleep(2)
+
+    return None
 
 
 #################################################################################################################
@@ -131,9 +146,81 @@ def test_plankweb_get_id(test):
 
 #################################################################################################################
 
-_results_tests = _load_test_cases(["tests/results.json"])
+_inputs_tests = _load_test_cases(["tests/results.json"])
 
-@pytest.mark.parametrize("test", _results_tests, ids=[test["description"] for test in _results_tests])
+@pytest.mark.parametrize("test", _inputs_tests, ids=[test["description"] for test in _inputs_tests])
+def test_plankweb_inputs(test):
+    payload = test["payload"]
+    expected_id = test["id"]
+    description = test["description"]
+
+    id = _process_post_request(payload)
+    assert type(id) == str, f"{description}: Unexpected id {id}"
+    assert id.startswith(expected_id), f"{description}: Unexpected id {id}"
+
+    inputs_folder_url = urllib.parse.urljoin(
+        RESULTS_URL,
+        f"inputs/{id}/"
+    )
+
+    # wait for structure.pdb
+    structure_file_content = _get_file(urllib.parse.urljoin(inputs_folder_url, "structure.pdb"))
+    assert structure_file_content is not None, f"{description} Structure file not found"
+
+    # try-parse structure.pdb
+    try:
+        parser = PDB.PDBParser(PERMISSIVE=False, QUIET=True)
+        structure = parser.get_structure('Custom structure', StringIO(structure_file_content))
+    except Exception:
+        assert False, f"{description} Could not parse content of structure.pdb"
+
+    # wait for chains.json and sequence_{n}.fasta
+    chains_file_content = _get_file(urllib.parse.urljoin(inputs_folder_url, "chains.json"))
+    assert chains_file_content is not None, f"{description} Chains file not found"
+
+    # validate format of chains.json
+    chains_json = None
+    try:
+        chains_json = json.loads(chains_file_content)
+        
+        # get format of chains.json
+        with open('files/chains_json_format.json') as chains_json_format_file:
+            chains_json_format = json.load(chains_json_format_file)
+
+        validate(instance=chains_json, schema=chains_json_format)
+    except json.JSONDecodeError:
+        assert False, f"{description} chains.json not in json format at all"
+    except ValidationError:
+        assert False, f"{description} chains.json not in correct format"
+
+    # check existence of all files according to chains.json
+    chains_field_chains = chains_json["chains"]
+    fasta_files_chains = []
+    for fasta_file in chains_json["fasta"]:
+        # wait for fasta file
+        fasta_file_content = _get_file(urllib.parse.urljoin(inputs_folder_url, fasta_file))
+        assert fasta_file_content is not None, f"{description} {fasta_file} file not found"
+
+        # try-parse fasta file
+        try:
+            records = list(SeqIO.parse(StringIO(fasta_file_content), 'fasta'))
+            amino_acids = set("ARNDCQEGHILKMFPSTWYV")
+            assert len(records) > 0, f"{description} 0 records in {fasta_file}"
+            for record in records:
+                sequence_set = set(str(record.seq).upper())
+                assert sequence_set.issubset(amino_acids), f"{description} Unknown amino-acids in {fasta_file}"
+        except Exception:
+            assert False, f"{description} {fasta_file} not in FASTA format"
+
+        fasta_files_chains.extend(chains_json["fasta"][fasta_file])
+
+    assert set(chains_field_chains) == set(fasta_files_chains), f"{description} Discrepancy between chains field and chains in fasta fiels fields"
+
+#################################################################################################################
+
+_ds_results_tests = _load_test_cases(["tests/results.json"])
+
+@pytest.mark.parametrize("test", _ds_results_tests, ids=[test["description"] for test in _ds_results_tests])
 def test_plankweb_ds_results(test):
     payload = test["payload"]
     expected_id = test["id"]
@@ -173,9 +260,11 @@ def test_plankweb_ds_results(test):
             assert result["metadata"]["dataSource"] == ds_results_folder.split('/')[0][3:],\
                 f"{description}: Unexpected data source in metadata\nExpected: {ds_results_folder.split('/')[0][3:]}\nGot: {result['metadata']['dataSource']}"
 
-_results_conservation_tests = _load_test_cases(["tests/results.json"])
+#################################################################################################################
 
-@pytest.mark.parametrize("test", _results_conservation_tests, ids=[test["description"] for test in _results_conservation_tests])
+_conservation_results_tests = _load_test_cases(["tests/results.json"])
+
+@pytest.mark.parametrize("test", _conservation_results_tests, ids=[test["description"] for test in _conservation_results_tests])
 def test_plankweb_conservation_results(test):
     payload = test["payload"]
     expected_id = test["id"]

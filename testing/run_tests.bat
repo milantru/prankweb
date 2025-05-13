@@ -25,7 +25,7 @@ if not exist "venv" (
     echo Creating venv...
     python -m venv venv
     call venv\Scripts\activate.bat
-    pip install -q requests jsonschema pytest
+    pip install -q requests biopython jsonschema pytest
 ) else (
     call venv\Scripts\activate.bat
 )
@@ -38,11 +38,12 @@ if "%arg%" == "upload-data" set "test_name=test_plankweb_upload_data"
 if "%arg%" == "get-id" set "test_name=test_plankweb_get_id"
 if "%arg%" == "ds-results" set "test_name=test_plankweb_ds_results"
 if "%arg%" == "conservation-results" set "test_name=test_plankweb_conservation_results"
+if "%arg%" == "inputs" set "test_name=test_plankweb_inputs"
 
 if not "%arg%" == "" (
     if "%test_name%" == "" (
         echo Unknown test: %arg%
-        echo Available tests: upload-data, get-id, ds-results, conservation-results
+        echo Available tests: upload-data, get-id, ds-results, conservation-results, inputs
         exit /b 1
     )
     pytest -v plankweb-tests.py -k %test_name%

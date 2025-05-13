@@ -24,7 +24,7 @@ fi
 if [ ! -d "venv" ]; then
     python3 -m venv venv
     source venv/bin/activate
-    pip install -q requests jsonschema pytest
+    pip install -q requests biopython jsonschema pytest
 else 
     source venv/bin/activate
 fi
@@ -36,6 +36,7 @@ declare -A TESTS=(
     ["get-id"]="test_plankweb_get_id"
     ["ds-results"]="test_plankweb_ds_results"
     ["conservation-results"]="test_plankweb_conservation_results"
+    ["inputs"]="test_plankweb_inputs"
 )
 
 if [ -n "$1" ]; then
