@@ -1,0 +1,88 @@
+{
+    "type": "object",
+    "required": [ "id", "chain", "sequence", "pdbUrl", "bindingSites", "metadata", "similarProteins" ],
+    "properties": {
+        "id": { "type": "string" },
+        "chain": { "type": "string" },
+        "sequence": { "type": "string" },
+        "pdbUrl": { "type": "string" },
+        "bindingSites": { 
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": [ "id", "confidence", "residues" ],
+                "properties": {
+                    "id": { "type": "string" },
+                    "confidence": { "type": "number" },
+                    "residues": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "required": [ "sequenceIndex", "structureIndex" ],
+                            "properties": {
+                                "sequenceIndex": { "type": "integer" },
+                                "structureIndex": { "type": "integer" }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "metadata": { 
+            "type": "object",
+            "required": [ "dataSource", "timestamp" ],
+            "properties": {
+                "dataSource": { "type": "string" },
+                "timestamp" : { "type": "string" }
+            }
+        },
+        "similarProteins": {
+            "type": ["array", "null" ],
+            "items": {
+                "type": "object",
+                "required": [ "pdbId", "chain", "sequence", "pdbUrl", "bindingSites", "alignmentData" ],
+                "properties": {
+                    "pdbId": { "type": "string" },
+                    "chain": { "type": "string" },
+                    "sequence": { "type": "string" },
+                    "pdbUrl": { "type": "string" },
+                    "bindingSites": { 
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "required": [ "id", "confidence", "residues" ],
+                            "properties": {
+                                "id": { "type": "string" },
+                                "confidence": { "type": "number" },
+                                "residues": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "required": [ "sequenceIndex", "structureIndex" ],
+                                        "properties": {
+                                            "sequenceIndex": { "type": "integer" },
+                                            "structureIndex": { "type": "integer" }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "alignmentData": {
+                        "type": "object",
+                        "required": [ "querySeqAlignedPartStartIdx", "querySeqAlignedPartEndIdx", "querySeqAlignedPart", "similarSequence", "similarSeqAlignedPartStartIdx", "similarSeqAlignedPartEndIdx", "similarSeqAlignedPart" ],
+                        "properties": {
+                            "querySeqAlignedPartStartIdx": { "type": "integer" },
+                            "querySeqAlignedPartEndIdx" : { "type": "integer" },
+                            "querySeqAlignedPart" : { "type": "string" },
+                            "similarSequence": { "type": "string" },
+                            "similarSeqAlignedPartStartIdx": { "type": "integer" },
+                            "similarSeqAlignedPartEndIdx" : { "type": "integer" },
+                            "similarSeqAlignedPart" : { "type": "string" }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
