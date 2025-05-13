@@ -2,6 +2,8 @@ import json
 import pytest
 import requests
 import time
+import sys
+import os
 import urllib.parse
 from Bio import SeqIO, PDB
 from io import StringIO
@@ -297,3 +299,96 @@ def test_plankweb_conservation_results(test):
             validate(instance=result, schema=conservation_result_format)
         except ValidationError as e:
             assert False, f"Result format validation failed: {e.message}"
+
+
+#################################################################################################################
+# BUILDER TESTS
+#################################################################################################################
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src/containers/data-source-executors/data_format')))
+from builder import ProteinDataBuilder, SimilarProteinBuilder, BindingSite, Residue
+
+residues = [Residue(sequenceIndex=0, structureIndex=10), Residue(sequenceIndex=1, structureIndex=11)]
+binding_site = BindingSite(id="site1", confidence=0.95, residues=residues)
+
+def test_add_binding_site_direct_object():
+    builder = ProteinDataBuilder(id="2SRC", chain="A", sequence="ABCDE", pdb_url="http://example.com/2SRC")
+    builder.add_binding_site(binding_site)
+    protein = builder.add_metadata("foldseek").build()
+    assert protein.bindingSites[0].id == "site1"
+    assert protein.bindingSites[0].confidence == 0.95
+    assert len(protein.bindingSites[0].residues) == 2
+
+def test_add_binding_site_manual_args():
+    builder = ProteinDataBuilder(id="2SRC", chain="B", sequence="ABCDE", pdb_url="http://example.com/2SRC")
+    builder.add_binding_site("site2", 0.85, residues)
+    protein = builder.add_metadata("p2rank").build()
+    assert protein.bindingSites[0].id == "site2"
+    assert protein.bindingSites[0].confidence == 0.85
+
+def test_similar_protein_builder_and_alignment():
+    sp_builder = SimilarProteinBuilder(pdb_id="2SRC", sequence="ABCDE", chain="A", pdb_url="http://example.com/2SRC")
+    sp_builder.add_binding_site(binding_site)
+    sp_builder.set_alignment_data(
+        query_start=3,
+        query_end=5,
+        query_part="DE",
+        similar_seq="DEFGHI",
+        similar_start=0,
+        similar_end=2,
+        similar_part="DE"
+    )
+    similar_protein = sp_builder.build()
+    assert similar_protein.pdbId == "2SRC"
+    assert similar_protein.alignmentData.querySeqAlignedPart == "DE"
+
+def test_protein_data_builder_with_similar_protein():
+    sp_builder = SimilarProteinBuilder(pdb_id="4K11", sequence="ABCDE", chain="B", pdb_url="http://example.com/4K11")
+    sp_builder.set_alignment_data(0, 5, "ABCDE", "VWXYZABCDE", 5, 10, "ABCDE")
+    similar_protein = sp_builder.build()
+
+    builder = ProteinDataBuilder(id="2SRC", chain="C", sequence="ABCDE", pdb_url="http://example.com/2SRC")
+    builder.add_similar_protein(similar_protein)
+    builder.add_metadata("foldseek", timestamp="2024-01-01T00:00:00")
+    protein = builder.build()
+
+    assert protein.similarProteins is not None
+    assert len(protein.similarProteins) == 1
+    assert protein.similarProteins[0].pdbId == "4K11"
+    assert protein.metadata.timestamp == "2024-01-01T00:00:00"
+
+def test_protein_data_builder_with_similar_proteins():
+    sp_builder = SimilarProteinBuilder(pdb_id="4K11", sequence="ABCDE", chain="B", pdb_url="http://example.com/4K11")
+    sp_builder.set_alignment_data(0, 5, "ABCDE", "VWXYZABCDE", 5, 10, "ABCDE")
+    similar_protein = sp_builder.build()
+    sp_builder2 = SimilarProteinBuilder(pdb_id="5XYZ", sequence="ABCDE", chain="C", pdb_url="http://example.com/5XYZ")
+    sp_builder2.set_alignment_data(0, 5, "ABCDE", "LMNOPQRSTU", 5, 10, "ABCDE")
+    similar_protein2 = sp_builder2.build()
+    sp_builder3 = SimilarProteinBuilder(pdb_id="6ABC", sequence="ABCDE", chain="D", pdb_url="http://example.com/6ABC")
+    sp_builder3.set_alignment_data(0, 5, "ABCDE", "QRSTUVWX", 5, 10, "ABCDE")
+    similar_protein3 = sp_builder3.build()
+
+    builder = ProteinDataBuilder(id="2SRC", chain="C", sequence="ABCDE", pdb_url="http://example.com/2SRC")
+    builder.add_similar_protein(similar_protein)
+    builder.add_similar_protein(similar_protein2)
+    builder.add_similar_protein(similar_protein3)
+    builder.add_metadata("foldseek", timestamp="2024-01-01T00:00:00")
+    protein = builder.build()
+
+    assert protein.similarProteins is not None
+    assert len(protein.similarProteins) == 3
+    assert protein.similarProteins[0].pdbId == "4K11"
+    assert protein.similarProteins[1].pdbId == "5XYZ"
+    assert protein.similarProteins[2].pdbId == "6ABC"
+    assert protein.similarProteins[0].alignmentData.querySeqAlignedPart == "ABCDE"
+    assert protein.metadata.timestamp == "2024-01-01T00:00:00"
+
+def test_no_metadata_error():
+    builder = ProteinDataBuilder(id="2SRC", chain="A", sequence="ABCDE", pdb_url="http://example.com/2SRC")
+    with pytest.raises(ValueError):
+        builder.build()  # Should raise an error because metadata is not set
+
+def test_no_alignment_data_error():
+    sim_prot_builder = SimilarProteinBuilder(pdb_id="2SRC", sequence="ABCDE", chain="A", pdb_url="http://example.com/2SRC")
+    with pytest.raises(ValueError):
+        sim_prot_builder.build()  # Should raise an error because alignment data is not set
