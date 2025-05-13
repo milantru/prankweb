@@ -91,7 +91,7 @@ services:
       LOGGING_TZ: ${PLANKWEB_TIMEZONE:-Europe/Prague}
     volumes:
       - ./containers/id-provider/id-provider.py:/app/id-provider.py
-    command: gunicorn -b :5000 id-provider:app --log-level warning
+    command: gunicorn -w 2 -b :5000 id-provider:app --log-level warning
 
   gateway:
     build:
@@ -176,6 +176,7 @@ services:
         --queues=ds_foldseek
         --hostname=foldseek_worker 
         --loglevel=warning
+        --concurrency=4
         --events
 
   ds-p2rank:
@@ -211,6 +212,7 @@ services:
         --queues=ds_p2rank
         --hostname=p2rank_worker
         --loglevel=warning
+        --concurrency=4
         --events
 
   conservation:
@@ -243,6 +245,7 @@ services:
         --queues=conservation
         --hostname=conservation_worker
         --loglevel=warning
+        --concurrency=4
         --events
 
   converter:
@@ -275,6 +278,7 @@ services:
         --queues=converter
         --hostname=converter_worker
         --loglevel=warning
+        --concurrency=4
         --events
 
   metatask:
@@ -316,6 +320,7 @@ services:
         --queues=metatask
         --hostname=metatask_worker
         --loglevel=warning
+        --concurrency=4
         --events
 
   flower:
