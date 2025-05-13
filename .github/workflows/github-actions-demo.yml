@@ -1,6 +1,9 @@
 name: Docker Integration Tests
 
 on:
+  push:
+    branches:
+      - main
   schedule:
     - cron: '0 2 * * *' # 2 AM UTC every day
 
