@@ -1,21 +1,29 @@
-# How to deploy Plankweb
+# Nasadenie
 
-## Requirements
+## HW požiadavky
 
-**CPUs**: 24
-**RAM**: 32GB
-**Storage**: ???
-**OS**: Linux distribution (this manual will assume it's Ubuntu)
+**Počet CPU**: 24
+**Veľkosť RAM**: 32GB
+**Veľkosť disku**: ???
+**Operačný systém**: Linux distribution (this manual will assume it's Ubuntu)
 
 To successfully deploy Plankweb project, please follow these steps:
 
-- [How to deploy Plankweb](#how-to-deploy-plankweb)
-  - [Requirements](#requirements)
+- [Nasadenie](#nasadenie)
+  - [HW požiadavky](#hw-požiadavky)
+  - [Naklonovanie repozitára](#naklonovanie-repozitára)
+  - [Tvorba .env súboru](#tvorba-env-súboru)
   - [Prepare docker environment](#prepare-docker-environment)
   - [Create docker volumes](#create-docker-volumes)
   - [Nginx, Let's Encrypt, HTTPS](#nginx-lets-encrypt-https)
   - [Environment variables](#environment-variables)
   - [Docker compose](#docker-compose)
+
+## Naklonovanie repozitára
+
+Prvým krokom k nasadeniu projektu Plankweb je získanie repozitára pomocou nástroja `git`
+
+## Tvorba .env súboru
 
 ## Prepare docker environment
 

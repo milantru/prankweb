@@ -112,7 +112,7 @@ services:
       swagger-ui:
         condition: service_started
     ports:
-      - 80:80
+      - 127.0.0.1:9864:80
 
   http-server:
     build:
