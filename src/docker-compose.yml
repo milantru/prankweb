@@ -162,8 +162,8 @@ services:
     environment:
       CELERY_NAME: ${PLANKWEB_CELERY_NAME:-plankweb_tasks}
       CELERY_BROKER_URL: amqp://${PLANKWEB_SERVICE_USER:-guest}:${PLANKWEB_SERVICE_PASS:-guest}@message-broker:5672// 
-      APACHE_URL: http://apache:80/data
       INPUTS_URL: http://apache:80/data/inputs
+      PLANKWEB_BASE_URL: ${PLANKWEB_URL:-http://localhost:9864}
       LOGGING_TZ: ${PLANKWEB_TIMEZONE:-Europe/Prague}
     volumes:
       - foldseek:/app/results
@@ -200,6 +200,7 @@ services:
       CELERY_BROKER_URL: amqp://${PLANKWEB_SERVICE_USER:-guest}:${PLANKWEB_SERVICE_PASS:-guest}@message-broker:5672//
       INPUTS_URL: http://apache:80/data/inputs
       CONSERVATION_URL: http://apache:80/data/conservation
+      PLANKWEB_BASE_URL: ${PLANKWEB_URL:-http://localhost:9864}
       LOGGING_TZ: ${PLANKWEB_TIMEZONE:-Europe/Prague}
     volumes:
       - p2rank:/app/results

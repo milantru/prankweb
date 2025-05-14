@@ -5,7 +5,7 @@
 **Počet CPU**: 24
 **Veľkosť RAM**: 32GB
 **Veľkosť disku**: ???
-**Operačný systém**: Linux distribution (this manual will assume it's Ubuntu)
+**Operačný systém**: Linux (manuál je písaný pre Ubuntu)
 
 To successfully deploy Plankweb project, please follow these steps:
 
@@ -13,7 +13,7 @@ To successfully deploy Plankweb project, please follow these steps:
   - [HW požiadavky](#hw-požiadavky)
   - [Naklonovanie repozitára](#naklonovanie-repozitára)
   - [Tvorba .env súboru](#tvorba-env-súboru)
-  - [Prepare docker environment](#prepare-docker-environment)
+  - [Príprava prostredia docker](#príprava-prostredia-docker)
   - [Create docker volumes](#create-docker-volumes)
   - [Nginx, Let's Encrypt, HTTPS](#nginx-lets-encrypt-https)
   - [Environment variables](#environment-variables)
@@ -21,13 +21,19 @@ To successfully deploy Plankweb project, please follow these steps:
 
 ## Naklonovanie repozitára
 
-Prvým krokom k nasadeniu projektu Plankweb je získanie repozitára pomocou nástroja `git`
+Prvým krokom k nasadeniu projektu Plankweb je získanie repozitára pomocou nástroja `git`.
+
+
 
 ## Tvorba .env súboru
 
-## Prepare docker environment
+Po naklonovaní repozitára odporúčame vytvoriť `.env` súbor a umiestniť ho do rovnakého
+folderu ako `docker-compose.yml`. Projekt je navrhnutý tak, aby fungoval aj bez
+`.env` súboru, **ALE** využívajú sa defaultné hodnoty.
 
-Plankweb project uses Docker, so installing docker should be the first step to deploy the project.
+## Príprava prostredia docker
+
+Plankweb používa Docker, takže ďalším krokom by mala byť príprava Dockeru.
 [Manual](https://docs.docker.com/engine/install/ubuntu/#install-using-the-repository)
 
 ## Create docker volumes
