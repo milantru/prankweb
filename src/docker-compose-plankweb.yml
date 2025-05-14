@@ -437,11 +437,29 @@ services:
 
 volumes:
   rabbitmq:
+    external: True
+    name: plankweb_rabbitmq
   redis:
-  foldseek:
-  p2rank:
-  inputs:
-  conservation:
+    external: True
+    name: plankweb_redis
   celery:
+    external: True
+    name: plankweb_celery
+  foldseek:
+    external: True
+    name: plankweb_foldseek
+  p2rank:
+    external: True
+    name: plankweb_p2rank
+  inputs:
+    external: True
+    name: plankweb_inputs
+  conservation:
+    external: True
+    name: plankweb_conservation
   grafana:
+    external: True
+    name: plankweb_grafana
   tmp:
+    external: True
+    name: plankweb_tmp

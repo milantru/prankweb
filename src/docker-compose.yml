@@ -451,10 +451,10 @@ services:
 volumes:
   rabbitmq:
   redis:
+  celery:
   foldseek:
   p2rank:
   inputs:
   conservation:
-  celery:
   grafana:
   tmp:
