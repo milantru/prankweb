@@ -7,7 +7,7 @@
 **Veľkosť disku**: ???
 **Operačný systém**: Linux (manuál je písaný pre Ubuntu)
 
-To successfully deploy Plankweb project, please follow these steps:
+Pre úspešné nasadenie projektu Plankweb, nasledujte tieto kroky:
 
 - [Nasadenie](#nasadenie)
   - [HW požiadavky](#hw-požiadavky)
@@ -26,7 +26,7 @@ Prvým krokom k nasadeniu projektu Plankweb je získanie repozitára pomocou ná
 sudo apt-get update
 sudo apt-get install git
 
-git clone https://github.com/milantru/prankweb.git
+git clone https://github.com/milantru/prankweb.git plankweb
 ```
 
 ## Tvorba .env súboru
