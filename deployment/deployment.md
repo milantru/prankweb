@@ -16,25 +16,59 @@ To successfully deploy Plankweb project, please follow these steps:
   - [Príprava prostredia docker](#príprava-prostredia-docker)
   - [Create docker volumes](#create-docker-volumes)
   - [Nginx, Let's Encrypt, HTTPS](#nginx-lets-encrypt-https)
-  - [Environment variables](#environment-variables)
   - [Docker compose](#docker-compose)
 
 ## Naklonovanie repozitára
 
-Prvým krokom k nasadeniu projektu Plankweb je získanie repozitára pomocou nástroja `git`.
+Prvým krokom k nasadeniu projektu Plankweb je získanie repozitára pomocou nástroja `git`:
 
+```sh
+sudo apt-get update
+sudo apt-get install git
 
+git clone https://github.com/milantru/prankweb.git
+```
 
 ## Tvorba .env súboru
 
-Po naklonovaní repozitára odporúčame vytvoriť `.env` súbor a umiestniť ho do rovnakého
-folderu ako `docker-compose.yml`. Projekt je navrhnutý tak, aby fungoval aj bez
-`.env` súboru, **ALE** využívajú sa defaultné hodnoty.
+Po naklonovaní repozitára je nutné vytvoriť `.env` súbor a umiestniť ho do rovnakého
+folderu ako `docker-compose-plnakweb.yml`. Tento súbor by mal obsahovať tieto premenné prostredia:
+
+| Premenná prostredia   | Popis |
+|-----------------------|-------|
+| COMPOSE_PROJECT_NAME  | |
+| PLANKWEB_URL          | |
+| PLANKWEB_TIMEZONE     | |
+| PLANKWEB_CELERY_NAME  | |
+| PLANKWEB_DEFAULT_UID  | |
+| PLANKWEB_DEFAULT_GID  | |
+| PLANKWEB_SERVICE_USER | |
+| PLANKWEB_SERVICE_PASS | |
+
+`.env.example`
 
 ## Príprava prostredia docker
 
-Plankweb používa Docker, takže ďalším krokom by mala byť príprava Dockeru.
-[Manual](https://docs.docker.com/engine/install/ubuntu/#install-using-the-repository)
+Plankweb používa Docker, takže ďalším krokom by mala byť insštalácia Dockeru, napr. podľa
+tohto [manuálu](https://docs.docker.com/engine/install/ubuntu/#install-using-the-repository):
+
+```sh
+# Add Docker's official GPG key:
+sudo apt-get update
+sudo apt-get install ca-certificates curl
+sudo install -m 0755 -d /etc/apt/keyrings
+sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+sudo chmod a+r /etc/apt/keyrings/docker.asc
+
+# Add the repository to Apt sources:
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
+  $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}") stable" | \
+  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+sudo apt-get update
+
+sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+```
 
 ## Create docker volumes
 
@@ -42,25 +76,6 @@ Plankweb používa Docker, takže ďalším krokom by mala byť príprava Docker
 
 ## Nginx, Let's Encrypt, HTTPS
 
-Abc
-
-## Environment variables
-
-The project is designed to work without any environment variable. **BUT**, it is not recommended
-since default values for username and password are used. The recommended way is to create `.env`
-file and place it to the directory where `docker-compose.yml` is located.
-The environment variables the project uses:
-
-| Environment Variable  | Description | Default value  |
-|-----------------------|-|----------------|
-| COMPOSE_PROJECT_NAME  | | plankweb       |
-| PLANKWEB_TIMEZONE     | | Europe/Prague  |
-| PLANKWEB_CELERY_NAME  | | plankweb_tasks |
-| PLANKWEB_DEFAULT_UID  | | 1453           |
-| PLANKWEB_DEFAULT_GID  | | 1453           |
-| PLANKWEB_SERVICE_USER | | guest          |
-| PLANKWEB_SERVICE_PASS | | guest          |
-
-If you need an inspiration, look at `.env.example`
+Project plankweb
 
 ## Docker compose
