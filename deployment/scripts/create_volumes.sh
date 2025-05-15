@@ -19,6 +19,7 @@ volumes=(
     celery
     foldseek
     p2rank
+    plm
     inputs
     conservation
     grafana

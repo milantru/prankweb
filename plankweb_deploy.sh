@@ -11,4 +11,4 @@ docker compose -f docker-compose-plankweb.yml up -d
 popd
 
 # restart nginx server
-service nginx restart
+systemctl nginx restart

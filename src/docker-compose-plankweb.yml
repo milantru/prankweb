@@ -88,7 +88,7 @@ services:
         condition: service_healthy
     environment:
       REDIS_PASS: ${PLANKWEB_SERVICE_PASS}
-      LOGGING_TZ: ${PLANKWEB_TIMEZONE}
+      LOGGING_TZ: ${PLANKWEB_TIMEZONE:-Europe/Prague}
     command: gunicorn -w 2 -b :5000 id-provider:app --log-level warning
 
   gateway:
@@ -135,7 +135,7 @@ services:
       CELERY_BROKER_URL: amqp://${PLANKWEB_SERVICE_USER}:${PLANKWEB_SERVICE_PASS}@message-broker:5672// 
       APACHE_URL: http://apache:80/
       ID_PROVIDER_URL: http://id-provider:5000/generate
-      LOGGING_TZ: ${PLANKWEB_TIMEZONE}
+      LOGGING_TZ: ${PLANKWEB_TIMEZONE:-Europe/Prague}
     volumes:
       - tmp:/app/tmp
     command: gunicorn -w 4 -b :3000 http-server:app --log-level warning
@@ -161,7 +161,7 @@ services:
       CELERY_BROKER_URL: amqp://${PLANKWEB_SERVICE_USER}:${PLANKWEB_SERVICE_PASS}@message-broker:5672// 
       INPUTS_URL: http://apache:80/data/inputs
       PLANKWEB_BASE_URL: ${PLANKWEB_URL}
-      LOGGING_TZ: ${PLANKWEB_TIMEZONE}
+      LOGGING_TZ: ${PLANKWEB_TIMEZONE:-Europe/Prague}
     volumes:
       - foldseek:/app/results
     command: |
@@ -195,7 +195,7 @@ services:
       INPUTS_URL: http://apache:80/data/inputs
       CONSERVATION_URL: http://apache:80/data/conservation
       PLANKWEB_BASE_URL: ${PLANKWEB_URL}
-      LOGGING_TZ: ${PLANKWEB_TIMEZONE}
+      LOGGING_TZ: ${PLANKWEB_TIMEZONE:-Europe/Prague}
     volumes:
       - p2rank:/app/results
     command: |
@@ -226,7 +226,7 @@ services:
       CELERY_BROKER_URL: amqp://${PLANKWEB_SERVICE_USER}:${PLANKWEB_SERVICE_PASS}@message-broker:5672//
       CELERY_BACKEND_URL: redis://:${PLANKWEB_SERVICE_PASS}@celery-backend:6379/0
       INPUTS_URL: http://apache:80/data/inputs
-      LOGGING_TZ: ${PLANKWEB_TIMEZONE}
+      LOGGING_TZ: ${PLANKWEB_TIMEZONE:-Europe/Prague}
     volumes:
       - conservation:/app/results
     command: |
@@ -259,7 +259,7 @@ services:
       CELERY_BROKER_URL: amqp://${PLANKWEB_SERVICE_USER}:${PLANKWEB_SERVICE_PASS}@message-broker:5672// 
       CELERY_BACKEND_URL: redis://:${PLANKWEB_SERVICE_PASS}@celery-backend:6379/0
       INPUTS_URL: http://apache:80/data/inputs
-      LOGGING_TZ: ${PLANKWEB_TIMEZONE}
+      LOGGING_TZ: ${PLANKWEB_TIMEZONE:-Europe/Prague}
     command: |
       celery
         --app=celery_worker worker
@@ -298,7 +298,7 @@ services:
       CELERY_BROKER_URL: amqp://${PLANKWEB_SERVICE_USER}:${PLANKWEB_SERVICE_PASS}@message-broker:5672// 
       CELERY_BACKEND_URL: redis://:${PLANKWEB_SERVICE_PASS}@celery-backend:6379/0
       APACHE_URL: http://apache:80/data
-      LOGGING_TZ: ${PLANKWEB_TIMEZONE}
+      LOGGING_TZ: ${PLANKWEB_TIMEZONE:-Europe/Prague}
     volumes:
       - inputs:/app/inputs
     command: |
