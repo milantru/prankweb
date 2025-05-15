@@ -6,7 +6,7 @@ info:
 servers:
   - url: http://localhost:9864
     description: Local development server
-  - url: https://plankweb.cz
+  - url: https://prankweb2.ksi.projekty.ms.mff.cuni.cz
     description: Coming soon...
 
 paths:

@@ -28,7 +28,7 @@ volumes=(
 for volume in "${volumes[@]}";
 do
     VOLUME_PATH="$PLANKWEB_VOLUMES_PATH/$volume"
-    mkdir -p $VOLUME_PATH
+    mkdir -p "$VOLUME_PATH"
 
     if docker volume inspect "plankweb_$volume" &>/dev/null; then
         echo "Volume plankweb_$volume already exists. Skipping."
@@ -41,4 +41,6 @@ do
     --opt device="$VOLUME_PATH" \
     --opt o=bind \
     "plankweb_$volume"
+
+    echo "Created volume: plankweb_$volume -> $VOLUME_PATH"
 done

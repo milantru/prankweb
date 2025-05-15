@@ -135,7 +135,7 @@ services:
       metatask:
         condition: service_started
     environment:
-      CELERY_NAME: ${PLANKWEB_CELERY_NAME:-plankweb_tasks}
+      CELERY_NAME: plankweb_tasks
       CELERY_BROKER_URL: amqp://${PLANKWEB_SERVICE_USER:-guest}:${PLANKWEB_SERVICE_PASS:-guest}@message-broker:5672// 
       APACHE_URL: http://apache:80/
       ID_PROVIDER_URL: http://id-provider:5000/generate
@@ -161,7 +161,7 @@ services:
       executor-http-api:
         condition: service_healthy
     environment:
-      CELERY_NAME: ${PLANKWEB_CELERY_NAME:-plankweb_tasks}
+      CELERY_NAME: plankweb_tasks
       CELERY_BROKER_URL: amqp://${PLANKWEB_SERVICE_USER:-guest}:${PLANKWEB_SERVICE_PASS:-guest}@message-broker:5672// 
       INPUTS_URL: http://apache:80/data/inputs
       PLANKWEB_BASE_URL: ${PLANKWEB_URL:-http://localhost:9864}
@@ -194,7 +194,7 @@ services:
       executor-http-api:
         condition: service_healthy
     environment:
-      CELERY_NAME: ${PLANKWEB_CELERY_NAME:-plankweb_tasks}
+      CELERY_NAME: plankweb_tasks
       CELERY_BROKER_URL: amqp://${PLANKWEB_SERVICE_USER:-guest}:${PLANKWEB_SERVICE_PASS:-guest}@message-broker:5672//
       INPUTS_URL: http://apache:80/data/inputs
       CONSERVATION_URL: http://apache:80/data/conservation
@@ -226,7 +226,7 @@ services:
       executor-http-api:
         condition: service_healthy
     environment:
-      CELERY_NAME: ${PLANKWEB_CELERY_NAME:-plankweb_tasks}
+      CELERY_NAME: plankweb_tasks
       CELERY_BROKER_URL: amqp://${PLANKWEB_SERVICE_USER:-guest}:${PLANKWEB_SERVICE_PASS:-guest}@message-broker:5672//
       CELERY_BACKEND_URL: redis://:${PLANKWEB_SERVICE_PASS:-guest}@celery-backend:6379/0
       INPUTS_URL: http://apache:80/data/inputs
@@ -259,7 +259,7 @@ services:
       executor-http-api:
         condition: service_healthy
     environment:
-      CELERY_NAME: ${PLANKWEB_CELERY_NAME:-plankweb_tasks}
+      CELERY_NAME: plankweb_tasks
       CELERY_BROKER_URL: amqp://${PLANKWEB_SERVICE_USER:-guest}:${PLANKWEB_SERVICE_PASS:-guest}@message-broker:5672// 
       CELERY_BACKEND_URL: redis://:${PLANKWEB_SERVICE_PASS:-guest}@celery-backend:6379/0
       INPUTS_URL: http://apache:80/data/inputs
@@ -298,7 +298,7 @@ services:
       ds-p2rank:
         condition: service_started
     environment:
-      CELERY_NAME: ${PLANKWEB_CELERY_NAME:-plankweb_tasks}
+      CELERY_NAME: plankweb_tasks
       CELERY_BROKER_URL: amqp://${PLANKWEB_SERVICE_USER:-guest}:${PLANKWEB_SERVICE_PASS:-guest}@message-broker:5672// 
       CELERY_BACKEND_URL: redis://:${PLANKWEB_SERVICE_PASS:-guest}@celery-backend:6379/0
       APACHE_URL: http://apache:80/data
