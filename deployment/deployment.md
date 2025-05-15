@@ -8,14 +8,12 @@
 **Operačný systém**: Linux (manuál je písaný pre distribúciu Ubuntu) \
 **Doména a verejná IP adresa** (manuál počíta s doménou prankweb2.ksi.projekty.ms.mff.cuni.cz)
 
-Nasadenie projektu Plankweb je založené primárne na správnej príprave prostredia.
-Samotné zostavenie a spustenie aplikácie potom prebieha pomocou príkazu
-`docker compose` a spustením serveru Nginx.
+Nasadenie projektu Plankweb je založené primárne na správnej príprave prostredia. Samotné zostavenie a spustenie aplikácie potom prebieha pomocou príkazu `docker compose` a spustením serveru Nginx.
 
 - [Nasadenie na virtuálny stroj](#nasadenie-na-virtuálny-stroj)
   - [Odporúčané požiadavky](#odporúčané-požiadavky)
   - [Naklonovanie repozitára](#naklonovanie-repozitára)
-  - [Príprava prostredia docker](#príprava-prostredia-docker)
+  - [Príprava prostredia Docker](#príprava-prostredia-docker)
   - [Tvorba docker volumes](#tvorba-docker-volumes)
   - [Nginx, HTTPS](#nginx-https)
   - [Tvorba .env súboru](#tvorba-env-súboru)
@@ -25,8 +23,7 @@ Samotné zostavenie a spustenie aplikácie potom prebieha pomocou príkazu
 
 ## Naklonovanie repozitára
 
-Prvým krokom k nasadeniu projektu Plankweb je získanie repozitára pomocou
-nástroja `git`:
+Prvým krokom k nasadeniu projektu je získanie repozitára pomocou nástroja **git**:
 
 ```sh
 sudo apt-get update
@@ -34,13 +31,11 @@ sudo apt-get install git
 git clone https://github.com/milantru/prankweb.git ~/plankweb
 ```
 
-Tento script nainštaluje nástroj git a naklonuje repozitár do domovského adresára,
-konkrétne do folderu plankweb.
+Tento script nainštaluje nástroj **git** a naklonuje repozitár do domovského adresára, konkrétne do folderu *plankweb*.
 
-## Príprava prostredia docker
+## Príprava prostredia Docker
 
-Projekt Plankweb je kontajnerizovaný prostredníctvom nástroja Docker. Preto je
-ďalším krokom inštalácia Dockeru, napríklad podľa oficiálneho [manuálu pre Ubuntu](https://docs.docker.com/engine/install/ubuntu/#install-using-the-repository):
+Projekt Plankweb je kontajnerizovaný pomocou nástroja **Docker**. Ten je možné nainštalovať napríklad podľa oficiálneho [manuálu pre Ubuntu](https://docs.docker.com/engine/install/ubuntu/#install-using-the-repository):
 
 ```sh
 # Add Docker's official GPG key:
@@ -62,20 +57,18 @@ sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin 
 
 ## Tvorba docker volumes
 
-Po úspešnej inštalácii Dockeru je možné vytvoriť docker volumes, kde sa ukladajú
-dáta z docker kontajnerov. Pre správne fungovanie projektu je nutné vytvoriť
-tieto volumes:
+Po úspešnej inštalácii Dockeru je možné vytvoriť Docker **volumes**, ktoré slúžia na perzistentné ukladanie dát z kontajnerov. Pre správne fungovanie Plankwebu je potrebné vytvoriť tieto volumes:
 
-- plankweb_rabbitmq
-- plankweb_redis
-- plankweb_celery
-- plankweb_foldseek
-- plankweb_p2rank
-- plankweb_plm
-- plankweb_inputs
-- plankweb_conservation
-- plankweb_grafana
-- plankweb_tmp
+- *plankweb_rabbitmq*
+- *plankweb_redis*
+- *plankweb_celery*
+- *plankweb_foldseek*
+- *plankweb_p2rank*
+- *plankweb_plm*
+- *plankweb_inputs*
+- *plankweb_conservation*
+- *plankweb_grafana*
+- *plankweb_tmp*
 
 Volume je možné vytvoriť napríklad takto:
 
@@ -88,7 +81,7 @@ docker volume create \
 plankweb_rabbitmq
 ```
 
-**UPOZORNENIE**: WINDOWS
+**UPOZORNENIE**: V prípade nasadenia do OS **Windows** a použití drivera `local`, `docker volume create` nepodporuje možnosti `--opt`.
 
 ## Nginx, HTTPS
 
@@ -100,7 +93,7 @@ sudo apt-get install nginx
 sudo cp ../nginx.conf /etc/nginx/nginx.conf
 ```
 
-Pre certifikát využijeme nástroj certbot (Let's Encrypt):
+Na využitie HTTPS je nutné získať certifikát. Pre tento účel využijeme nástroj **certbot**, ktorý využíva certifikáty od certifikačnej autority [*Let's Encrypt*](https://letsencrypt.org/):
 
 ```sh
 apt-get update
@@ -132,7 +125,7 @@ obsahovať tieto premenné prostredia:
 | PLANKWEB_SERVICE_USER | Užívateľské meno pre  |
 | PLANKWEB_SERVICE_PASS | Heslo pre |
 
-Vzorový príklad: `.env.example`
+Pre inšpiráciu je možné sa pozrieť na obsah súboru `.env.example`
 
 ## Samotné nasadenie
 

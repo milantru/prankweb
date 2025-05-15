@@ -9,4 +9,3 @@
 | Message Broker (RabbitMQ)  | 10991  |
 | Logging (Vector + Loki)    | 18042  |
 | Flower                     | <https://github.com/mher/flower/blob/master/examples/celery-monitoring-grafana-dashboard.json> |
-
