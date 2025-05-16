@@ -10,6 +10,7 @@ from tasks_logger import create_logger
 RESULTS_FOLDER = "results"
 FOLDSEEK_DB = "foldseek_db/pdb"
 INPUTS_URL = os.getenv('INPUTS_URL')
+PLANKWEB_BASE_URL = os.getenv('PLANKWEB_BASE_URL')
 
 class StatusType(Enum):
     STARTED = 0
@@ -65,7 +66,21 @@ def run_foldseek(id):
         subprocess.run(command, check=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
         logger.info(f'{id} Foldseek subprocess finished')
 
-        post_processor.process_foldseek_output(eval_folder, foldseek_result_file, id, query_structure_file, pdb_url)
+        query_structure_url = os.path.join(
+            PLANKWEB_BASE_URL,
+            "data",
+            "inputs",
+            f"{id}",
+            "structure.pdb"
+        )
+
+        post_processor.process_foldseek_output(
+            eval_folder,
+            foldseek_result_file,
+            id,
+            query_structure_file,
+            query_structure_url
+        )
 
         update_status(status_file_path, id, StatusType.COMPLETED.value)
 

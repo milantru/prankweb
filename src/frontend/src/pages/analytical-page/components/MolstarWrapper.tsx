@@ -230,7 +230,6 @@ export const MolStarWrapper = forwardRef(({ chainResults, selectedChain, onStruc
 	}
 
 	async function _loadStructure(plugin: PluginContext, structureUrl: string, format: BuiltInTrajectoryFormat) {
-		structureUrl = structureUrl.replace("apache", "localhost"); // TODO tmp fix, can be deleted later
 		const data = await plugin.builders.data.download({
 			url: Asset.Url(structureUrl),
 			isBinary: false

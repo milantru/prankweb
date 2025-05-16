@@ -11,6 +11,7 @@ from tasks_logger import create_logger
 RESULTS_FOLDER = "results"
 INPUTS_URL = os.getenv('INPUTS_URL')
 CONSERVATION_FILES_URL = os.getenv('CONSERVATION_URL')
+PLANKWEB_BASE_URL = os.getenv('PLANKWEB_BASE_URL')
 
 class StatusType(Enum):
     STARTED = 0
@@ -111,7 +112,20 @@ def run_p2rank(id, params):
         subprocess.run(command, check=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
         logger.info(f'{id} P2rank subprocess finished')
 
-        post_processor.process_p2rank_output(id, eval_folder, query_structure_file, pdb_url)
+        query_structure_url = os.path.join(
+            PLANKWEB_BASE_URL,
+            "data",
+            "inputs",
+            f"{id}",
+            "structure.pdb"
+        )
+
+        post_processor.process_p2rank_output(
+            id,
+            eval_folder,
+            query_structure_file,
+            query_structure_url
+        )
 
         update_status(status_file_path, id, StatusType.COMPLETED.value)
         

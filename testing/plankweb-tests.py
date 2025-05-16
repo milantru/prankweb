@@ -9,7 +9,7 @@ from Bio import SeqIO, PDB
 from io import StringIO
 from jsonschema import validate, ValidationError
 
-SERVER_URL = "http://localhost:80"
+SERVER_URL = "http://localhost:9864"
 
 UPLOAD_DATA_URL = f"{SERVER_URL}/upload-data"
 ID_PROVIDER_URL = f"{SERVER_URL}/get-id"

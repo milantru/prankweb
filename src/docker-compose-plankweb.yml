@@ -6,15 +6,14 @@ services:
     hostname: message-broker
     restart: unless-stopped
     environment:
-      RABBITMQ_DEFAULT_USER: ${PLANKWEB_SERVICE_USER:-guest}
-      RABBITMQ_DEFAULT_PASS: ${PLANKWEB_SERVICE_PASS:-guest}
+      RABBITMQ_DEFAULT_USER: ${PLANKWEB_SERVICE_USER}
+      RABBITMQ_DEFAULT_PASS: ${PLANKWEB_SERVICE_PASS}
     volumes:
       - rabbitmq:/var/lib/rabbitmq
     healthcheck:
       test: rabbitmq-diagnostics -q status
       interval: 30s
       timeout: 30s
-      start_period: 15s
       retries: 3
 
   id-database:
@@ -27,12 +26,11 @@ services:
       test: redis-cli info
       interval: 30s
       timeout: 30s
-      start_period: 15s
       retries: 3
     user: redis
     command: |
       redis-server
-        --requirepass ${PLANKWEB_SERVICE_PASS:-guest}
+        --requirepass ${PLANKWEB_SERVICE_PASS}
         --save 300 1
         --loglevel warning
 
@@ -47,12 +45,11 @@ services:
       test: redis-cli info
       interval: 30s
       timeout: 30s
-      start_period: 15s
       retries: 3
     user: redis
     command: |
       redis-server
-        --requirepass ${PLANKWEB_SERVICE_PASS:-guest}
+        --requirepass ${PLANKWEB_SERVICE_PASS}
         --save 300 1
         --loglevel warning
 
@@ -60,8 +57,8 @@ services:
     build:
       context: ./containers/executor-http-api/
       args:
-        UID: ${PLANKWEB_DEFAULT_UID:-1453}
-        GID: ${PLANKWEB_DEFAULT_GID:-1453}
+        UID: ${PLANKWEB_DEFAULT_UID}
+        GID: ${PLANKWEB_DEFAULT_GID}
     container_name: apache
     restart: unless-stopped
     volumes:
@@ -74,7 +71,6 @@ services:
       test: curl -f http://localhost/server-status?auto
       interval: 30s
       timeout: 30s
-      start_period: 15s
       retries: 3
     command: httpd -D FOREGROUND
 
@@ -83,15 +79,15 @@ services:
       context: ./containers
       dockerfile: ./id-provider/Dockerfile
       args:
-        UID: ${PLANKWEB_DEFAULT_UID:-1453}
-        GID: ${PLANKWEB_DEFAULT_GID:-1453}
+        UID: ${PLANKWEB_DEFAULT_UID}
+        GID: ${PLANKWEB_DEFAULT_GID}
     container_name: id-provider
     restart: unless-stopped
     depends_on:
       id-database:
         condition: service_healthy
     environment:
-      REDIS_PASS: ${PLANKWEB_SERVICE_PASS:-guest}
+      REDIS_PASS: ${PLANKWEB_SERVICE_PASS}
       LOGGING_TZ: ${PLANKWEB_TIMEZONE:-Europe/Prague}
     command: gunicorn -w 2 -b :5000 id-provider:app --log-level warning
 
@@ -100,8 +96,8 @@ services:
       context: ./
       dockerfile: ./containers/gateway/Dockerfile
       args:
-        WEB_SERVICE_USER: ${PLANKWEB_SERVICE_USER:-guest}
-        WEB_SERVICE_PASS: ${PLANKWEB_SERVICE_PASS:-guest}
+        WEB_SERVICE_USER: ${PLANKWEB_SERVICE_USER}
+        WEB_SERVICE_PASS: ${PLANKWEB_SERVICE_PASS}
     container_name: gateway
     restart: unless-stopped
     depends_on:
@@ -119,8 +115,8 @@ services:
       context: ./containers
       dockerfile: ./http-server/Dockerfile
       args:
-        UID: ${PLANKWEB_DEFAULT_UID:-1453}
-        GID: ${PLANKWEB_DEFAULT_GID:-1453}
+        UID: ${PLANKWEB_DEFAULT_UID}
+        GID: ${PLANKWEB_DEFAULT_GID}
     container_name: http-server
     restart: unless-stopped
     depends_on:
@@ -136,7 +132,7 @@ services:
         condition: service_started
     environment:
       CELERY_NAME: plankweb_tasks
-      CELERY_BROKER_URL: amqp://${PLANKWEB_SERVICE_USER:-guest}:${PLANKWEB_SERVICE_PASS:-guest}@message-broker:5672// 
+      CELERY_BROKER_URL: amqp://${PLANKWEB_SERVICE_USER}:${PLANKWEB_SERVICE_PASS}@message-broker:5672// 
       APACHE_URL: http://apache:80/
       ID_PROVIDER_URL: http://id-provider:5000/generate
       LOGGING_TZ: ${PLANKWEB_TIMEZONE:-Europe/Prague}
@@ -149,8 +145,8 @@ services:
       context: ./containers
       dockerfile: ./data-source-executors/executor-foldseek/Dockerfile
       args:
-        UID: ${PLANKWEB_DEFAULT_UID:-1453}
-        GID: ${PLANKWEB_DEFAULT_GID:-1453}
+        UID: ${PLANKWEB_DEFAULT_UID}
+        GID: ${PLANKWEB_DEFAULT_GID}
     container_name: ds-foldseek
     restart: unless-stopped
     depends_on:
@@ -162,9 +158,9 @@ services:
         condition: service_healthy
     environment:
       CELERY_NAME: plankweb_tasks
-      CELERY_BROKER_URL: amqp://${PLANKWEB_SERVICE_USER:-guest}:${PLANKWEB_SERVICE_PASS:-guest}@message-broker:5672// 
+      CELERY_BROKER_URL: amqp://${PLANKWEB_SERVICE_USER}:${PLANKWEB_SERVICE_PASS}@message-broker:5672// 
       INPUTS_URL: http://apache:80/data/inputs
-      PLANKWEB_BASE_URL: ${PLANKWEB_URL:-http://localhost:9864}
+      PLANKWEB_BASE_URL: ${PLANKWEB_URL}
       LOGGING_TZ: ${PLANKWEB_TIMEZONE:-Europe/Prague}
     volumes:
       - foldseek:/app/results
@@ -182,8 +178,8 @@ services:
       context: ./containers
       dockerfile: ./data-source-executors/executor-p2rank/Dockerfile
       args:
-        UID: ${PLANKWEB_DEFAULT_UID:-1453}
-        GID: ${PLANKWEB_DEFAULT_GID:-1453}
+        UID: ${PLANKWEB_DEFAULT_UID}
+        GID: ${PLANKWEB_DEFAULT_GID}
     container_name: ds-p2rank
     restart: unless-stopped
     depends_on:
@@ -195,10 +191,10 @@ services:
         condition: service_healthy
     environment:
       CELERY_NAME: plankweb_tasks
-      CELERY_BROKER_URL: amqp://${PLANKWEB_SERVICE_USER:-guest}:${PLANKWEB_SERVICE_PASS:-guest}@message-broker:5672//
+      CELERY_BROKER_URL: amqp://${PLANKWEB_SERVICE_USER}:${PLANKWEB_SERVICE_PASS}@message-broker:5672//
       INPUTS_URL: http://apache:80/data/inputs
       CONSERVATION_URL: http://apache:80/data/conservation
-      PLANKWEB_BASE_URL: ${PLANKWEB_URL:-http://localhost:9864}
+      PLANKWEB_BASE_URL: ${PLANKWEB_URL}
       LOGGING_TZ: ${PLANKWEB_TIMEZONE:-Europe/Prague}
     volumes:
       - p2rank:/app/results
@@ -216,8 +212,8 @@ services:
       context: ./containers
       dockerfile: ./conservation/Dockerfile
       args:
-        UID: ${PLANKWEB_DEFAULT_UID:-1453}
-        GID: ${PLANKWEB_DEFAULT_GID:-1453}
+        UID: ${PLANKWEB_DEFAULT_UID}
+        GID: ${PLANKWEB_DEFAULT_GID}
     container_name: conservation
     restart: unless-stopped
     depends_on:
@@ -227,8 +223,8 @@ services:
         condition: service_healthy
     environment:
       CELERY_NAME: plankweb_tasks
-      CELERY_BROKER_URL: amqp://${PLANKWEB_SERVICE_USER:-guest}:${PLANKWEB_SERVICE_PASS:-guest}@message-broker:5672//
-      CELERY_BACKEND_URL: redis://:${PLANKWEB_SERVICE_PASS:-guest}@celery-backend:6379/0
+      CELERY_BROKER_URL: amqp://${PLANKWEB_SERVICE_USER}:${PLANKWEB_SERVICE_PASS}@message-broker:5672//
+      CELERY_BACKEND_URL: redis://:${PLANKWEB_SERVICE_PASS}@celery-backend:6379/0
       INPUTS_URL: http://apache:80/data/inputs
       LOGGING_TZ: ${PLANKWEB_TIMEZONE:-Europe/Prague}
     volumes:
@@ -247,8 +243,8 @@ services:
       context: ./containers
       dockerfile: ./converter/Dockerfile
       args:
-        UID: ${PLANKWEB_DEFAULT_UID:-1453}
-        GID: ${PLANKWEB_DEFAULT_GID:-1453}
+        UID: ${PLANKWEB_DEFAULT_UID}
+        GID: ${PLANKWEB_DEFAULT_GID}
     container_name: converter
     restart: unless-stopped
     depends_on:
@@ -260,8 +256,8 @@ services:
         condition: service_healthy
     environment:
       CELERY_NAME: plankweb_tasks
-      CELERY_BROKER_URL: amqp://${PLANKWEB_SERVICE_USER:-guest}:${PLANKWEB_SERVICE_PASS:-guest}@message-broker:5672// 
-      CELERY_BACKEND_URL: redis://:${PLANKWEB_SERVICE_PASS:-guest}@celery-backend:6379/0
+      CELERY_BROKER_URL: amqp://${PLANKWEB_SERVICE_USER}:${PLANKWEB_SERVICE_PASS}@message-broker:5672// 
+      CELERY_BACKEND_URL: redis://:${PLANKWEB_SERVICE_PASS}@celery-backend:6379/0
       INPUTS_URL: http://apache:80/data/inputs
       LOGGING_TZ: ${PLANKWEB_TIMEZONE:-Europe/Prague}
     command: |
@@ -278,8 +274,8 @@ services:
       context: ./containers
       dockerfile: ./metatask/Dockerfile
       args:
-        UID: ${PLANKWEB_DEFAULT_UID:-1453}
-        GID: ${PLANKWEB_DEFAULT_GID:-1453}
+        UID: ${PLANKWEB_DEFAULT_UID}
+        GID: ${PLANKWEB_DEFAULT_GID}
     container_name: metatask
     restart: unless-stopped
     depends_on:
@@ -299,8 +295,8 @@ services:
         condition: service_started
     environment:
       CELERY_NAME: plankweb_tasks
-      CELERY_BROKER_URL: amqp://${PLANKWEB_SERVICE_USER:-guest}:${PLANKWEB_SERVICE_PASS:-guest}@message-broker:5672// 
-      CELERY_BACKEND_URL: redis://:${PLANKWEB_SERVICE_PASS:-guest}@celery-backend:6379/0
+      CELERY_BROKER_URL: amqp://${PLANKWEB_SERVICE_USER}:${PLANKWEB_SERVICE_PASS}@message-broker:5672// 
+      CELERY_BACKEND_URL: redis://:${PLANKWEB_SERVICE_PASS}@celery-backend:6379/0
       APACHE_URL: http://apache:80/data
       LOGGING_TZ: ${PLANKWEB_TIMEZONE:-Europe/Prague}
     volumes:
@@ -324,24 +320,149 @@ services:
       metatask:
         condition: service_started
     environment:
-      CELERY_BROKER_URL: amqp://${PLANKWEB_SERVICE_USER:-guest}:${PLANKWEB_SERVICE_PASS:-guest}@message-broker:5672//
+      CELERY_BROKER_URL: amqp://${PLANKWEB_SERVICE_USER}:${PLANKWEB_SERVICE_PASS}@message-broker:5672//
     command: celery flower --url_prefix=service/flower
 
+  gateway-exporter:
+    image: nginx/nginx-prometheus-exporter:1.4.1
+    container_name: gateway-exporter
+    depends_on:
+      gateway:
+        condition: service_started
+    command: --nginx.scrape-uri=http://gateway:8080/nginx_status
+
+  id-database-exporter: 
+    image: oliver006/redis_exporter:v1.70.0
+    container_name: id-database-exporter
+    depends_on:
+      id-database:
+        condition: service_started
+    environment:
+      REDIS_ADDR: redis://:${PLANKWEB_SERVICE_PASS}@id-database:6379/0
+
+  celery-backend-exporter:
+    image: oliver006/redis_exporter:v1.70.0
+    container_name: celery-backend-exporter
+    depends_on:
+      celery-backend:
+        condition: service_healthy
+    environment:
+      REDIS_ADDR: redis://:${PLANKWEB_SERVICE_PASS}@celery-backend:6379/0
+
+  executor-http-api-exporter:
+    image: bitnami/apache-exporter:1.0.10
+    container_name: apache-exporter
+    depends_on:
+      executor-http-api:
+        condition: service_started
+    command: --scrape_uri=http://apache:80/server-status?auto
+
+  prometheus:
+    image: prom/prometheus:v3.3.0
+    container_name: prometheus
+    restart: unless-stopped
+    depends_on:
+      gateway-exporter:
+        condition: service_started
+      id-database-exporter:
+        condition: service_started
+      celery-backend-exporter:
+        condition: service_started
+      executor-http-api-exporter:
+        condition: service_started
+      message-broker:
+        condition: service_started
+      flower:
+        condition: service_started
+    volumes:
+      - ./containers/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --web.external-url=http://gateway:80/service/prometheus/
+
+  vector:
+    image: timberio/vector:0.45.0-debian
+    container_name: vector
+    volumes:
+      - ./containers/monitoring/vector.yaml:/etc/vector/vector.yaml:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: unless-stopped
+    depends_on:
+      id-provider:
+        condition: service_started
+      converter:
+        condition: service_started
+      conservation:
+        condition: service_started
+      ds-foldseek:
+        condition: service_started
+      ds-p2rank:
+        condition: service_started
+      metatask:
+        condition: service_started
+      http-server:
+        condition: service_started
+      loki:
+        condition: service_started
+
+  loki:
+    image: grafana/loki:2.9.0
+    container_name: loki
+    command: -config.file=/etc/loki/local-config.yaml
+
+  grafana:
+    image: grafana/grafana:11.6.0
+    container_name: grafana
+    depends_on:
+      prometheus:
+        condition: service_started
+      loki:
+        condition: service_started
+    environment:
+      GF_SECURITY_ADMIN_USER: ${PLANKWEB_SERVICE_USER}
+      GF_SECURITY_ADMIN_PASSWORD: ${PLANKWEB_SERVICE_PASS}
+      GF_SERVER_ROOT_URL: http://gateway:80/service/grafana/
+      GF_SERVER_SERVE_FROM_SUB_PATH: true
+    volumes:
+      - grafana:/var/lib/grafana
+  
   swagger-ui:
     image: swaggerapi/swagger-ui
     container_name: openapi
     environment:
       SWAGGER_JSON: /app/swagger.yaml
     volumes:
-      - ./swagger.yaml:/app/swagger.yaml
+      - ./swagger.yaml:/app/swagger.yaml:ro
 
 volumes:
   rabbitmq:
+    external: True
+    name: plankweb_rabbitmq
   redis:
+    external: True
+    name: plankweb_redis
   celery:
+    external: True
+    name: plankweb_celery
   foldseek:
+    external: True
+    name: plankweb_foldseek
   p2rank:
+    external: True
+    name: plankweb_p2rank
   plm:
+    external: True
+    name: plankweb_plm
   inputs:
+    external: True
+    name: plankweb_inputs
   conservation:
+    external: True
+    name: plankweb_conservation
+  grafana:
+    external: True
+    name: plankweb_grafana
   tmp:
+    external: True
+    name: plankweb_tmp
