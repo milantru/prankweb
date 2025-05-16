@@ -451,6 +451,9 @@ volumes:
   p2rank:
     external: True
     name: plankweb_p2rank
+  plm:
+    external: True
+    name: plankweb_plm
   inputs:
     external: True
     name: plankweb_inputs

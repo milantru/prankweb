@@ -6,13 +6,12 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 if [[ -z $1 ]]; then
-  echo "Usage: $0 <path-to-mounted-storage>" >&2
+  echo "Usage: $0 <path-to-storage>" >&2
   exit 1
 fi
 
 pushd deployment/scripts
 ./docker_setup.sh
 ./create_volumes.sh $1
-./external_nginx_setup.sh
 popd
 

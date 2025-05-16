@@ -29,8 +29,9 @@ Prvým krokom k nasadeniu projektu je získanie repozitára pomocou nástroja **
 
 ```sh
 sudo apt-get update
-sudo apt-get install -y git
+sudo apt-get install git
 git clone https://github.com/milantru/prankweb.git ~/plankweb
+cd ~/plankweb
 ```
 
 Tento skript nainštaluje nástroj **git** a naklonuje repozitár do domovského adresára, konkrétne do adresára *plankweb*.
@@ -57,6 +58,9 @@ echo \
 sudo apt-get update
 
 sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+sudo systemctl enable docker
+sudo systemctl start docker
 ```
 
 ### Tvorba docker volumes
@@ -89,24 +93,30 @@ plankweb_rabbitmq
 
 ### Príprava Nginx a HTTPS
 
-Okrem Docker aplikácie je súčasťou nasadenia aj Nginx server, ktorý umožňuje šifrované pripojenie cez HTTPS:
+Okrem Docker aplikácie je súčasťou nasadenia aj Nginx server, ktorý umožňuje šifrované pripojenie cez HTTPS. Rovnako ako Docker, aj Ngninx ponúka [manuál na inštaláciu](https://nginx.org/en/linux_packages.html):
 
 ```sh
 sudo apt-get update
-sudo apt-get install nginx
-sudo systemctl restart nginx
+sudo apt-get install curl gnupg2 ca-certificates lsb-release ubuntu-keyring
+
+curl https://nginx.org/keys/nginx_signing.key | gpg --dearmor \
+    | sudo tee /usr/share/keyrings/nginx-archive-keyring.gpg >/dev/null
+
+echo "deb [signed-by=/usr/share/keyrings/nginx-archive-keyring.gpg] \
+http://nginx.org/packages/mainline/ubuntu `lsb_release -cs` nginx" \
+    | sudo tee /etc/apt/sources.list.d/nginx.list
+
+echo -e "Package: *\nPin: origin nginx.org\nPin: release o=nginx\nPin-Priority: 900\n" \
+    | sudo tee /etc/apt/preferences.d/99nginx
+
+sudo apt-get update
+sudo apt-get install nginx 
+
+sudo systemctl enable nginx
+sudo systemctl start nginx
 ```
 
-Tento repozitár poskytuje konfiguračný súbor (`deployment/nginx.conf`), ktorý obsahuje nastavenie serveru. Tento súbor je nutné skopírovať do adresára */etc/nginx/*:
-
-```sh
-sudo cp ../nginx.conf /etc/nginx/nginx.conf
-```
-
-**Poznámka**: Ak je projekt nasadzovaný na doménu inú ako prankweb2.ksi.projekty.ms.mff.cuni.cz, je nutné tento konfiguračný súbor upraviť.
-
-
-Na využitie HTTPS je nutné získať certifikát. Pre tento účel možno využiť nástroj **certbot**, ktorý využíva certifikáty od certifikačnej autority [*Let's Encrypt*](https://letsencrypt.org/):
+Pre využitie HTTPS je nutné získať certifikát. Na tento účel možno využiť nástroj **certbot**, ktorý využíva certifikáty od certifikačnej autority [*Let's Encrypt*](https://letsencrypt.org/):
 
 ```sh
 sudo apt-get update
@@ -114,12 +124,21 @@ sudo apt-get install certbot
 certbot certonly --nginx -d prankweb2.ksi.projekty.ms.mff.cuni.cz
 ```
 
-Po získaní certifikátu by sa mal spustiť cron job, ktorý každý deň overí platnosť certifikátu. V prípade, že certifikátu skončila platnosť, certbot ho automaticky obnoví:
+Po získaní certifikátu je žiaduce vytvoriť tzv. *cron job*, ktorý každý deň overí platnosť certifikátu. V prípade, že certifikátu skončila platnosť, certbot ho automaticky obnoví.
 
 ```sh
 CRON_JOB="0 0 * * * certbot renew --nginx --quiet && systemctl restart nginx"
 (crontab -l 2>/dev/null | grep -Fv "$CRON_JOB"; echo "$CRON_JOB") | crontab -
 ```
+
+Tento repozitár poskytuje aj konfiguračný súbor (`deployment/nginx.conf`), ktorý obsahuje nastavenie serveru. Tento súbor je potrebné skopírovať do adresára */etc/nginx/*:
+
+```sh
+sudo cp ../nginx.conf /etc/nginx/nginx.conf
+```
+
+**Poznámka**: Ak je projekt nasadzovaný na doménu inú ako prankweb2.ksi.projekty.ms.mff.cuni.cz, je nutné tento konfiguračný súbor upraviť.
+
 
 ### Tvorba .env súboru
 
@@ -137,7 +156,7 @@ Do repozitára je nutné pridať `.env` súbor a umiestniť ho do rovnakého adr
 
 Prvé dve menované premenné prostredia je možné vynechať, avšak v takomto prípade budú využité prednastavené hodnoty: `src` pre meno projektu a `Europe/Prague` pre časové pásmo. \
 UID a GID určujú užívateľské a skupinové ID, ktoré sa použijú vo vnútri niekoľkých Docker kontajnerov.
-Užívateľské meno a heslo sa využíva pri prístupe k **RabbitMQ** a **Redis** databázam, ako aj k platforme Grafana a iným monitorovacím nástrojom (Flower a Prometheus)
+Užívateľské meno a heslo sa využíva pri prístupe k **RabbitMQ** a **Redis** databázam, ako aj k platforme **Grafana** a iným monitorovacím nástrojom (*Flower* a *Prometheus*)
 
 Vzorový príklad pre `.env` súbor s názvom `.env.example` je možné nájsť v rovnakom adresári ako tento dokument.
 
