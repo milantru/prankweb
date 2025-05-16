@@ -81,7 +81,7 @@ Po úspešnej inštalácii a spustení Dockeru je možné vytvoriť Docker **vol
 Volume je možné vytvoriť napríklad takto:
 
 ```sh
-docker volume create \
+sudo docker volume create \
 --driver local \
 --opt type=none \
 --opt device=<path-to-directory> \
