@@ -13,8 +13,8 @@ fi
 
 DOMAIN=$1
 EMAIL=$2
-NGINX_CONFIG_FILE="/etc/nginx/sites-available/$DOMAIN"
-NGINX_CONFIG_SYMLINK="/etc/nginx/sites-enabled/$DOMAIN"
+NGINX_CONFIG_FILE="/etc/nginx/sites-available/$DOMAIN.conf"
+NGINX_CONFIG_SYMLINK="/etc/nginx/sites-enabled/$DOMAIN.conf"
 
 
 #==============================================================================#

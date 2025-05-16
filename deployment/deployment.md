@@ -10,15 +10,15 @@
 
 ## Úvod
 
-Nasadenie projektu **Plankweb** je založené primárne na správnej príprave prostredia. Samotné zostavenie a spustenie aplikácie potom prebieha pomocou príkazu `docker compose` a spustením serveru **Nginx**. Táto príručka obsahuje:
+Nasadenie projektu **Plankweb** je založené primárne na správnej príprave prostredia. Samotné zostavenie a spustenie aplikácie potom prebieha pomocou príkazu `docker compose` a spustením serveru **nginx**. Táto príručka obsahuje:
 
 - [Naklonovanie repozitára](#naklonovanie-repozitára)
 - [Manuálne nasadenie](#manuálne-nasadenie)
   1. [Príprava prostredia Docker](#príprava-prostredia-docker)
   2. [Tvorba docker volumes](#tvorba-docker-volumes)
-  3. [Príprava Nginx a HTTPS](#príprava-nginx-a-https)
-  4. [Tvorba .env súboru](#tvorba-env-súboru)
-  5. [Spustenie aplikácie](#spustenie-aplikácie)
+  3. [Tvorba .env súboru](#tvorba-env-súboru)
+  4. [Spustenie aplikácie](#spustenie-aplikácie)
+  5. [Spustenie nginx s HTTPS](#spustenie-nginx-s-https)
 - [(Polo)automatizované nasadenie](#poloautomatizované-nasadenie)
 - [Monitorovanie aplikácie](#monitorovanie-aplikácie)
   - [Príprava tabuliek a grafov na platforme grafana](#príprava-tabuliek-a-grafov-na-platforme-grafana)
@@ -65,7 +65,7 @@ sudo systemctl start docker
 
 ### Tvorba docker volumes
 
-Po úspešnej inštalácii Dockeru je možné vytvoriť Docker **volumes**, ktoré slúžia na perzistentné ukladanie dát z kontajnerov. Pre správne fungovanie Plankwebu je potrebné vytvoriť nasledujúce volumes:
+Po úspešnej inštalácii a spustení Dockeru je možné vytvoriť Docker **volumes**, ktoré slúžia na perzistentné ukladanie dát z kontajnerov. Pre správne fungovanie Plankwebu je potrebné vytvoriť nasledujúce volumes:
 
 - *plankweb_rabbitmq*
 - *plankweb_redis*
@@ -91,9 +91,43 @@ plankweb_rabbitmq
 
 **UPOZORNENIE**: V prípade nasadenia do OS **Windows** a použití drivera `local`, `docker volume create` nepodporuje možnosti `--opt`.
 
-### Príprava Nginx a HTTPS
 
-Okrem Docker aplikácie je súčasťou nasadenia aj Nginx server, ktorý umožňuje šifrované pripojenie cez HTTPS. Rovnako ako Docker, aj Ngninx ponúka [manuál na inštaláciu](https://nginx.org/en/linux_packages.html):
+### Tvorba .env súboru
+
+Do repozitára je nutné pridať súbor `.env` a umiestniť ho do rovnakého adresára ako `docker-compose-plankweb.yml`. Tento súbor by mal obsahovať nasledujúce premenné prostredia:
+
+| Premenná prostredia   | Popis                                         |
+|-----------------------|-----------------------------------------------|
+| COMPOSE_PROJECT_NAME  | Meno projektu                                 |
+| PLANKWEB_TIMEZONE     | Časové pásmo využívané v logovacích správach  |
+| PLANKWEB_URL          | Doména projektu                               |
+| PLANKWEB_DEFAULT_UID  | Identifikátor užívateľa (UID)                 |
+| PLANKWEB_DEFAULT_GID  | Identifikátor skupiny (GID)                   |
+| PLANKWEB_SERVICE_USER | Užívateľské meno                              |
+| PLANKWEB_SERVICE_PASS | Heslo                                         |
+
+Prvé dve menované premenné prostredia je možné vynechať, avšak v takomto prípade budú využité prednastavené hodnoty: `src` pre meno projektu a `Europe/Prague` pre časové pásmo. \
+UID a GID určujú užívateľské a skupinové ID, ktoré sa použijú vo vnútri niekoľkých Docker kontajnerov.
+Užívateľské meno a heslo sa využíva pri prístupe k **RabbitMQ** a **Redis** databázam, ako aj k platforme **Grafana** a iným monitorovacím nástrojom (*Flower* a *Prometheus*)
+
+Vzorový príklad pre `.env` súbor s názvom `.env.example` je možné nájsť v rovnakom adresári ako tento dokument.
+
+
+### Spustenie aplikácie
+
+Po príprave prostredia docker je možné spustiť príkaz `docker compose`, ktorý zostaví a spustí **Plankweb**:
+
+```sh
+pushd src
+docker compose -f docker-compose-plankweb.yml up -d
+popd
+```
+
+Po ukončení príkazu by malo byť možné z lokálneho počítača (*localhost*) pristúpiť k webovej aplikácii na porte 9864.
+
+### Spustenie nginx s HTTPS
+
+Okrem Docker aplikácie je súčasťou nasadenia aj **nginx** server, ktorý umožňuje šifrované pripojenie cez HTTPS. Rovnako ako Docker, aj nginx ponúka [manuál na inštaláciu](https://nginx.org/en/linux_packages.html):
 
 ```sh
 sudo apt-get update
@@ -116,73 +150,53 @@ sudo systemctl enable nginx
 sudo systemctl start nginx
 ```
 
-Pre využitie HTTPS je nutné získať certifikát. Na tento účel možno využiť nástroj **certbot**, ktorý využíva certifikáty od certifikačnej autority [*Let's Encrypt*](https://letsencrypt.org/):
+Po spustení nginx vytvoríme dočasný http server. Tento server poslúži nástroju **certbot** k vytvoreniu certifikátu. Príklad konfiguračného súboru k dočasnému serveru možno nájsť v `deployment/conf/nginx_tmp.conf`:
+
+```sh
+sudo cp deployment/conf/nginx_tmp.conf /etc/nginx/sites-available/prankweb2.ksi.projekty.ms.mff.cuni.cz.conf
+sudo ln -sf /etc/nginx/sites-available/prankweb2.ksi.projekty.ms.mff.cuni.cz.conf /etc/nginx/sites-enabled/prankweb2.ksi.projekty.ms.mff.cuni.cz.conf
+nginx -t
+sudo systemctl reload nginx
+```
+
+Ďalším krokom je inštalácia nástroja **certbot**, ktorý využíva certifikáty od certifikačnej autority [*Let's Encrypt*](https://letsencrypt.org/):
 
 ```sh
 sudo apt-get update
-sudo apt-get install certbot
+sudo apt-get install certbot python3-certbot-nginx
 certbot certonly --nginx -d prankweb2.ksi.projekty.ms.mff.cuni.cz
 ```
 
-Po získaní certifikátu je žiaduce vytvoriť tzv. *cron job*, ktorý každý deň overí platnosť certifikátu. V prípade, že certifikátu skončila platnosť, certbot ho automaticky obnoví.
+Posledný príkaz spustí interaktívne vytváranie certifikátu krok po kroku. Po vytvorení certifikátu je potrebné nahradiť dočasný konfiguračný súbor skutočným (`deployment/conf/nginx.conf`) a reštartovať nginx:
 
 ```sh
-CRON_JOB="0 0 * * * certbot renew --nginx --quiet && systemctl restart nginx"
-(crontab -l 2>/dev/null | grep -Fv "$CRON_JOB"; echo "$CRON_JOB") | crontab -
+sudo cp deployment/conf/nginx.conf /etc/nginx/sites-available/prankweb2.ksi.projekty.ms.mff.cuni.cz.conf
+nginx -t
+sudo systemctl reload nginx
 ```
+**_Poznámka_**: _Ak je projekt nasadzovaný na doménu inú ako prankweb2.ksi.projekty.ms.mff.cuni.cz, je nutné konfiguračné súbory upraviť._
 
-Tento repozitár poskytuje aj konfiguračný súbor (`deployment/nginx.conf`), ktorý obsahuje nastavenie serveru. Tento súbor je potrebné skopírovať do adresára */etc/nginx/*:
+Posledným krokom nasadenia je vytvoriť tzv. *cron job*, ktorý každý deň overí platnosť certifikátu a v prípade neplatnosti ho obnoví:
 
 ```sh
-sudo cp ../nginx.conf /etc/nginx/nginx.conf
+sudo crontab -e
 ```
 
-**Poznámka**: Ak je projekt nasadzovaný na doménu inú ako prankweb2.ksi.projekty.ms.mff.cuni.cz, je nutné tento konfiguračný súbor upraviť.
-
-
-### Tvorba .env súboru
-
-Do repozitára je nutné pridať `.env` súbor a umiestniť ho do rovnakého adresára ako `docker-compose-plankweb.yml`. Tento súbor by mal obsahovať nasledujúce premenné prostredia:
-
-| Premenná prostredia   | Popis                                         |
-|-----------------------|-----------------------------------------------|
-| COMPOSE_PROJECT_NAME  | Meno projektu                                 |
-| PLANKWEB_TIMEZONE     | Časové pásmo využívané v logovacích správach  |
-| PLANKWEB_URL          | Doména projektu                               |
-| PLANKWEB_DEFAULT_UID  | Identifikátor užívateľa (UID)                 |
-| PLANKWEB_DEFAULT_GID  | Identifikátor skupiny (GID)                   |
-| PLANKWEB_SERVICE_USER | Užívateľské meno                              |
-| PLANKWEB_SERVICE_PASS | Heslo                                         |
-
-Prvé dve menované premenné prostredia je možné vynechať, avšak v takomto prípade budú využité prednastavené hodnoty: `src` pre meno projektu a `Europe/Prague` pre časové pásmo. \
-UID a GID určujú užívateľské a skupinové ID, ktoré sa použijú vo vnútri niekoľkých Docker kontajnerov.
-Užívateľské meno a heslo sa využíva pri prístupe k **RabbitMQ** a **Redis** databázam, ako aj k platforme **Grafana** a iným monitorovacím nástrojom (*Flower* a *Prometheus*)
-
-Vzorový príklad pre `.env` súbor s názvom `.env.example` je možné nájsť v rovnakom adresári ako tento dokument.
-
-### Spustenie aplikácie
-
-Po príprave prostredia je možné spustiť príkaz `docker compose`, ktorý zostaví a spustí **Plankweb**:
+Príkaz `crontab -e` otvorí súbor, v ktorom sa nachádzajú *cron joby*. Vytvorenie *cron jobu* spočíva v pridaní nasledujúceho riadku do tohto súboru:
 
 ```sh
-pushd ~/plankweb/src
-docker compose -f docker-compose-plankweb.yml up -d
-popd
+0 0 * * * /usr/bin/certbot renew --nginx --quiet && systemctl reload nginx
 ```
 
-Poslednou časťou manuálneho nasadenia je spustenie **Nginx** servera:
-
-```sh
-sudo systemctl restart nginx
-```
+Súbor je nutné uložiť a zatvoriť. Týmto krokom je manuálne nasadenie Plankwebu ukončené.
 
 ## (Polo)automatizované nasadenie
 
 Plankweb má vo svojom repozitári pripravené skripty, ktoré by mali uľahčiť nasadenie. Takéto poloautomatizované nasadenie spočíva v nasledujúcich krokoch:
 
-1. Spustenie skriptu `prepare_environment.sh` (ako *sudo*)
+1. Spustenie skriptu: `sudo ./prepare_docker_environment.sh <cesta-pre-volumes>`
 2. [Vytvorenie `.env`](#tvorba-env-súboru)
-3. Spustenie skriptu `plankweb_deploy.sh` (ako *sudo*)
+3. Spustenie skriptu: `sudo ./plankweb_deploy.sh <doména> <email-pre-certbot>`
 
 ## Monitorovanie aplikácie
 
