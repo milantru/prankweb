@@ -329,11 +329,14 @@ export const MolStarWrapper = forwardRef(({ chainResults, selectedChain, onStruc
 			for (const [dataSourceName, result] of Object.entries(dseResult)) {
 				for (const bindingSite of result.bindingSites) {
 					const residues = bindingSite.residues.map(residue => residue.structureIndex);
-					const atomsExpression = MS.struct.generator.atomGroups({
-						'atom-test': MS.core.set.has([MS.set(...residues), MS.struct.atomProperty.macromolecular.id()])
+					const sortedResidues = [...residues].sort((a, b) => a - b);
+					const [minResidueIndex, maxResidueIndex] = [sortedResidues[0], sortedResidues[sortedResidues.length - 1]];
+					const wholeResiduesExpression = MS.struct.generator.atomGroups({
+						'chain-test': MS.core.rel.eq([MS.struct.atomProperty.macromolecular.auth_asym_id(), chain]),
+						'residue-test': MS.core.rel.inRange(
+							[MS.struct.atomProperty.macromolecular.label_seq_id(), minResidueIndex, maxResidueIndex]
+						)
 					});
-					// This selects the whole residues
-					const wholeResiduesExpression = MS.struct.modifier.wholeResidues({ 0: atomsExpression });
 
 					if (!(dataSourceName in queryProteinPocketsExpression)) {
 						queryProteinPocketsExpression[dataSourceName] = {};
@@ -421,11 +424,14 @@ export const MolStarWrapper = forwardRef(({ chainResults, selectedChain, onStruc
 					}
 					for (const bindingSite of simProt.bindingSites) {
 						const residues = bindingSite.residues.map(residue => residue.structureIndex);
-						const atomsExpression = MS.struct.generator.atomGroups({
-							'atom-test': MS.core.set.has([MS.set(...residues), MS.struct.atomProperty.macromolecular.id()])
+						const sortedResidues = [...residues].sort((a, b) => a - b);
+						const [minResidueIndex, maxResidueIndex] = [sortedResidues[0], sortedResidues[sortedResidues.length - 1]];
+						const wholeResiduesExpression = MS.struct.generator.atomGroups({
+							'chain-test': MS.core.rel.eq([MS.struct.atomProperty.macromolecular.auth_asym_id(), simProt.chain]),
+							'residue-test': MS.core.rel.inRange(
+								[MS.struct.atomProperty.macromolecular.label_seq_id(), minResidueIndex, maxResidueIndex]
+							)
 						});
-						// This selects the whole residues
-						const wholeResiduesExpression = MS.struct.modifier.wholeResidues({ 0: atomsExpression });
 
 						if (!(dataSourceName in similarProteinPocketsExpression)) {
 							similarProteinPocketsExpression[dataSourceName] = {};
