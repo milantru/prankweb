@@ -317,6 +317,35 @@ export const MolStarWrapper = forwardRef(({ chainResults, selectedChain, onStruc
 	}
 
 	function performDynamicSuperposition(plugin: PluginContext, format: BuiltInTrajectoryFormat, chain: string) {
+		function toParts(residues: number[]): { from: number; to: number }[] {
+			if (residues.length === 0) return [];
+
+			// Sort the input in case it's not sorted
+			const sortedResidues = [...residues].sort((a, b) => a - b);
+
+			const parts: { from: number; to: number }[] = [];
+			let start = sortedResidues[0];
+			let end = sortedResidues[0];
+
+			for (let i = 1; i < sortedResidues.length; i++) {
+				const current = sortedResidues[i];
+
+				if (current === end + 1) {
+					// Still consecutive
+					end = current;
+				} else {
+					// Break in sequence, push current part and start new
+					parts.push({ from: start, to: end });
+					start = end = current;
+				}
+			}
+
+			// Push the final part
+			parts.push({ from: start, to: end });
+
+			return parts;
+		}
+
 		return plugin.dataTransaction(async () => {
 			// Load query protein structure
 			const querySequenceUrl = getQuerySequenceUrl(chainResult);
@@ -329,13 +358,13 @@ export const MolStarWrapper = forwardRef(({ chainResults, selectedChain, onStruc
 			for (const [dataSourceName, result] of Object.entries(dseResult)) {
 				for (const bindingSite of result.bindingSites) {
 					const residues = bindingSite.residues.map(residue => residue.structureIndex);
-					const sortedResidues = [...residues].sort((a, b) => a - b);
-					const [minResidueIndex, maxResidueIndex] = [sortedResidues[0], sortedResidues[sortedResidues.length - 1]];
+					const parts = toParts(residues);
+					const partsExpressions = parts.map(part => MS.core.rel.inRange(
+						[MS.struct.atomProperty.macromolecular.label_seq_id(), part.from, part.to]
+					));
 					const wholeResiduesExpression = MS.struct.generator.atomGroups({
 						'chain-test': MS.core.rel.eq([MS.struct.atomProperty.macromolecular.auth_asym_id(), chain]),
-						'residue-test': MS.core.rel.inRange(
-							[MS.struct.atomProperty.macromolecular.label_seq_id(), minResidueIndex, maxResidueIndex]
-						)
+						'residue-test': MS.core.logic.or(partsExpressions)
 					});
 
 					if (!(dataSourceName in queryProteinPocketsExpression)) {
@@ -424,13 +453,13 @@ export const MolStarWrapper = forwardRef(({ chainResults, selectedChain, onStruc
 					}
 					for (const bindingSite of simProt.bindingSites) {
 						const residues = bindingSite.residues.map(residue => residue.structureIndex);
-						const sortedResidues = [...residues].sort((a, b) => a - b);
-						const [minResidueIndex, maxResidueIndex] = [sortedResidues[0], sortedResidues[sortedResidues.length - 1]];
+						const parts = toParts(residues);
+						const partsExpressions = parts.map(part => MS.core.rel.inRange(
+							[MS.struct.atomProperty.macromolecular.label_seq_id(), part.from, part.to]
+						));
 						const wholeResiduesExpression = MS.struct.generator.atomGroups({
 							'chain-test': MS.core.rel.eq([MS.struct.atomProperty.macromolecular.auth_asym_id(), simProt.chain]),
-							'residue-test': MS.core.rel.inRange(
-								[MS.struct.atomProperty.macromolecular.label_seq_id(), minResidueIndex, maxResidueIndex]
-							)
+							'residue-test': MS.core.logic.or(partsExpressions)
 						});
 
 						if (!(dataSourceName in similarProteinPocketsExpression)) {
@@ -453,7 +482,7 @@ export const MolStarWrapper = forwardRef(({ chainResults, selectedChain, onStruc
 										MS.struct.atomProperty.macromolecular.auth_comp_id(), ligandLabel
 									]),
 									MS.core.rel.eq([
-										MS.struct.atomProperty.macromolecular.auth_asym_id(), chain
+										MS.struct.atomProperty.macromolecular.auth_asym_id(), simProt.chain
 									])
 								]),
 								'group-by': MS.struct.atomProperty.macromolecular.residueKey()
