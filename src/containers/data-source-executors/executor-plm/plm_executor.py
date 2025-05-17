@@ -2,9 +2,7 @@ import os
 import json
 from enum import Enum
 from tasks_logger import create_logger
-import esm
-import numpy as np
-import torch
+from predict import embed_sequences
 
 RESULTS_FOLDER = "results"
 INPUTS_URL = os.getenv('INPUTS_URL')
@@ -27,29 +25,6 @@ def update_status(status_file_path, id, status, message=""):
         logger.info(f'{id} Status changed')
     except Exception as e:
         logger.error(f'{id} Status change failed: {str(e)}')
-
-def embed_sequences(sequences):
-    model, alphabet = esm.pretrained.esm2_t33_650M_UR50D()
-    batch_converter = alphabet.get_batch_converter()
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    model.to(device)
-    model.eval()
-
-    # Prepare the data for the model
-    data = [(f"seq_{i}", seq) for i, seq in enumerate(sequences)]
-    batch_labels, batch_strs, batch_tokens = batch_converter(data)
-
-    # Get the embeddings
-    with torch.no_grad():
-        results = model(batch_tokens, repr_layers=[34], return_contacts=False)
-    
-    # Extract the embeddings
-    token_representations = results["representations"][34]
-    
-    # Convert to numpy arrays
-    embeddings = [token_representations[i].numpy() for i in range(len(sequences))]
-    
-    return embeddings
 
 def run_plm(id):
     logger.info(f'{id} ds_plm started')
