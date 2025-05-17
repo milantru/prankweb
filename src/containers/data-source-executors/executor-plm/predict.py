@@ -1,6 +1,7 @@
 import esm
 import numpy as np
 import torch
+from model import BindingPredictor
 
 chunk_size = 5
 repr_layer = 33
@@ -55,3 +56,14 @@ def process_chunk(data, model, alphabet, max_len, device):
 
     # Crop starting and ending tokens
     return embed[:, 1:-1, :]
+
+def predict_bindings(embeddings, lengths, model_path = "models/model_e10.pth"):
+    # Predictor model setup
+    model = BindingPredictor()
+    model.load_model(model_path)
+
+    # Predict bindings
+    predictions = model.predict(embeddings).detach().cpu()
+    lengths = np.array(lengths)
+    cropped = torch.nn.utils.rnn.unpad_sequence(predictions.permute(1,0), lengths)
+    return cropped

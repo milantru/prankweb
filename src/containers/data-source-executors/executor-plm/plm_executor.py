@@ -2,7 +2,7 @@ import os
 import json
 from enum import Enum
 from tasks_logger import create_logger
-from predict import embed_sequences
+from predict import embed_sequences, predict_bindings
 
 RESULTS_FOLDER = "results"
 INPUTS_URL = os.getenv('INPUTS_URL')
@@ -56,7 +56,8 @@ def run_plm(id):
 
         logger.info(f'{id} Successfully embedded sequences')
 
-        #predictions = predict(embeddings)
+        lenghts = [len(s) for s in seq]
+        predictions = predict_bindings(embeddings, lenghts)
 
         logger.info(f'{id} PLM prediction finished')
 
