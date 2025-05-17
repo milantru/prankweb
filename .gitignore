@@ -12,6 +12,8 @@ node_modules
 *.pdb
 *.fasta
 *.cif
+*.csv
+*.parquet
 
 # C extensions
 *.so
