@@ -1,5 +1,5 @@
 import { useSearchParams } from "react-router-dom";
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useInterval } from "../../shared/hooks/useInterval";
 import { useVisibilityChange } from "../../shared/hooks/useVisibilityChange";
 import { DataStatus, getAllChainsAPI, getConservationsAPI, getDataSourceExecutorResultAPI, getDataSourceExecutorResultStatusAPI } from "../../shared/services/apiCalls";
@@ -56,7 +56,6 @@ type Metadata = {
 
 export type UnprocessedResult = {
 	id: string; // id from the IdProvider
-	// TODO pdbId nebude pre query?
 	sequence: string; // query sequence
 	chain: string;
 	pdbUrl: string;
@@ -106,32 +105,33 @@ function AnalyticalPage() {
 	if (!id) {
 		return <>No id provided.</>
 	}
-	const [chains, setChains] = useState<string[]>(searchParams.get("chains")
+	const chainsFromParams = searchParams.get("chains")
 		? searchParams.get("chains").split(",").filter(x => x.length > 0)
 		: [] // When no chains are selected by the user, we select all of them (we fetch all chains later when fetching results)
-	);
+
 	const useConservation = searchParams.get("useConservation")?.toLowerCase() === "true";
 	// When pollingInterval is set to null, it is turned off (initially it's turned off, it will be turned on after component loading)
 	const [pollingInterval, setPollingInterval] = useState<number | null>(null);
 	const isPageVisible = useVisibilityChange();
-	const dataSourceExecutors = useMemo<DataSourceExecutor[]>(() => [
+	const dataSourceExecutors = useRef<DataSourceExecutor[]>([
 		{ name: "p2rank", results: [] },
 		{ name: "foldseek", results: [] }
-	], []);
-	const isFetching = useMemo<boolean[]>(() => new Array(dataSourceExecutors.length).fill(false), []);
-	const isPollingFinished = useMemo<boolean[]>(() => new Array(dataSourceExecutors.length).fill(false), []);
-	const [errorMessages, setErrorMessages] = useState<string[]>(new Array(dataSourceExecutors.length).fill(""));
+	]);
+	const isFetching = useRef<boolean[]>(new Array(dataSourceExecutors.current.length).fill(false));
+	const isPollingFinished = useRef<boolean[]>(new Array(dataSourceExecutors.current.length).fill(false));
+	const [errorMessages, setErrorMessages] = useState<string[]>(new Array(dataSourceExecutors.current.length).fill(""));
 	const [chainResults, setChainResults] = useState<ChainResults | null>(null);
 	const [selectedChain, setSelectedChain] = useState<string | null>(null); // Will be set when chain results are set
 	const [squashBindingSites, setSquashBindingSites] = useState<boolean>(false);
-	let lock = useMemo<boolean>(() => false, []);
 	const [queryProteinLigandData, setQueryProteinLigandData] = useState<Record<string, Record<string, Record<string, boolean>>>>(null!);
 	const [similarProteinLigandData, setSimilarProteinLigandData] = useState<Record<string, Record<string, Record<string, Record<string, boolean>>>>>(null!);
 	const [isSettingsPanelDisabled, setIsSettingsPanelDisabled] = useState<boolean>(true);
 	const molstarWrapperRef = useRef<MolStarWrapperHandle>(null!);
+	const [allDataFetched, setAllDataFetched] = useState<boolean>(false);
+	const chains = useRef<string[]>([]);
 
 	useEffect(() => {
-		if (isPollingFinished.every(x => x)) {
+		if (isPollingFinished.current.every(x => x)) {
 			/* If polling is finished for every data source, we don't want to turn it on again.
 			 * That is why we have this if here.
 			 * Moreover, we don't have to set pollingInterval to null here (in this if), because
@@ -145,16 +145,56 @@ function AnalyticalPage() {
 		/* There is a polling implemented in useInterval but it would start after POLLING_INTERVAL. If we want to try to
 		 * fetch data immediatelly after loading page (and not wait POLLING_INTERVAL), we use this useEffect.
 		 * If all of the data is not fetched yet, no problem, there is polling in useInterval which will poll for the rest. */
-		for (let dataSourceExecutorIdx = 0; dataSourceExecutorIdx < dataSourceExecutors.length; dataSourceExecutorIdx++) {
+		for (let dataSourceExecutorIdx = 0; dataSourceExecutorIdx < dataSourceExecutors.current.length; dataSourceExecutorIdx++) {
 			fetchDataFromDataSource(dataSourceExecutorIdx);
 		}
 
 		setPollingInterval(POLLING_INTERVAL); // turn on the polling
 	}, []);
 
+	useEffect(() => {
+		async function processData(dataSourceExecutors: DataSourceExecutor[], defaultChain: string) {
+			setPollingInterval(null); // turn off polling entirely (for all data sources)
+
+			// TODO zmen nazvy refactor?
+			const allResults = dataSourceExecutors.flatMap(x => x.results);
+			const chainUnprocessedResults = transform(allResults);
+			const chainResultsTmp: ChainResults = {};
+			const entries = Object.entries(chainUnprocessedResults);
+			for (let i = 0; i < entries.length; i++) {
+				const [chain, dataSourceResults] = entries[i];
+
+				let conservations: Conservation[] = [];
+				if (useConservation) {
+					const {
+						conservations: conservationsTmp,
+						userFriendlyErrorMessage: conservationFetchingErrorMsg
+					} = await getConservationsAPI(id, chain);
+					if (conservationFetchingErrorMsg.length > 0) {
+						toastWarning(conservationFetchingErrorMsg + "\nRetrying...");
+						i--; // Try again
+						continue;
+					}
+					conservations = conservationsTmp;
+				}
+
+				chainResultsTmp[chain] = alignSequencesAcrossAllDataSources(dataSourceResults, conservations);
+			}
+			handleChainSelect(chainResultsTmp[defaultChain], defaultChain); // Every protein has at least 1 chain
+			setChainResults(chainResultsTmp);
+		}
+
+		if (allDataFetched) {
+			// both dataSourceExecutors and chains should be already initialized when allDataFetched is set to true
+			const defaultChain = chains.current[0]; // Protein always has at least 1 chain
+
+			processData(dataSourceExecutors.current, defaultChain);
+		}
+	}, [allDataFetched]);
+
 	useInterval(() => {
-		for (let dataSourceExecutorIdx = 0; dataSourceExecutorIdx < dataSourceExecutors.length; dataSourceExecutorIdx++) {
-			if (isFetching[dataSourceExecutorIdx] || isPollingFinished[dataSourceExecutorIdx]) {
+		for (let dataSourceExecutorIdx = 0; dataSourceExecutorIdx < dataSourceExecutors.current.length; dataSourceExecutorIdx++) {
+			if (isFetching.current[dataSourceExecutorIdx] || isPollingFinished.current[dataSourceExecutorIdx]) {
 				continue;
 			}
 			fetchDataFromDataSource(dataSourceExecutorIdx);
@@ -162,6 +202,7 @@ function AnalyticalPage() {
 	}, pollingInterval);
 
 	return (
+		// width is set to 98vw to get rid of horizontal scrollbar
 		<div style={{ width: "98vw" }}>
 			{errorMessages.some(errMsg => errMsg.length > 0) && (
 				<ErrorMessageBox errorMessages={errorMessages} onClose={clearErrorMessages} />
@@ -220,65 +261,100 @@ function AnalyticalPage() {
 		</div>
 	);
 
-	async function fetchDataFromDataSource(dataSourceIndex: number) {
-		console.log("Polling data source executor: " + dataSourceExecutors[dataSourceIndex].name);
-		isFetching[dataSourceIndex] = true;
-		const {
-			status,
-			userFriendlyErrorMessage: statusFetchingErrorMessage
-		} = await getDataSourceExecutorResultStatusAPI(dataSourceExecutors[dataSourceIndex].name, id, useConservation);
-		if (statusFetchingErrorMessage.length > 0) {
-			console.warn(statusFetchingErrorMessage + "\nRetrying...");
-			isFetching[dataSourceIndex] = false;
-			return;
-		}
-		console.log("Status:" + status)
+	async function tryGetChains(): Promise<{ chains: string[], errMsg: string }> {
+		let chainsRes: string[] = [];
 
-		let chainsLocal: string[] = null!;
-		if (chains.length === 0) {
+		if (chainsFromParams.length === 0) {
 			/* Every protein has at least one chain. No chains means none was selected by the user so we select all.
 			 * When status is ready, the chains.json (on the server, containing all the chains) should be ready as well,
 			 * so if we don't have the chains, we can get all of them from it. */
-			const { chains: chainsTmp, userFriendlyErrorMessage: allChainsFetchingErrorMessage } = await getAllChainsAPI(id);
-			if (allChainsFetchingErrorMessage.length > 0) {
-				toastWarning(allChainsFetchingErrorMessage + "\nRetrying...");
-				isFetching[dataSourceIndex] = false;
-				return;
+			const { chains, userFriendlyErrorMessage } = await getAllChainsAPI(id);
+			if (userFriendlyErrorMessage.length > 0) {
+				return { chains: [], errMsg: userFriendlyErrorMessage };
 			}
-			setChains(chainsTmp);
-			chainsLocal = chainsTmp;
+
+			chainsRes = chains;
 		} else {
-			chainsLocal = chains;
+			chainsRes = chainsFromParams;
 		}
 
-		if (status === DataStatus.Processing) {
-			isFetching[dataSourceIndex] = false;
+		return { chains: chainsRes, errMsg: "" };
+	}
+
+	async function tryGetResult(
+		dataSourceName: string,
+		id: string,
+		chain: string,
+		useConservation: boolean
+	): Promise<{ result: UnprocessedResult | null, errMsg: string }> {
+		const {
+			result,
+			userFriendlyErrorMessage
+		} = await getDataSourceExecutorResultAPI(dataSourceName, id, chain, useConservation);
+
+		if (userFriendlyErrorMessage.length > 0) {
+			return { result: null, errMsg: userFriendlyErrorMessage };
+		}
+
+		return { result: result, errMsg: "" };
+	}
+
+	async function getResults(dataSourceIndex: number, id: string, chains: string[], useConservation: boolean) {
+		const results: UnprocessedResult[] = [];
+
+		for (let i = 0; i < chains.length; i++) {
+			const {
+				result,
+				errMsg: dataFetchingErrorMessage
+			} = await tryGetResult(dataSourceExecutors.current[dataSourceIndex].name, id, chains[i], useConservation);
+
+			if (dataFetchingErrorMessage.length > 0) {
+				toastWarning(dataFetchingErrorMessage + "\nRetrying...");
+				i--; // Try again for the same chain
+				continue;
+			}
+			results.push(result);
+		}
+
+		return results;
+	}
+
+	async function fetchDataFromDataSource(dataSourceIndex: number) {
+		isFetching.current[dataSourceIndex] = true;
+		console.info("Polling data source executor: " + dataSourceExecutors.current[dataSourceIndex].name);
+
+		// Get status
+		const {
+			status,
+			userFriendlyErrorMessage: statusFetchingErrorMessage
+		} = await getDataSourceExecutorResultStatusAPI(dataSourceExecutors.current[dataSourceIndex].name, id, useConservation);
+		if (statusFetchingErrorMessage.length > 0) {
+			console.warn(statusFetchingErrorMessage + "\nRetrying...");
+			isFetching.current[dataSourceIndex] = false;
 			return;
 		}
 
-		if (status === DataStatus.Failed) {
-			const errMsg = `Failed to fetch data from ${dataSourceExecutors[dataSourceIndex].name}, so they won't be displayed.`;
+		// Init chains (either from params, or from servers chains file which should be already created when status is retrieved)
+		const { chains: chainsTmp, errMsg: allChainsFetchingErrorMessage } = await tryGetChains();
+		if (allChainsFetchingErrorMessage.length > 0) {
+			toastWarning(allChainsFetchingErrorMessage + "\nRetrying...");
+			isFetching.current[dataSourceIndex] = false;
+			return;
+		}
+		chains.current = chainsTmp;
+		const defaultChain = chainsTmp[0]; // Protein always has at least 1 chain
+		setSelectedChain(defaultChain);
+
+		// Choose next action depending on status
+		if (status === DataStatus.Processing) {
+			isFetching.current[dataSourceIndex] = false;
+			return;
+		} else if (status === DataStatus.Failed) {
+			const errMsg = `Failed to fetch data from ${dataSourceExecutors.current[dataSourceIndex].name}, so they won't be displayed.`;
 			updateErrorMessages(dataSourceIndex, errMsg);
 		} else if (status === DataStatus.Completed) {
-			const results: UnprocessedResult[] = [];
-
-			for (let i = 0; i < chainsLocal.length; i++) {
-				const chain = chainsLocal[i];
-
-				const {
-					result,
-					userFriendlyErrorMessage: dataFetchingErrorMessage
-				} = await getDataSourceExecutorResultAPI(dataSourceExecutors[dataSourceIndex].name, id, chain, useConservation);
-				if (dataFetchingErrorMessage.length > 0) {
-					toastWarning(dataFetchingErrorMessage + "\nRetrying...");
-					i--; // Try again for the same chain
-					continue;
-				}
-				results.push(result);
-			}
-
-			console.log("Results:" + results)
-			dataSourceExecutors[dataSourceIndex].results = results;
+			const results = await getResults(dataSourceIndex, id, chainsTmp, useConservation);
+			dataSourceExecutors.current[dataSourceIndex].results = results;
 		} else {
 			throw new Error("Unknown status."); // This should never happen.
 		}
@@ -286,44 +362,13 @@ function AnalyticalPage() {
 		/* Either was processing successful and we got the result (Status.Completed),
 		 * or it failed and we won't get result ever (Status.Failed). This means polling for this
 		 * data source result is not required anymore, and we can stop it. */
-		isPollingFinished[dataSourceIndex] = true;
-		if (isPollingFinished.every(x => x)) {
-			if (lock) {
-				isFetching[dataSourceIndex] = false;
-				return;
-			}
-			lock = true;
-			setPollingInterval(null); // turn off polling entirely (for all data sources)
+		isPollingFinished.current[dataSourceIndex] = true;
 
-			// TODO zmen nazvy refactor?
-			const allResults = dataSourceExecutors.flatMap(x => x.results);
-			const chainUnprocessedResults = transform(allResults);
-			const chainResultsTmp: ChainResults = {};
-			const entries = Object.entries(chainUnprocessedResults);
-			for (let i = 0; i < entries.length; i++) {
-				const [chain, dataSourceResults] = entries[i];
-
-				let conservations = [];
-				if (useConservation) {
-					const {
-						conservations: conservationsTmp,
-						userFriendlyErrorMessage: conservationFetchingErrorMsg
-					} = await getConservationsAPI(id, chain);
-					if (conservationFetchingErrorMsg.length > 0) {
-						toastWarning(conservationFetchingErrorMsg + "\nRetrying...");
-						i--; // Try again
-						continue;
-					}
-					conservations = conservationsTmp;
-				}
-
-				chainResultsTmp[chain] = await alignSequencesAcrossAllDataSources(dataSourceResults, conservations);
-			}
-			handleChainSelect(chainResultsTmp[chainsLocal[0]], chainsLocal[0]); // Every protein has at least 1 chain
-			setChainResults(chainResultsTmp);
-			lock = false;
+		if (isPollingFinished.current.every(x => x)) {
+			// Polling is finished for all data sources
+			setAllDataFetched(true);
 		}
-		isFetching[dataSourceIndex] = false;
+		isFetching.current[dataSourceIndex] = false;
 	}
 
 	function replaceWithAlignedPart(
@@ -491,7 +536,6 @@ function AnalyticalPage() {
 			}));
 		}
 
-
 		const offsets: Record<string, number[]> = {};
 		for (const [dataSourceName, result] of Object.entries(unprocessedResultPerDataSourceExecutor)) {
 			if (!result.similarProteins) {
@@ -613,7 +657,7 @@ function AnalyticalPage() {
 	};
 
 	function clearErrorMessages() {
-		setErrorMessages(new Array(dataSourceExecutors.length).fill(""));
+		setErrorMessages(new Array(dataSourceExecutors.current.length).fill(""));
 	}
 
 	function toSimilarProteinLigandData(chainResult: ChainResult, selectedStructureOptions: StructureOption[]) {
@@ -730,7 +774,7 @@ function AnalyticalPage() {
 	function getQueryProteinLigandsData(chainResult: ChainResult, selectedChain: string) {
 		const queryProteinLigandsData: Record<string, Record<string, Record<string, boolean>>> = {};
 
-		const dseResult = chainResult.dataSourceExecutorResults
+		const dseResult = chainResult.dataSourceExecutorResults;
 		for (const [dataSourceName, result] of Object.entries(dseResult)) {
 			for (const bindingSite of result.bindingSites) {
 				if (!(dataSourceName in queryProteinLigandsData)) {
