@@ -155,26 +155,27 @@ Po spustení nginx vytvoríme dočasný http server. Tento server poslúži nás
 ```sh
 sudo cp deployment/conf/nginx_tmp.conf /etc/nginx/sites-available/prankweb2.ksi.projekty.ms.mff.cuni.cz.conf
 sudo ln -sf /etc/nginx/sites-available/prankweb2.ksi.projekty.ms.mff.cuni.cz.conf /etc/nginx/sites-enabled/prankweb2.ksi.projekty.ms.mff.cuni.cz.conf
-nginx -t
+sudo nginx -t
 sudo systemctl reload nginx
-```
+``` 
 
 Ďalším krokom je inštalácia nástroja **certbot**, ktorý využíva certifikáty od certifikačnej autority [*Let's Encrypt*](https://letsencrypt.org/):
 
 ```sh
 sudo apt-get update
 sudo apt-get install certbot python3-certbot-nginx
-certbot certonly --nginx -d prankweb2.ksi.projekty.ms.mff.cuni.cz
+sudo certbot certonly --nginx -d prankweb2.ksi.projekty.ms.mff.cuni.cz
 ```
 
 Posledný príkaz spustí interaktívne vytváranie certifikátu krok po kroku. Po vytvorení certifikátu je potrebné nahradiť dočasný konfiguračný súbor skutočným (`deployment/conf/nginx.conf`) a reštartovať nginx:
 
 ```sh
 sudo cp deployment/conf/nginx.conf /etc/nginx/sites-available/prankweb2.ksi.projekty.ms.mff.cuni.cz.conf
-nginx -t
+sudo nginx -t
 sudo systemctl reload nginx
 ```
 **_Poznámka_**: _Ak je projekt nasadzovaný na doménu inú ako prankweb2.ksi.projekty.ms.mff.cuni.cz, je nutné konfiguračné súbory upraviť._
+**_Poznámka_**: _V prípade, že neexistujú adresáre `/etc/nginx/sites-available/` a `/etc/nginx/sites-enabled/`, tak sa v `/etc/nginx/` nachádza adresár `conf.d`. Vtedy stačí skopírovať konfiguračný súbor práve do tohto adresára a nie je potrebné vytvárať symlink (`ln -sf`)_. 
 
 Posledným krokom nasadenia je vytvoriť tzv. *cron job*, ktorý každý deň overí platnosť certifikátu a v prípade neplatnosti ho obnoví:
 
