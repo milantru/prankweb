@@ -8,6 +8,10 @@ services:
     environment:
       RABBITMQ_DEFAULT_USER: ${PLANKWEB_SERVICE_USER}
       RABBITMQ_DEFAULT_PASS: ${PLANKWEB_SERVICE_PASS}
+    logging:
+      options:
+        max-size: "50m"
+        max-file: "5"
     volumes:
       - rabbitmq:/var/lib/rabbitmq
     healthcheck:
@@ -20,6 +24,10 @@ services:
     image: redis:7.4.2
     container_name: id-database
     restart: unless-stopped
+    logging:
+      options:
+        max-size: "50m"
+        max-file: "5"
     volumes:
       - redis:/data
     healthcheck:
@@ -39,6 +47,10 @@ services:
     container_name: celery-backend
     hostname: celery-backend
     restart: unless-stopped
+    logging:
+      options:
+        max-size: "50m"
+        max-file: "5"
     volumes:
       - celery:/data
     healthcheck:
@@ -61,6 +73,10 @@ services:
         GID: ${PLANKWEB_DEFAULT_GID}
     container_name: apache
     restart: unless-stopped
+    logging:
+      options:
+        max-size: "50m"
+        max-file: "5"
     volumes:
       - foldseek:/usr/local/apache2/htdocs/data/ds_foldseek
       - p2rank:/usr/local/apache2/htdocs/data/ds_p2rank
@@ -89,6 +105,10 @@ services:
     environment:
       REDIS_PASS: ${PLANKWEB_SERVICE_PASS}
       LOGGING_TZ: ${PLANKWEB_TIMEZONE:-Europe/Prague}
+    logging:
+      options:
+        max-size: "50m"
+        max-file: "5"
     command: gunicorn -w 2 -b :5000 id-provider:app --log-level warning
 
   gateway:
@@ -100,6 +120,10 @@ services:
         WEB_SERVICE_PASS: ${PLANKWEB_SERVICE_PASS}
     container_name: gateway
     restart: unless-stopped
+    logging:
+      options:
+        max-size: "50m"
+        max-file: "5"
     depends_on:
       executor-http-api:
         condition: service_healthy
@@ -136,6 +160,10 @@ services:
       APACHE_URL: http://apache:80/
       ID_PROVIDER_URL: http://id-provider:5000/generate
       LOGGING_TZ: ${PLANKWEB_TIMEZONE:-Europe/Prague}
+    logging:
+      options:
+        max-size: "50m"
+        max-file: "5"
     volumes:
       - tmp:/app/tmp
     command: gunicorn -w 4 -b :3000 http-server:app --log-level warning
@@ -162,6 +190,10 @@ services:
       INPUTS_URL: http://apache:80/data/inputs
       PLANKWEB_BASE_URL: ${PLANKWEB_URL}
       LOGGING_TZ: ${PLANKWEB_TIMEZONE:-Europe/Prague}
+    logging:
+      options:
+        max-size: "50m"
+        max-file: "5"
     volumes:
       - foldseek:/app/results
     command: |
@@ -196,6 +228,10 @@ services:
       CONSERVATION_URL: http://apache:80/data/conservation
       PLANKWEB_BASE_URL: ${PLANKWEB_URL}
       LOGGING_TZ: ${PLANKWEB_TIMEZONE:-Europe/Prague}
+    logging:
+      options:
+        max-size: "50m"
+        max-file: "5"
     volumes:
       - p2rank:/app/results
     command: |
@@ -227,6 +263,10 @@ services:
       CELERY_BACKEND_URL: redis://:${PLANKWEB_SERVICE_PASS}@celery-backend:6379/0
       INPUTS_URL: http://apache:80/data/inputs
       LOGGING_TZ: ${PLANKWEB_TIMEZONE:-Europe/Prague}
+    logging:
+      options:
+        max-size: "50m"
+        max-file: "5"
     volumes:
       - conservation:/app/results
     command: |
@@ -260,6 +300,10 @@ services:
       CELERY_BACKEND_URL: redis://:${PLANKWEB_SERVICE_PASS}@celery-backend:6379/0
       INPUTS_URL: http://apache:80/data/inputs
       LOGGING_TZ: ${PLANKWEB_TIMEZONE:-Europe/Prague}
+    logging:
+      options:
+        max-size: "50m"
+        max-file: "5"
     command: |
       celery
         --app=celery_worker worker
@@ -299,6 +343,10 @@ services:
       CELERY_BACKEND_URL: redis://:${PLANKWEB_SERVICE_PASS}@celery-backend:6379/0
       APACHE_URL: http://apache:80/data
       LOGGING_TZ: ${PLANKWEB_TIMEZONE:-Europe/Prague}
+    logging:
+      options:
+        max-size: "50m"
+        max-file: "5"
     volumes:
       - inputs:/app/inputs
     command: |
@@ -314,6 +362,10 @@ services:
     build: https://github.com/mher/flower.git
     container_name: flower
     restart: unless-stopped
+    logging:
+      options:
+        max-size: "50m"
+        max-file: "5"
     depends_on:
       message-broker:
         condition: service_healthy
@@ -326,6 +378,7 @@ services:
   gateway-exporter:
     image: nginx/nginx-prometheus-exporter:1.4.1
     container_name: gateway-exporter
+    restart: unless-stopped
     depends_on:
       gateway:
         condition: service_started
@@ -334,6 +387,7 @@ services:
   id-database-exporter: 
     image: oliver006/redis_exporter:v1.70.0
     container_name: id-database-exporter
+    restart: unless-stopped
     depends_on:
       id-database:
         condition: service_started
@@ -343,6 +397,7 @@ services:
   celery-backend-exporter:
     image: oliver006/redis_exporter:v1.70.0
     container_name: celery-backend-exporter
+    restart: unless-stopped
     depends_on:
       celery-backend:
         condition: service_healthy
@@ -352,6 +407,7 @@ services:
   executor-http-api-exporter:
     image: bitnami/apache-exporter:1.0.10
     container_name: apache-exporter
+    restart: unless-stopped
     depends_on:
       executor-http-api:
         condition: service_started
@@ -361,6 +417,10 @@ services:
     image: prom/prometheus:v3.3.0
     container_name: prometheus
     restart: unless-stopped
+    logging:
+      options:
+        max-size: "50m"
+        max-file: "5"
     depends_on:
       gateway-exporter:
         condition: service_started
@@ -384,6 +444,10 @@ services:
   vector:
     image: timberio/vector:0.45.0-debian
     container_name: vector
+    logging:
+      options:
+        max-size: "50m"
+        max-file: "5"
     volumes:
       - ./containers/monitoring/vector.yaml:/etc/vector/vector.yaml:ro
       - /var/run/docker.sock:/var/run/docker.sock
@@ -409,11 +473,21 @@ services:
   loki:
     image: grafana/loki:2.9.0
     container_name: loki
+    restart: unless-stopped
+    logging:
+      options:
+        max-size: "50m"
+        max-file: "5"
     command: -config.file=/etc/loki/local-config.yaml
 
   grafana:
     image: grafana/grafana:11.6.0
     container_name: grafana
+    restart: unless-stopped
+    logging:
+      options:
+        max-size: "50m"
+        max-file: "5"
     depends_on:
       prometheus:
         condition: service_started
@@ -430,8 +504,13 @@ services:
   swagger-ui:
     image: swaggerapi/swagger-ui
     container_name: openapi
+    restart: unless-stopped
     environment:
       SWAGGER_JSON: /app/swagger.yaml
+    logging:
+      options:
+        max-size: "50m"
+        max-file: "5"
     volumes:
       - ./swagger.yaml:/app/swagger.yaml:ro
 
