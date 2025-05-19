@@ -26,7 +26,7 @@ from tasks_logger import create_logger
 
 PDB_FILE_URL = "https://files.rcsb.org/download/{}.pdb"
 INPUTS_URL = os.getenv('INPUTS_URL')
-APACHE_URL = os.getenv('APACHE_URL')
+PLANKWEB_BASE_URL = os.getenv('PLANKWEB_BASE_URL')
 RESULT_FILE = "{}_chain_result.json"
 
 logger = create_logger('ds-foldseek')
@@ -109,7 +109,7 @@ def save_results(result_folder: str, file_name: str, builder: ProteinDataBuilder
 def process_similar_protein(result_folder: str, fields: List[str], curr_chain: str, id: str) -> SimilarProteinBuilder:
     sim_protein_pdb_id, sim_protein_chain = fields[1][:4], fields[1].split("_")[1]
     pdb_filename = os.path.join(result_folder, f"{sim_protein_pdb_id}.pdb")
-    sim_prot_url = os.path.join(APACHE_URL, "ds_foldseek", id, f"{sim_protein_pdb_id}.pdb")
+    sim_prot_url = os.path.join(PLANKWEB_BASE_URL, "data", "ds_foldseek", id, f"{sim_protein_pdb_id}.pdb")
 
     sim_builder = SimilarProteinBuilder(sim_protein_pdb_id, fields[8], sim_protein_chain, sim_prot_url)
 

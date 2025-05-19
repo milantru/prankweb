@@ -110,7 +110,7 @@ services:
       swagger-ui:
         condition: service_started
     ports:
-      - 80:80
+      - 127.0.0.1:9864:80
 
   http-server:
     build:
@@ -133,7 +133,7 @@ services:
       metatask:
         condition: service_started
     environment:
-      CELERY_NAME: ${PLANKWEB_CELERY_NAME:-plankweb_tasks}
+      CELERY_NAME: plankweb_tasks
       CELERY_BROKER_URL: amqp://${PLANKWEB_SERVICE_USER:-guest}:${PLANKWEB_SERVICE_PASS:-guest}@message-broker:5672// 
       APACHE_URL: http://apache:80/
       ID_PROVIDER_URL: http://id-provider:5000/generate
@@ -160,10 +160,10 @@ services:
       executor-http-api:
         condition: service_healthy
     environment:
-      CELERY_NAME: ${PLANKWEB_CELERY_NAME:-plankweb_tasks}
+      CELERY_NAME: plankweb_tasks
       CELERY_BROKER_URL: amqp://${PLANKWEB_SERVICE_USER:-guest}:${PLANKWEB_SERVICE_PASS:-guest}@message-broker:5672// 
-      APACHE_URL: http://apache:80/data
       INPUTS_URL: http://apache:80/data/inputs
+      PLANKWEB_BASE_URL: ${PLANKWEB_URL:-http://localhost:9864}
       LOGGING_TZ: ${PLANKWEB_TIMEZONE:-Europe/Prague}
     volumes:
       - foldseek:/app/results
@@ -196,10 +196,11 @@ services:
       executor-http-api:
         condition: service_healthy
     environment:
-      CELERY_NAME: ${PLANKWEB_CELERY_NAME:-plankweb_tasks}
+      CELERY_NAME: plankweb_tasks
       CELERY_BROKER_URL: amqp://${PLANKWEB_SERVICE_USER:-guest}:${PLANKWEB_SERVICE_PASS:-guest}@message-broker:5672//
       INPUTS_URL: http://apache:80/data/inputs
       CONSERVATION_URL: http://apache:80/data/conservation
+      PLANKWEB_BASE_URL: ${PLANKWEB_URL:-http://localhost:9864}
       LOGGING_TZ: ${PLANKWEB_TIMEZONE:-Europe/Prague}
     volumes:
       - p2rank:/app/results
@@ -230,7 +231,7 @@ services:
       executor-http-api:
         condition: service_healthy
     environment:
-      CELERY_NAME: ${PLANKWEB_CELERY_NAME:-plankweb_tasks}
+      CELERY_NAME: plankweb_tasks
       CELERY_BROKER_URL: amqp://${PLANKWEB_SERVICE_USER:-guest}:${PLANKWEB_SERVICE_PASS:-guest}@message-broker:5672//
       CELERY_BACKEND_URL: redis://:${PLANKWEB_SERVICE_PASS:-guest}@celery-backend:6379/0
       INPUTS_URL: http://apache:80/data/inputs
@@ -265,7 +266,7 @@ services:
       executor-http-api:
         condition: service_healthy
     environment:
-      CELERY_NAME: ${PLANKWEB_CELERY_NAME:-plankweb_tasks}
+      CELERY_NAME: plankweb_tasks
       CELERY_BROKER_URL: amqp://${PLANKWEB_SERVICE_USER:-guest}:${PLANKWEB_SERVICE_PASS:-guest}@message-broker:5672// 
       CELERY_BACKEND_URL: redis://:${PLANKWEB_SERVICE_PASS:-guest}@celery-backend:6379/0
       INPUTS_URL: http://apache:80/data/inputs
@@ -306,7 +307,7 @@ services:
       ds-p2rank:
         condition: service_started
     environment:
-      CELERY_NAME: ${PLANKWEB_CELERY_NAME:-plankweb_tasks}
+      CELERY_NAME: plankweb_tasks
       CELERY_BROKER_URL: amqp://${PLANKWEB_SERVICE_USER:-guest}:${PLANKWEB_SERVICE_PASS:-guest}@message-broker:5672// 
       CELERY_BACKEND_URL: redis://:${PLANKWEB_SERVICE_PASS:-guest}@celery-backend:6379/0
       APACHE_URL: http://apache:80/data
@@ -393,7 +394,7 @@ services:
     command:
       - --config.file=/etc/prometheus/prometheus.yml
       - --storage.tsdb.path=/prometheus
-      - --web.external-url=http://localhost/service/prometheus/
+      - --web.external-url=http://gateway:80/service/prometheus/
 
   vector:
     image: timberio/vector:0.45.0-debian
@@ -436,7 +437,7 @@ services:
     environment:
       GF_SECURITY_ADMIN_USER: ${PLANKWEB_SERVICE_USER:-guest}
       GF_SECURITY_ADMIN_PASSWORD: ${PLANKWEB_SERVICE_PASS:-guest}
-      GF_SERVER_ROOT_URL: http://localhost/service/grafana/
+      GF_SERVER_ROOT_URL: http://gateway:80/service/grafana/
       GF_SERVER_SERVE_FROM_SUB_PATH: true
     volumes:
       - grafana:/var/lib/grafana
@@ -450,10 +451,11 @@ services:
 volumes:
   rabbitmq:
   redis:
+  celery:
   foldseek:
   p2rank:
+  plm:
   inputs:
   conservation:
-  celery:
   grafana:
   tmp:
