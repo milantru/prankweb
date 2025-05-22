@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import List, Optional, overload
 from datetime import datetime
+from abc import ABC, abstractmethod
 
 @dataclass
 class Residue:
@@ -56,7 +57,7 @@ class ProteinData:
     metadata: Metadata
     similarProteins: Optional[List[SimilarProtein]] = None
 
-class ProteinBuilderBase:
+class ProteinBuilderBase(ABC):
     def __init__(self, sequence: str, chain: str, pdb_url: str):
         self._sequence = sequence
         self._chain = chain
@@ -82,6 +83,10 @@ class ProteinBuilderBase:
             raise TypeError("Invalid arguments for add_binding_site")
 
         return self
+    
+    @abstractmethod
+    def build(self):
+        pass
 
 class SimilarProteinBuilder(ProteinBuilderBase):
     def __init__(self, pdb_id: str, sequence: str, chain: str, pdb_url: str):
