@@ -129,6 +129,8 @@ function AnalyticalPage() {
 	const molstarWrapperRef = useRef<MolStarWrapperHandle>(null!);
 	const [allDataFetched, setAllDataFetched] = useState<boolean>(false);
 	const chains = useRef<string[]>([]);
+	// bindingSiteSupportCounter[chain][residue index in structure (of pocket)] -> number of data sources supporting that residue is part of binding site
+	const [bindingSiteSupportCounter, setBindingSiteSupportCounter] = useState<Record<string, Record<number, number>>>({});
 
 	useEffect(() => {
 		if (isPollingFinished.current.every(x => x)) {
@@ -178,7 +180,7 @@ function AnalyticalPage() {
 					conservations = conservationsTmp;
 				}
 
-				chainResultsTmp[chain] = alignSequencesAcrossAllDataSources(dataSourceResults, conservations);
+				chainResultsTmp[chain] = alignSequencesAcrossAllDataSources(dataSourceResults, conservations, chain);
 			}
 			handleChainSelect(chainResultsTmp[defaultChain], defaultChain); // Every protein has at least 1 chain
 			setChainResults(chainResultsTmp);
@@ -237,11 +239,13 @@ function AnalyticalPage() {
 					)}
 				</div>
 				<div id="visualization-molstar" className="col-xs-12 col-md-6 col-xl-6">
-					{chainResults && selectedChain ? (<>
+					{chainResults && selectedChain && selectedChain in bindingSiteSupportCounter ? (<>
 						<div className="d-flex justify-content-center align-items-center mb-2">
 							<MolStarWrapper ref={molstarWrapperRef}
 								chainResults={chainResults}
 								selectedChain={selectedChain}
+								bindingSiteSupportCounter={bindingSiteSupportCounter[selectedChain]}
+								dataSourceCount={dataSourceExecutors.current.length}
 								onStructuresLoadingStart={() => setIsSettingsPanelDisabled(true)}
 								onStructuresLoadingEnd={() => setIsSettingsPanelDisabled(false)} />
 						</div>
@@ -491,7 +495,8 @@ function AnalyticalPage() {
 
 	function alignSequencesAcrossAllDataSources(
 		unprocessedResultPerDataSourceExecutor: Record<string, UnprocessedResult>,
-		conservations: Conservation[]
+		conservations: Conservation[],
+		chain: string
 	): ChainResult {
 		const dataSourceExecutorsCount = Object.keys(unprocessedResultPerDataSourceExecutor).length;
 		if (dataSourceExecutorsCount == 0) {
@@ -622,22 +627,61 @@ function AnalyticalPage() {
 			}
 		}
 
-		// "Postprocessing phase": Update all residue indices of each binding site
-		Object.entries(unprocessedResultPerDataSourceExecutor).forEach(([dataSourceName, result]) => {
-			// Update residues of binding sites of query protein
-			result.bindingSites.forEach(bindingSite =>
-				updateBindingSiteResiduesIndices(bindingSite, mapping));
+		/* "Postprocessing phase": Update all residue indices of each binding site, 
+		 * also count how many data sources support certain binding site. */
+		// bindingSiteSupportCounterTmp[residue index in structure (of pocket)]: number of data sources supporting pocket on the index
+		const bindingSiteSupportCounterTmp: Record<number, number> = {};
+		for (const [dataSourceName, result] of Object.entries(unprocessedResultPerDataSourceExecutor)) {
+			let supporterCounted: Record<number, boolean> = {}; // one data source can support residue just once
 
-			if (result.similarProteins) {
-				// Update residues of binding sites of all similar proteins
-				result.similarProteins.forEach((simProt, simProtIdx) =>
-					simProt.bindingSites.forEach(bindingSite =>
-						updateBindingSiteResiduesIndices(bindingSite, similarProteinsMapping[dataSourceName][simProtIdx])));
+			// Update residues of binding sites of query protein and count supporters
+			for (const bindingSite of result.bindingSites) {
+				updateBindingSiteResiduesIndices(bindingSite, mapping);
+
+				for (const residue of bindingSite.residues) {
+					if (supporterCounted[residue.structureIndex]) {
+						continue;
+					}
+
+					if (!(residue.structureIndex in bindingSiteSupportCounterTmp)) {
+						bindingSiteSupportCounterTmp[residue.structureIndex] = 0;
+					}
+					bindingSiteSupportCounterTmp[residue.structureIndex] += 1;
+					supporterCounted[residue.structureIndex] = true;
+				}
 			}
-		});
+
+			if (!result.similarProteins) {
+				continue;
+			}
+			// Update residues of binding sites of all similar proteins and count supporters
+			for (let simProtIdx = 0; simProtIdx < result.similarProteins.length; simProtIdx++) {
+				const simProt = result.similarProteins[simProtIdx];
+
+				for (const bindingSite of simProt.bindingSites) {
+					updateBindingSiteResiduesIndices(bindingSite, similarProteinsMapping[dataSourceName][simProtIdx]);
+
+					for (const residue of bindingSite.residues) {
+						if (supporterCounted[residue.structureIndex]) {
+							continue;
+						}
+
+						if (!(residue.structureIndex in bindingSiteSupportCounterTmp)) {
+							bindingSiteSupportCounterTmp[residue.structureIndex] = 0;
+						}
+						bindingSiteSupportCounterTmp[residue.structureIndex] += 1;
+						supporterCounted[residue.structureIndex] = true;
+					}
+				}
+			}
+		}
 		for (const conservation of conservations) {
 			conservation.index = mapping[conservation.index];
 		}
+		setBindingSiteSupportCounter(prevState => ({
+			...prevState,
+			[chain]: bindingSiteSupportCounterTmp
+		}));
 
 		const dataSourceExecutorResultsTmp: Record<string, ProcessedResult> = {};
 		Object.entries(unprocessedResultPerDataSourceExecutor).forEach(([dataSourceName, result]) =>
@@ -727,7 +771,7 @@ function AnalyticalPage() {
 			}
 		}));
 
-		molstarWrapperRef.current?.toggleQueryProteinLigand(dataSourceName, chain, ligandId, show);
+		molstarWrapperRef.current?.toggleQueryProteinBindingSite(dataSourceName, chain, ligandId, show);
 	}
 
 	function handleSimilarProteinLigandToggle(dataSourceName: string, pdbCode: string, chain: string, ligandId: string, show: boolean) {

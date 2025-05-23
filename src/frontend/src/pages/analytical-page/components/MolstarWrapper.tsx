@@ -1,4 +1,4 @@
-import { useEffect, createRef, forwardRef, useImperativeHandle, useRef } from "react";
+import { useEffect, createRef, forwardRef, useImperativeHandle, useRef, useState } from "react";
 import { createPluginUI } from "molstar/lib/mol-plugin-ui";
 import { renderReact18 } from "molstar/lib/mol-plugin-ui/react18";
 import { PluginUIContext } from "molstar/lib/mol-plugin-ui/context";
@@ -7,8 +7,8 @@ see https://webpack.js.org/loaders/sass-loader/ for example.
 create-react-app should support this natively. */
 import "molstar/lib/mol-plugin-ui/skin/light.scss";
 import { DefaultPluginUISpec } from "molstar/lib/mol-plugin-ui/spec";
-import { ChainResult, ChainResults, ProcessedResult } from "../AnalyticalPage";
-import { StateObjectRef, StateObjectSelector } from "molstar/lib/mol-state";
+import { ChainResult, ChainResults, ProcessedResult, Residue } from "../AnalyticalPage";
+import { StateBuilder, StateObjectRef, StateObjectSelector } from "molstar/lib/mol-state";
 import { Asset } from "molstar/lib/mol-util/assets";
 import { MolScriptBuilder as MS } from "molstar/lib/mol-script/language/builder";
 import { QueryContext, StructureElement, StructureSelection } from "molstar/lib/mol-model/structure";
@@ -24,9 +24,10 @@ import { MinimizeRmsd } from "molstar/lib/mol-math/linear-algebra/3d/minimize-rm
 import { setSubtreeVisibility } from 'molstar/lib/mol-plugin/behavior/static/state';
 import { Color } from "molstar/lib/mol-util/color";
 import { StructureOption } from "./SettingsPanel";
+import Switch from "./Switch";
 
 export type MolStarWrapperHandle = {
-	toggleQueryProteinLigand: (dataSourceName: string, chain: string, ligandId: string, show: boolean) => void;
+	toggleQueryProteinBindingSite: (dataSourceName: string, chain: string, ligandId: string, show: boolean) => void;
 	toggleSimilarProteinBindingSite: (dataSourceName: string, pdbCode: string, chain: string, ligandId: string, show: boolean) => void;
 	toggleSimilarProteinStructure: (dataSourceName: string, pdbCode: string, chain: string, show: boolean) => void;
 	hideAllSimilarProteinStructures: (except: StructureOption[]) => void;
@@ -43,28 +44,52 @@ type VisibleObject = {
 	isVisible: boolean;
 };
 
+type ResidueObject = {
+	residueObject: StateObjectSelector;
+	supportersCount: number;
+};
+
+type VisiblePocketObjects = {
+	/* Like VisibleObject, but doesn't contain reference only to one object but to all residue objects that form pocket,
+	 * and also apart from that, also contains information about how many data sources support that the residue 
+	 * is part of the pocket/binding site. */
+	residueObjectsAndSupporters: ResidueObject[];
+	isVisible: boolean;
+};
+
 type Props = {
 	chainResults: ChainResults;
 	selectedChain: string;
+	// bindingSiteSupportCounter[residue index in structure (of pocket)] -> number of data sources supporting that the residue index is part of binding site
+	bindingSiteSupportCounter: Record<number, number>;
+	dataSourceCount: number;
 	onStructuresLoadingStart: () => void;
 	onStructuresLoadingEnd: () => void;
 };
 
-export const MolStarWrapper = forwardRef(({ chainResults, selectedChain, onStructuresLoadingStart, onStructuresLoadingEnd }: Props, ref) => {
+export const MolStarWrapper = forwardRef(({
+	chainResults,
+	selectedChain,
+	bindingSiteSupportCounter,
+	dataSourceCount,
+	onStructuresLoadingStart,
+	onStructuresLoadingEnd
+}: Props, ref) => {
 	const chainResult = chainResults[selectedChain];
 	if (!chainResult) {
 		return <div>No data for the selected chain.</div>
 	}
 	const parent = createRef<HTMLDivElement>();
 	const queryStructure = useRef<VisibleObject>(null!);
-	const similarProteinStructures = useRef<Record<string, Record<string, Record<string, VisibleObject>>>>({});
-	const queryProteinPockets = useRef<Record<string, Record<string, Record<string, VisibleObject>>>>({});
-	const similarProteinPockets = useRef<Record<string, Record<string, Record<string, Record<string, VisibleObject>>>>>({});
+	const queryProteinPockets = useRef<Record<string, Record<string, Record<string, VisiblePocketObjects>>>>({});
 	const queryProteinLigands = useRef<Record<string, Record<string, Record<string, VisibleObject>>>>({});
+	const similarProteinStructures = useRef<Record<string, Record<string, Record<string, VisibleObject>>>>({});
+	const similarProteinPockets = useRef<Record<string, Record<string, Record<string, Record<string, VisiblePocketObjects>>>>>({});
 	const similarProteinLigands = useRef<Record<string, Record<string, Record<string, Record<string, VisibleObject>>>>>({});
+	const [isHighlightModeOn, setIsHighlightModeOn] = useState<boolean>(false);
 
 	useImperativeHandle(ref, () => ({
-		toggleQueryProteinLigand,
+		toggleQueryProteinBindingSite,
 		toggleSimilarProteinBindingSite,
 		toggleSimilarProteinStructure,
 		hideAllSimilarProteinStructures
@@ -121,8 +146,63 @@ export const MolStarWrapper = forwardRef(({ chainResults, selectedChain, onStruc
 		loadNewStructures(plugin, "pdb", selectedChain);
 	}, [/*chainResult, */selectedChain]); // TODO is not dependant on chainResult because query seq should not change
 
+	useEffect(() => {
+		async function updatePocketsTransparency() {
+			function updateTransparency(update: StateBuilder.Root, o: ResidueObject) {
+				const alpha = getPocketTransparency(o.supportersCount)
+
+				update.to(o.residueObject).update(old => {
+					old.type.params.alpha = alpha;
+				});
+			}
+
+			const plugin = window.molstar;
+			if (!plugin) {
+				console.error("Tried to update pockets transparency due to highlight mode toggle, but plugin is missing.");
+				return;
+			}
+
+			const update = plugin.build();
+			// Update query structure pockets
+			for (const [dataSourceName, o1] of Object.entries(queryProteinPockets.current)) {
+				for (const [chain, o2] of Object.entries(o1)) {
+					for (const [bindingSiteId, pocket] of Object.entries(o2)) {
+						for (const o of pocket.residueObjectsAndSupporters) {
+							updateTransparency(update, o);
+						}
+					}
+				}
+			}
+			// Update similar structures pockets
+			for (const [dataSourceName, o1] of Object.entries(similarProteinPockets.current)) {
+				for (const [pdbId, o2] of Object.entries(o1)) {
+					for (const [chain, o3] of Object.entries(o2)) {
+						for (const [bindingSiteId, pocket] of Object.entries(o3)) {
+							for (const o of pocket.residueObjectsAndSupporters) {
+								updateTransparency(update, o);
+							}
+						}
+					}
+				}
+			}
+			await update.commit();
+		}
+
+		updatePocketsTransparency();
+	}, [isHighlightModeOn]);
+
 	return (
-		<div ref={parent} style={{ position: "relative", height: "70vh", width: "45vw" }}></div>
+		<div>
+			<div className="d-flex">
+				<div className="mt-2 ml-auto"
+					title="Enables mode in which when visualising binding sites, color saturation increases with number of supporting data sources.">
+					Highlight mode
+					<Switch classes="ml-2" onToggle={isOn => setIsHighlightModeOn(isOn)} />
+				</div>
+			</div>
+
+			<div ref={parent} style={{ position: "relative", height: "70vh", width: "45vw" }}></div>
+		</div>
 	);
 
 	function getQuerySequenceUrl(chainResult: ChainResult) {
@@ -143,31 +223,50 @@ export const MolStarWrapper = forwardRef(({ chainResults, selectedChain, onStruc
 		return plugin.runTask(plugin.state.data.updateTree(b));
 	}
 
+	function getPocketTransparency(supportersCount: number | null = null) {
+		const defaultValue = 1; // No transparency
+
+		if (!supportersCount) {
+			return defaultValue;
+		}
+
+		const alpha = isHighlightModeOn
+			? supportersCount / dataSourceCount
+			: defaultValue;
+
+		return alpha;
+	}
+
 	async function createPocketRepresentationForStruct(
 		plugin: PluginContext,
 		struct: VisibleObject,
 		key: string,
-		pocketQueryExpression: Expression,
+		pocketExprAndSupportersCount: { expr: Expression, supportersCount: number },
 		showRepresentationWhenCreated: boolean
-	) {
-		const l = await plugin.builders.structure.tryCreateComponentFromExpression(struct.object, pocketQueryExpression, key);
-		if (!l) {
+	): Promise<ResidueObject | null> {
+		const p = await plugin.builders.structure.tryCreateComponentFromExpression(struct.object, pocketExprAndSupportersCount.expr, key);
+		if (!p) {
+			console.warn("Failed to create pocket representation (for 1 residue) for struct. Key: ", key);
 			return null;
-		} else {
-			console.warn("Failed to create pocket representation for struct. Key: ", key);
 		}
 
-		await plugin.builders.structure.representation.addRepresentation(l, {
+		const alpha = getPocketTransparency(pocketExprAndSupportersCount.supportersCount);
+
+		const pr = await plugin.builders.structure.representation.addRepresentation(p, {
 			type: "cartoon",
-			typeParams: { alpha: 1 },
+			typeParams: { alpha: alpha },
 			color: "uniform",
-			colorParams: { value: Color(Number("0xff0000")) },
+			colorParams: { value: Color(Number("0xff0000")) }, // red color
 			size: "physical",
 			sizeParams: { scale: 1.10 }
 		});
-		setSubtreeVisibility(plugin.state.data, l.ref, !showRepresentationWhenCreated);
+		setSubtreeVisibility(plugin.state.data, p.ref, !showRepresentationWhenCreated);
 
-		return l;
+		const res: ResidueObject = {
+			residueObject: pr,
+			supportersCount: pocketExprAndSupportersCount.supportersCount
+		};
+		return res;
 	}
 
 	async function createLigandsRepresentationForStruct(
@@ -194,11 +293,11 @@ export const MolStarWrapper = forwardRef(({ chainResults, selectedChain, onStruc
 		plugin: PluginContext,
 		structs: Record<string, Record<string, Record<string, VisibleObject>>>,
 		ligandsExpression: Record<string, Record<string, Record<string, Record<string, Expression>>>>,
-		pocketsExpression: Record<string, Record<string, Record<string, Record<string, Expression>>>>,
+		pocketsExpressions: Record<string, Record<string, Record<string, Record<string, { expr: Expression, supportersCount }[]>>>>,
 		showRepresentationsWhenCreated: boolean
 	) {
 		const ls: Record<string, Record<string, Record<string, Record<string, VisibleObject>>>> = {};
-		const ps: Record<string, Record<string, Record<string, Record<string, VisibleObject>>>> = {};
+		const ps: Record<string, Record<string, Record<string, Record<string, VisiblePocketObjects>>>> = {};
 		for (const [dataSourceName, result] of Object.entries(chainResult.dataSourceExecutorResults)) {
 			if (!result.similarProteins) {
 				continue;
@@ -228,24 +327,30 @@ export const MolStarWrapper = forwardRef(({ chainResults, selectedChain, onStruc
 				}
 				for (const bindingSite of simProt.bindingSites) {
 					const struct = structs[dataSourceName][simProt.pdbId][simProt.chain];
-					const key = `${dataSourceName}-${simProt.pdbId}-${simProt.chain}-${bindingSite.id}-pocket`;
-					const pocketExpr = pocketsExpression[dataSourceName][simProt.pdbId][simProt.chain][bindingSite.id];
+					const pocketsExpressionsAndSupporters = pocketsExpressions[dataSourceName][simProt.pdbId][simProt.chain][bindingSite.id];
 
-					const p = await createPocketRepresentationForStruct(plugin, struct, key, pocketExpr, showRepresentationsWhenCreated);
-					if (p) {
-						if (!(dataSourceName in ps)) {
-							ps[dataSourceName] = {};
+					const residueObjects: ResidueObject[] = [];
+					for (let i = 0; i < pocketsExpressionsAndSupporters.length; i++) {
+						const pocketExprAndSupporters = pocketsExpressionsAndSupporters[i];
+						const key = `${dataSourceName}-${simProt.pdbId}-${simProt.chain}-${bindingSite.id}-pocket-${i}`;
+
+						const resObj = await createPocketRepresentationForStruct(plugin, struct, key, pocketExprAndSupporters, showRepresentationsWhenCreated);
+						if (!resObj) {
+							console.warn("Failed to create pocket representation (for 1 residue). Key: ", key);
+							continue;
 						}
-						if (!(simProt.pdbId in ps[dataSourceName])) {
-							ps[dataSourceName][simProt.pdbId] = {};
-						}
-						if (!(simProt.chain in ps[dataSourceName][simProt.pdbId])) {
-							ps[dataSourceName][simProt.pdbId][simProt.chain] = {};
-						}
-						ps[dataSourceName][simProt.pdbId][simProt.chain][bindingSite.id] = { object: p, isVisible: false };
-					} else {
-						console.warn("Failed to create pocket representation. Key: ", key);
+						residueObjects.push(resObj);
 					}
+					if (!(dataSourceName in ps)) {
+						ps[dataSourceName] = {};
+					}
+					if (!(simProt.pdbId in ps[dataSourceName])) {
+						ps[dataSourceName][simProt.pdbId] = {};
+					}
+					if (!(simProt.chain in ps[dataSourceName][simProt.pdbId])) {
+						ps[dataSourceName][simProt.pdbId][simProt.chain] = {};
+					}
+					ps[dataSourceName][simProt.pdbId][simProt.chain][bindingSite.id] = { residueObjectsAndSupporters: residueObjects, isVisible: false };
 
 					if (!bindingSite.id.startsWith("pocket_")) {
 						// We know pocket also has ligand so we create expr for that too 
@@ -305,7 +410,7 @@ export const MolStarWrapper = forwardRef(({ chainResults, selectedChain, onStruc
 		return { object: structure, isVisible: false };
 	}
 
-	function setVisibility(visibleObject: VisibleObject, show: boolean) {
+	function setVisibilityOfObject(visibleObject: VisibleObject, show: boolean) {
 		const plugin = window.molstar;
 		if (!plugin) {
 			console.warn("Tried to set visibility, but the plugin is missing.");
@@ -316,56 +421,44 @@ export const MolStarWrapper = forwardRef(({ chainResults, selectedChain, onStruc
 		visibleObject.isVisible = show;
 	}
 
-	function performDynamicSuperposition(plugin: PluginContext, format: BuiltInTrajectoryFormat, chain: string) {
-		function toParts(residues: number[]): { from: number; to: number }[] {
-			if (residues.length === 0) return [];
-
-			// Sort the input in case it's not sorted
-			const sortedResidues = [...residues].sort((a, b) => a - b);
-
-			const parts: { from: number; to: number }[] = [];
-			let start = sortedResidues[0];
-			let end = sortedResidues[0];
-
-			for (let i = 1; i < sortedResidues.length; i++) {
-				const current = sortedResidues[i];
-
-				if (current === end + 1) {
-					// Still consecutive
-					end = current;
-				} else {
-					// Break in sequence, push current part and start new
-					parts.push({ from: start, to: end });
-					start = end = current;
-				}
-			}
-
-			// Push the final part
-			parts.push({ from: start, to: end });
-
-			return parts;
+	function setVisibilityOfObjects(visibleObjects: VisiblePocketObjects, show: boolean) {
+		const plugin = window.molstar;
+		if (!plugin) {
+			console.warn("Tried to set visibility, but the plugin is missing.");
+			return;
 		}
 
+		for (const o of visibleObjects.residueObjectsAndSupporters) {
+			setSubtreeVisibility(plugin.state.data, o.residueObject.ref, !show);
+		}
+		visibleObjects.isVisible = show;
+	}
+
+	function performDynamicSuperposition(plugin: PluginContext, format: BuiltInTrajectoryFormat, chain: string) {
 		return plugin.dataTransaction(async () => {
 			// Load query protein structure
 			const querySequenceUrl = getQuerySequenceUrl(chainResult);
 			const queryStructureTmp = await _loadStructure(plugin, querySequenceUrl, format);
 			queryStructure.current = queryStructureTmp;
 
-			const queryProteinPocketsExpression: Record<string, Record<string, Record<string, Expression>>> = {};
+			const queryProteinPocketsExpression: Record<string, Record<string, Record<string, { expr: Expression, supportersCount: number }[]>>> = {};
 			const queryProteinLigandsExpression: Record<string, Record<string, Record<string, Expression>>> = {};
 			const dseResult = chainResult.dataSourceExecutorResults
 			for (const [dataSourceName, result] of Object.entries(dseResult)) {
 				for (const bindingSite of result.bindingSites) {
 					const residues = bindingSite.residues.map(residue => residue.structureIndex);
-					const parts = toParts(residues);
-					const partsExpressions = parts.map(part => MS.core.rel.inRange(
-						[MS.struct.atomProperty.macromolecular.label_seq_id(), part.from, part.to]
-					));
-					const wholeResiduesExpression = MS.struct.generator.atomGroups({
-						'chain-test': MS.core.rel.eq([MS.struct.atomProperty.macromolecular.auth_asym_id(), chain]),
-						'residue-test': MS.core.logic.or(partsExpressions)
-					});
+					const residuesExpressionsAndSupporters = residues.map(r => ({
+						expr: MS.struct.generator.atomGroups({
+							'chain-test': MS.core.rel.eq([MS.struct.atomProperty.macromolecular.auth_asym_id(), chain]), // TODO: probably no need for chain test
+							'residue-test': MS.core.rel.eq([MS.struct.atomProperty.macromolecular.label_seq_id(), r])
+						}),
+						supportersCount: bindingSiteSupportCounter[r]
+					}));
+					// TODO netreba to ako v prankwebe v zdrojaku je?
+					// const wholeResiduesExpression = MS.struct.generator.atomGroups({
+					// 	'chain-test': MS.core.rel.eq([MS.struct.atomProperty.macromolecular.auth_asym_id(), chain]),
+					// 	'residue-test': MS.core.logic.or(partsExpressions)
+					// });
 
 					if (!(dataSourceName in queryProteinPocketsExpression)) {
 						queryProteinPocketsExpression[dataSourceName] = {};
@@ -373,7 +466,10 @@ export const MolStarWrapper = forwardRef(({ chainResults, selectedChain, onStruc
 					if (!(selectedChain in queryProteinPocketsExpression[dataSourceName])) {
 						queryProteinPocketsExpression[dataSourceName][selectedChain] = {};
 					}
-					queryProteinPocketsExpression[dataSourceName][selectedChain][bindingSite.id] = wholeResiduesExpression;
+					if (!(bindingSite.id in queryProteinPocketsExpression[dataSourceName][selectedChain])) {
+						queryProteinPocketsExpression[dataSourceName][selectedChain][bindingSite.id] = [];
+					}
+					queryProteinPocketsExpression[dataSourceName][selectedChain][bindingSite.id].push(...residuesExpressionsAndSupporters);
 
 					if (!bindingSite.id.startsWith("pocket_")) {
 						// We know pocket also has ligand so we create expr for that too 
@@ -421,7 +517,7 @@ export const MolStarWrapper = forwardRef(({ chainResults, selectedChain, onStruc
 			}
 			similarProteinStructures.current = structuresTmp;
 
-			const similarProteinPocketsExpression: Record<string, Record<string, Record<string, Record<string, Expression>>>> = {};
+			const similarProteinPocketsExpression: Record<string, Record<string, Record<string, Record<string, { expr: Expression, supportersCount: number }[]>>>> = {};
 			const similarProteinLigandsExpression: Record<string, Record<string, Record<string, Record<string, Expression>>>> = {};
 			for (const [dataSourceName, result] of Object.entries(chainResult.dataSourceExecutorResults)) {
 				if (!result.similarProteins) {
@@ -453,14 +549,18 @@ export const MolStarWrapper = forwardRef(({ chainResults, selectedChain, onStruc
 					}
 					for (const bindingSite of simProt.bindingSites) {
 						const residues = bindingSite.residues.map(residue => residue.structureIndex);
-						const parts = toParts(residues);
-						const partsExpressions = parts.map(part => MS.core.rel.inRange(
-							[MS.struct.atomProperty.macromolecular.label_seq_id(), part.from, part.to]
-						));
-						const wholeResiduesExpression = MS.struct.generator.atomGroups({
-							'chain-test': MS.core.rel.eq([MS.struct.atomProperty.macromolecular.auth_asym_id(), simProt.chain]),
-							'residue-test': MS.core.logic.or(partsExpressions)
-						});
+						const residuesExpressionsAndSupporters = residues.map(r => ({
+							expr: MS.struct.generator.atomGroups({
+								'chain-test': MS.core.rel.eq([MS.struct.atomProperty.macromolecular.auth_asym_id(), simProt.chain]), // TODO: probably no need for chain test
+								'residue-test': MS.core.rel.eq([MS.struct.atomProperty.macromolecular.label_seq_id(), r])
+							}),
+							supportersCount: bindingSiteSupportCounter[r]
+						}));
+						// TODO netreba to ako v prankwebe v zdrojaku je?
+						// const wholeResiduesExpression = MS.struct.generator.atomGroups({
+						// 	'chain-test': MS.core.rel.eq([MS.struct.atomProperty.macromolecular.auth_asym_id(), chain]),
+						// 	'residue-test': MS.core.logic.or(partsExpressions)
+						// });
 
 						if (!(dataSourceName in similarProteinPocketsExpression)) {
 							similarProteinPocketsExpression[dataSourceName] = {};
@@ -471,7 +571,10 @@ export const MolStarWrapper = forwardRef(({ chainResults, selectedChain, onStruc
 						if (!(simProt.chain in similarProteinPocketsExpression[dataSourceName][simProt.pdbId])) {
 							similarProteinPocketsExpression[dataSourceName][simProt.pdbId][simProt.chain] = {};
 						}
-						similarProteinPocketsExpression[dataSourceName][simProt.pdbId][simProt.chain][bindingSite.id] = wholeResiduesExpression;
+						if (!(bindingSite.id in similarProteinPocketsExpression[dataSourceName][simProt.pdbId][simProt.chain])) {
+							similarProteinPocketsExpression[dataSourceName][simProt.pdbId][simProt.chain][bindingSite.id] = [];
+						}
+						similarProteinPocketsExpression[dataSourceName][simProt.pdbId][simProt.chain][bindingSite.id].push(...residuesExpressionsAndSupporters);
 
 						if (!bindingSite.id.startsWith("pocket_")) {
 							// We know pocket also has ligand so we create expr for that too 
@@ -503,29 +606,6 @@ export const MolStarWrapper = forwardRef(({ chainResults, selectedChain, onStruc
 				}
 			}
 
-			function createGetChainExpression(c: string) {
-				const selectChainExpr = MS.struct.generator.atomGroups({
-					'chain-test': MS.core.rel.eq([
-						MS.struct.atomProperty.macromolecular.auth_asym_id(), c
-					]),
-				});
-
-				return selectChainExpr;
-			}
-
-			// TODO vyuziva sa?
-			function createGetRestExpression(getPivotExpression: Expression) {
-				const rest = MS.struct.modifier.exceptBy({
-					0: MS.struct.modifier.includeSurroundings({
-						0: getPivotExpression,
-						radius: 5
-					}),
-					by: getPivotExpression
-				});
-
-				return rest;
-			}
-
 			const xs = plugin.managers.structure.hierarchy.current.structures;
 			if (xs.length === 0) {
 				console.warn("No structures to display.");
@@ -542,6 +622,16 @@ export const MolStarWrapper = forwardRef(({ chainResults, selectedChain, onStruc
 					similarProteinsChains.push(simProt.chain);
 				}
 			}
+
+			const createGetChainExpression = (c: string) => {
+				const selectChainExpr = MS.struct.generator.atomGroups({
+					'chain-test': MS.core.rel.eq([
+						MS.struct.atomProperty.macromolecular.auth_asym_id(), c
+					]),
+				});
+
+				return selectChainExpr;
+			};
 
 			const query1 = compile<StructureSelection>(createGetChainExpression(chain));
 			let selections: StructureElement.Loci[] = [
@@ -563,7 +653,7 @@ export const MolStarWrapper = forwardRef(({ chainResults, selectedChain, onStruc
 			await createStructureRepresentation(plugin, xs[0].cell, createGetChainExpression(chain), true);
 
 			// Create representations of query protein ligands
-			const queryProteinPocketsTmp: Record<string, Record<string, Record<string, VisibleObject>>> = {};
+			const queryProteinPocketsTmp: Record<string, Record<string, Record<string, VisiblePocketObjects>>> = {};
 			const queryProteinLigandsTmp: Record<string, Record<string, Record<string, VisibleObject>>> = {};
 			for (const [dataSourceName, result] of Object.entries(dseResult)) {
 				if (result.bindingSites.length === 0) {
@@ -581,23 +671,28 @@ export const MolStarWrapper = forwardRef(({ chainResults, selectedChain, onStruc
 						queryProteinLigandsTmp[dataSourceName][selectedChain] = {};
 					}
 				}
-				// TODO na tie keys mozno indexy by bolo dobre dat
 				for (const bindingSite of result.bindingSites) {
-					const key = `${dataSourceName}-${selectedChain}-${bindingSite.id}-pocket`;
-					const pocketExpr = queryProteinPocketsExpression[dataSourceName][selectedChain][bindingSite.id];
+					const pocketExpressionsAndSupporters = queryProteinPocketsExpression[dataSourceName][selectedChain][bindingSite.id];
 
-					const p = await createPocketRepresentationForStruct(plugin, queryStructureTmp, key, pocketExpr, false);
-					if (p) {
-						if (!(dataSourceName in queryProteinPocketsTmp)) {
-							queryProteinPocketsTmp[dataSourceName] = {};
+					const residueObjects: ResidueObject[] = [];
+					for (let i = 0; i < pocketExpressionsAndSupporters.length; i++) {
+						const pocketExprAndSupportersCount = pocketExpressionsAndSupporters[i];
+						const key = `${dataSourceName}-${selectedChain}-${bindingSite.id}-pocket-${i}`;
+
+						const resObj = await createPocketRepresentationForStruct(plugin, queryStructureTmp, key, pocketExprAndSupportersCount, false);
+						if (!resObj) {
+							console.warn("Failed to create pocket representation (for 1 residue). Key: ", key);
+							continue;
 						}
-						if (!(selectedChain in queryProteinPocketsTmp[dataSourceName])) {
-							queryProteinPocketsTmp[dataSourceName][selectedChain] = {};
-						}
-						queryProteinPocketsTmp[dataSourceName][selectedChain][bindingSite.id] = { object: p, isVisible: false };
-					} else {
-						console.warn("Failed to create pocket representation. Data: ", dataSourceName, selectedChain, bindingSite.id);
+						residueObjects.push(resObj);
 					}
+					if (!(dataSourceName in queryProteinPocketsTmp)) {
+						queryProteinPocketsTmp[dataSourceName] = {};
+					}
+					if (!(selectedChain in queryProteinPocketsTmp[dataSourceName])) {
+						queryProteinPocketsTmp[dataSourceName][selectedChain] = {};
+					}
+					queryProteinPocketsTmp[dataSourceName][selectedChain][bindingSite.id] = { residueObjectsAndSupporters: residueObjects, isVisible: false };
 
 					if (!bindingSite.id.startsWith("pocket_")) {
 						const key = `${dataSourceName}-${selectedChain}-${bindingSite.id}-ligand`;
@@ -643,29 +738,30 @@ export const MolStarWrapper = forwardRef(({ chainResults, selectedChain, onStruc
 		onStructuresLoadingEnd();
 	}
 
-	/** Toggle visibility of a pocket. If pocket contains ligand, shows/hides it as well. */
-	function toggleQueryProteinLigand(dataSourceName: string, chain: string, bindingSiteId: string, show: boolean) {
+	/** Toggles visibility of a pocket. If pocket contains ligand, shows/hides it as well. */
+	function toggleQueryProteinBindingSite(dataSourceName: string, chain: string, bindingSiteId: string, show: boolean) {
 		const pocket = queryProteinPockets.current[dataSourceName][chain][bindingSiteId]
-		setVisibility(pocket, show);
+		setVisibilityOfObjects(pocket, show);
 
 		if (bindingSiteId.startsWith("pocket_")) {
 			return;
 		}
 		// We know ligand exists in the pocket so we show/hide it as well
 		const ligand = queryProteinLigands.current[dataSourceName][chain][bindingSiteId];
-		setVisibility(ligand, show);
+		setVisibilityOfObject(ligand, show);
 	}
 
+	/** Toggles visibility of a pocket. If pocket contains ligand, shows/hides it as well. */
 	function toggleSimilarProteinBindingSite(dataSourceName: string, pdbCode: string, chain: string, bindingSiteId: string, show: boolean) {
 		const pocket = similarProteinPockets.current[dataSourceName][pdbCode][chain][bindingSiteId];
-		setVisibility(pocket, show);
+		setVisibilityOfObjects(pocket, show);
 
 		if (bindingSiteId.startsWith("pocket_")) {
 			return;
 		}
 		// We know ligand exists in the pocket so we show/hide it as well
 		const ligand = similarProteinLigands.current[dataSourceName][pdbCode][chain][bindingSiteId];
-		setVisibility(ligand, show);
+		setVisibilityOfObject(ligand, show);
 	}
 
 	function toggleSimilarProteinStructure(dataSourceName: string, pdbCode: string, chain: string, show: boolean) {
@@ -675,14 +771,14 @@ export const MolStarWrapper = forwardRef(({ chainResults, selectedChain, onStruc
 			return;
 		}
 
-		setVisibility(struct, show);
+		setVisibilityOfObject(struct, show);
 		/* When protein structure is displayed, all pockets and ligands are as well, so we fix it by
 		 * displaying only those that should be dispalyed and hiding those that should be hidden. */
 		for (const pocket of Object.values(similarProteinPockets.current[dataSourceName][pdbCode][chain])) {
-			setVisibility(pocket, pocket.isVisible);
+			setVisibilityOfObjects(pocket, pocket.isVisible);
 		}
 		for (const ligand of Object.values(similarProteinLigands.current[dataSourceName][pdbCode][chain])) {
-			setVisibility(ligand, ligand.isVisible);
+			setVisibilityOfObject(ligand, ligand.isVisible);
 		}
 
 		// TODO maybe to other functions as well?
@@ -703,18 +799,18 @@ export const MolStarWrapper = forwardRef(({ chainResults, selectedChain, onStruc
 						continue;
 					}
 					// Hide similar protein structure
-					setVisibility(structure, false);
+					setVisibilityOfObject(structure, false);
 
 					// Hide also its pockets
 					const similarProteinPocketsRecord = similarProteinPockets.current[dataSourceName][pdbCode][chain];
 					for (const pocket of Object.values(similarProteinPocketsRecord)) {
-						setVisibility(pocket, false);
+						setVisibilityOfObjects(pocket, false);
 					}
 
 					// Hide also its ligands
 					const similarProteinLigandsRecord = similarProteinLigands.current[dataSourceName][pdbCode][chain];
 					for (const ligand of Object.values(similarProteinLigandsRecord)) {
-						setVisibility(ligand, false);
+						setVisibilityOfObject(ligand, false);
 					}
 				}
 			}
