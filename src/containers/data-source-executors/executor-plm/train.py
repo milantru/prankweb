@@ -1,13 +1,8 @@
-import os
-import argparse
 import numpy as np
-import pandas as pd
 import torch
 import time
-from torch.utils.data import Dataset, DataLoader
-from sklearn.metrics import classification_report, accuracy_score, precision_score, recall_score, f1_score, matthews_corrcoef
-from sklearn.metrics import roc_auc_score, roc_curve
-import pickle
+from torch.utils.data import Dataset
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, matthews_corrcoef
 import pyarrow.parquet as pq
 from model import BindingPredictor
 

@@ -1,10 +1,4 @@
-import os
 import torch
-import time
-from sklearn.metrics import classification_report, accuracy_score, precision_score, recall_score, f1_score, matthews_corrcoef
-from sklearn.metrics import roc_auc_score, roc_curve
-import pickle
-import pyarrow.parquet as pq
 
 class BindingPredictor(torch.nn.Module):
     def __init__(self, input_dim=1280, threshold=0.5):
