@@ -1,5 +1,6 @@
 import os
 import json
+import requests
 from enum import Enum
 from tasks_logger import create_logger
 from predict import embed_sequences, predict_bindings
@@ -37,18 +38,26 @@ def run_plm(id):
 
     try:
         chain_map_file = os.path.join(INPUTS_URL, id, 'chains.json')
-        with open(chain_map_file, "r") as json_file:
-            chain_map = json.load(json_file)
+        logger.info(f'{id} Downloading chains file from: {chain_map_file}')
+        response = requests.get(chain_map_file, timeout=(10,20))
+        response.raise_for_status()
+        logger.info(f'{id} Chains file downloaded successfully')
+        chain_map = response.json()
         
         seq = []
         files = chain_map.get('fasta', {}).keys()
         for file in files:
-            with open(file, "r") as fasta_file:
-                lines = fasta_file.readlines()
-                for line in lines:
-                    if line.startswith('>'):
-                        continue
-                    seq.append(line.strip())
+            file_url = os.path.join(INPUTS_URL, id, file)
+            logger.info(f'{id} Downloading FASTA file from: {file_url}')
+            response = requests.get(file_url, stream=True, timeout=(10,20))
+            response.raise_for_status()
+            logger.info(f'{id} FASTA file downloaded successfully')
+
+            lines = response.text.splitlines()
+            for line in lines:
+                if line.startswith('>'):
+                    continue
+                seq.append(line.strip())
 
         logger.info(f'{id} Parsed all FASTA files')
 

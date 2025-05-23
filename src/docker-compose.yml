@@ -14,6 +14,7 @@ services:
       test: rabbitmq-diagnostics -q status
       interval: 30s
       timeout: 30s
+      start_period: 15s
       retries: 3
 
   id-database:
@@ -26,6 +27,7 @@ services:
       test: redis-cli info
       interval: 30s
       timeout: 30s
+      start_period: 15s
       retries: 3
     user: redis
     command: |
@@ -45,6 +47,7 @@ services:
       test: redis-cli info
       interval: 30s
       timeout: 30s
+      start_period: 15s
       retries: 3
     user: redis
     command: |
@@ -64,6 +67,7 @@ services:
     volumes:
       - foldseek:/usr/local/apache2/htdocs/data/ds_foldseek
       - p2rank:/usr/local/apache2/htdocs/data/ds_p2rank
+      - plm:/usr/local/apache2/htdocs/data/ds_plm
       - conservation:/usr/local/apache2/htdocs/data/conservation
       - inputs:/usr/local/apache2/htdocs/data/inputs
       - tmp:/usr/local/apache2/htdocs/tmp
@@ -71,6 +75,7 @@ services:
       test: curl -f http://localhost/server-status?auto
       interval: 30s
       timeout: 30s
+      start_period: 15s
       retries: 3
     command: httpd -D FOREGROUND
 
@@ -179,42 +184,6 @@ services:
         --concurrency=4
         --events
 
-  ds-plm:
-    build:
-      context: ./containers
-      dockerfile: ./data-source-executors/executor-plm/Dockerfile
-      args:
-        UID: ${PLANKWEB_DEFAULT_UID:-1453}
-        GID: ${PLANKWEB_DEFAULT_GID:-1453}
-    container_name: ds-plm
-    restart: unless-stopped
-    depends_on:
-      message-broker:
-        condition: service_healthy
-      celery-backend:
-        condition: service_healthy
-      executor-http-api:
-        condition: service_healthy
-    environment:
-      CELERY_NAME: plankweb_tasks
-      CELERY_BROKER_URL: amqp://${PLANKWEB_SERVICE_USER:-guest}:${PLANKWEB_SERVICE_PASS:-guest}@message-broker:5672// 
-      INPUTS_URL: http://apache:80/data/inputs
-      PLANKWEB_BASE_URL: ${PLANKWEB_URL:-http://localhost:9864}
-      LOGGING_TZ: ${PLANKWEB_TIMEZONE:-Europe/Prague}
-    volumes:
-      - plm:/app/results
-      - ./containers/data-source-executors/executor-plm/plm_executor.py:/app/plm_executor.py
-      - ./containers/data-source-executors/executor-plm/post_processor.py:/app/post_processor.py
-      - ./containers/data-source-executors/data_format/builder.py:/app/data_format/builder.py
-    command: |
-      celery
-        --app=celery_worker worker
-        --queues=ds_plm
-        --hostname=plm_worker 
-        --loglevel=warning
-        --concurrency=4
-        --events
-
   ds-p2rank:
     build:
       context: ./containers
@@ -248,6 +217,42 @@ services:
         --app=celery_worker worker
         --queues=ds_p2rank
         --hostname=p2rank_worker
+        --loglevel=warning
+        --concurrency=4
+        --events
+
+  ds-plm:
+    build:
+      context: ./containers
+      dockerfile: ./data-source-executors/executor-plm/Dockerfile
+      args:
+        UID: ${PLANKWEB_DEFAULT_UID:-1453}
+        GID: ${PLANKWEB_DEFAULT_GID:-1453}
+    container_name: ds-plm
+    restart: unless-stopped
+    depends_on:
+      message-broker:
+        condition: service_healthy
+      celery-backend:
+        condition: service_healthy
+      executor-http-api:
+        condition: service_healthy
+    environment:
+      CELERY_NAME: plankweb_tasks
+      CELERY_BROKER_URL: amqp://${PLANKWEB_SERVICE_USER:-guest}:${PLANKWEB_SERVICE_PASS:-guest}@message-broker:5672// 
+      INPUTS_URL: http://apache:80/data/inputs
+      PLANKWEB_BASE_URL: ${PLANKWEB_URL:-http://localhost:9864}
+      LOGGING_TZ: ${PLANKWEB_TIMEZONE:-Europe/Prague}
+    volumes:
+      - plm:/app/results
+      - ./containers/data-source-executors/executor-plm/plm_executor.py:/app/plm_executor.py
+      - ./containers/data-source-executors/executor-plm/post_processor.py:/app/post_processor.py
+      - ./containers/data-source-executors/data_format/builder.py:/app/data_format/builder.py
+    command: |
+      celery
+        --app=celery_worker worker
+        --queues=ds_plm
+        --hostname=plm_worker 
         --loglevel=warning
         --concurrency=4
         --events
@@ -341,6 +346,8 @@ services:
       ds-foldseek:
         condition: service_started
       ds-p2rank:
+        condition: service_started
+      ds-plm:
         condition: service_started
     environment:
       CELERY_NAME: plankweb_tasks
@@ -449,6 +456,8 @@ services:
       ds-foldseek:
         condition: service_started
       ds-p2rank:
+        condition: service_started
+      ds-plm:
         condition: service_started
       metatask:
         condition: service_started

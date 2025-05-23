@@ -33,4 +33,8 @@ ENV PYTHONUNBUFFERED=1
 
 USER ${UID}:${GID}
 
-RUN mkdir -p results
+RUN mkdir -p results cache/torch cache/hf cache/esm
+
+ENV TORCH_HOME=/app/cache/torch
+ENV HF_HOME=/app/cache/hf
+ENV ESM_HOME=/app/cache/esm
