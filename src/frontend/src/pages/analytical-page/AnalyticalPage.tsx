@@ -9,7 +9,7 @@ import { MolStarWrapper, MolStarWrapperHandle } from "./components/MolstarWrappe
 import { toastWarning } from "../../shared/helperFunctions/toasts";
 import ErrorMessageBox from "./components/ErrorMessageBox";
 import SettingsPanel, { StructureOption } from "./components/SettingsPanel";
-import LigandToggler from "./components/LigandToggler";
+import TogglerPanels from "./components/TogglerPanels";
 
 const POLLING_INTERVAL = 1000 * 5; // every 5 seconds
 
@@ -123,8 +123,11 @@ function AnalyticalPage() {
 	const [chainResults, setChainResults] = useState<ChainResults | null>(null);
 	const [selectedChain, setSelectedChain] = useState<string | null>(null); // Will be set when chain results are set
 	const [squashBindingSites, setSquashBindingSites] = useState<boolean>(false);
-	const [queryProteinLigandData, setQueryProteinLigandData] = useState<Record<string, Record<string, Record<string, boolean>>>>(null!);
-	const [similarProteinLigandData, setSimilarProteinLigandData] = useState<Record<string, Record<string, Record<string, Record<string, boolean>>>>>(null!);
+	// queryProteinLigandData[dataSourceName][chain][bindingSiteId] -> true/false to show bindings site (and also ligands if available)
+	// similarProteinLigandData[dataSourceName][pdbCode][chain][bindingSiteId] -> true/false to show bindings site (and also ligands if available)
+	// bindingSiteId can be e.g. H_SO4, but it can also be prediction e.g. pocket_1
+	const [queryProteinBindingSitesData, setQueryProteinBindingSitesData] = useState<Record<string, Record<string, Record<string, boolean>>>>(null!);
+	const [similarProteinBindingSitesData, setSimilarProteinBindingSitesData] = useState<Record<string, Record<string, Record<string, Record<string, boolean>>>>>(null!);
 	const [isMolstarLoadingStructures, setIsMolstarLoadingStructures] = useState<boolean>(true);
 	const molstarWrapperRef = useRef<MolStarWrapperHandle>(null!);
 	const [allDataFetched, setAllDataFetched] = useState<boolean>(false);
@@ -249,12 +252,12 @@ function AnalyticalPage() {
 								onStructuresLoadingStart={() => setIsMolstarLoadingStructures(true)}
 								onStructuresLoadingEnd={() => setIsMolstarLoadingStructures(false)} />
 						</div>
-						{queryProteinLigandData && similarProteinLigandData && (
-							<LigandToggler queryProteinLigandsData={queryProteinLigandData}
-								similarProteinsLigandsData={similarProteinLigandData}
+						{queryProteinBindingSitesData && similarProteinBindingSitesData && (
+							<TogglerPanels queryProteinBindingSitesData={queryProteinBindingSitesData}
+								similarProteinsBindingSitesData={similarProteinBindingSitesData}
 								isDisabled={isMolstarLoadingStructures}
-								onQueryProteinLigandToggle={handleQueryProteinLigandToggle}
-								onSimilarProteinLigandToggle={handleSimilarProteinLigandToggle} />
+								onQueryProteinBindingSiteToggle={handleQueryProteinBindingSiteToggle}
+								onSimilarProteinBindingSiteToggle={handleSimilarProteinBindingSiteToggle} />
 						)}
 					</>) : (
 						<div className="d-flex py-2 justify-content-center align-items-center">
@@ -746,11 +749,11 @@ function AnalyticalPage() {
 					}
 
 					let newValue = false;
-					if (dataSourceName in similarProteinLigandData
-						&& simProt.pdbId in similarProteinLigandData[dataSourceName]
-						&& simProt.chain in similarProteinLigandData[dataSourceName][simProt.pdbId]
-						&& bindingSite.id in similarProteinLigandData[dataSourceName][simProt.pdbId][simProt.chain]) {
-						newValue = similarProteinLigandData[dataSourceName][simProt.pdbId][simProt.chain][bindingSite.id];
+					if (dataSourceName in similarProteinBindingSitesData
+						&& simProt.pdbId in similarProteinBindingSitesData[dataSourceName]
+						&& simProt.chain in similarProteinBindingSitesData[dataSourceName][simProt.pdbId]
+						&& bindingSite.id in similarProteinBindingSitesData[dataSourceName][simProt.pdbId][simProt.chain]) {
+						newValue = similarProteinBindingSitesData[dataSourceName][simProt.pdbId][simProt.chain][bindingSite.id];
 					}
 					res[dataSourceName][simProt.pdbId][simProt.chain][bindingSite.id] = newValue;
 				}
@@ -760,23 +763,23 @@ function AnalyticalPage() {
 		return res;
 	}
 
-	function handleQueryProteinLigandToggle(dataSourceName: string, chain: string, ligandId: string, show: boolean) {
-		setQueryProteinLigandData(prev => ({
+	function handleQueryProteinBindingSiteToggle(dataSourceName: string, chain: string, bindingSiteId: string, show: boolean) {
+		setQueryProteinBindingSitesData(prev => ({
 			...prev,
 			[dataSourceName]: {
 				...prev[dataSourceName],
 				[chain]: {
 					...prev[dataSourceName][chain],
-					[ligandId]: show
+					[bindingSiteId]: show
 				}
 			}
 		}));
 
-		molstarWrapperRef.current?.toggleQueryProteinBindingSite(dataSourceName, chain, ligandId, show);
+		molstarWrapperRef.current?.toggleQueryProteinBindingSite(dataSourceName, chain, bindingSiteId, show);
 	}
 
-	function handleSimilarProteinLigandToggle(dataSourceName: string, pdbCode: string, chain: string, ligandId: string, show: boolean) {
-		setSimilarProteinLigandData(prev => ({
+	function handleSimilarProteinBindingSiteToggle(dataSourceName: string, pdbCode: string, chain: string, bindingSiteId: string, show: boolean) {
+		setSimilarProteinBindingSitesData(prev => ({
 			...prev,
 			[dataSourceName]: {
 				...prev[dataSourceName],
@@ -784,25 +787,25 @@ function AnalyticalPage() {
 					...prev[dataSourceName][pdbCode],
 					[chain]: {
 						...prev[dataSourceName][pdbCode][chain],
-						[ligandId]: show
+						[bindingSiteId]: show
 					}
 				}
 			}
 		}));
 
-		molstarWrapperRef.current?.toggleSimilarProteinBindingSite(dataSourceName, pdbCode, chain, ligandId, show);
+		molstarWrapperRef.current?.toggleSimilarProteinBindingSite(dataSourceName, pdbCode, chain, bindingSiteId, show);
 	}
 
 	function handleChainSelect(chainResult: ChainResult, selectedChain: string) {
 		setSelectedChain(selectedChain);
 
 		const queryProteinLigandsDataTmp = getQueryProteinLigandsData(chainResult, selectedChain);
-		setQueryProteinLigandData(queryProteinLigandsDataTmp);
+		setQueryProteinBindingSitesData(queryProteinLigandsDataTmp);
 	}
 
 	function handleStructuresSelect(selectedStructureOptions: StructureOption[]) {
 		const similarProteinLigandDataTmp = toSimilarProteinLigandData(chainResults[selectedChain], selectedStructureOptions);
-		setSimilarProteinLigandData(similarProteinLigandDataTmp);
+		setSimilarProteinBindingSitesData(similarProteinLigandDataTmp);
 
 		// User selected some structures, we hide them all, and then display only the selected ones
 		molstarWrapperRef.current?.hideAllSimilarProteinStructures(selectedStructureOptions);

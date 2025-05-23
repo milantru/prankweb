@@ -27,8 +27,8 @@ import { StructureOption } from "./SettingsPanel";
 import Switch from "./Switch";
 
 export type MolStarWrapperHandle = {
-	toggleQueryProteinBindingSite: (dataSourceName: string, chain: string, ligandId: string, show: boolean) => void;
-	toggleSimilarProteinBindingSite: (dataSourceName: string, pdbCode: string, chain: string, ligandId: string, show: boolean) => void;
+	toggleQueryProteinBindingSite: (dataSourceName: string, chain: string, bindingSiteId: string, show: boolean) => void;
+	toggleSimilarProteinBindingSite: (dataSourceName: string, pdbCode: string, chain: string, bindingSiteId: string, show: boolean) => void;
 	toggleSimilarProteinStructure: (dataSourceName: string, pdbCode: string, chain: string, show: boolean) => void;
 	hideAllSimilarProteinStructures: (except: StructureOption[]) => void;
 };

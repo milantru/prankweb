@@ -3,13 +3,19 @@ import { ScaleLoader } from "react-spinners";
 
 type Props = {
     title: string;
-    ligandsRecord: Record<string, boolean>;
+    bindingSiteRecord: Record<string, boolean>;
     isDisabled: boolean;
     displayLoadingAnimationWhenDisabled: boolean;
-    onLigandToggle: (ligandId: string, checked: boolean) => void;
+    onBindingSiteToggle: (bindingSiteId: string, checked: boolean) => void;
 };
 
-function LigandTogglerPanel({ title, ligandsRecord, isDisabled, displayLoadingAnimationWhenDisabled, onLigandToggle }: Props) {
+function TogglerPanel({
+    title,
+    bindingSiteRecord,
+    isDisabled,
+    displayLoadingAnimationWhenDisabled,
+    onBindingSiteToggle
+}: Props) {
     const [isPanelOpened, setIsPanelOpened] = useState<boolean>(false);
 
     return (
@@ -37,19 +43,19 @@ function LigandTogglerPanel({ title, ligandsRecord, isDisabled, displayLoadingAn
 
             {isPanelOpened && (
                 <div className="d-flex flex-row flex-wrap pl-1">
-                    {Object.entries(ligandsRecord).length === 0
-                        ? <div>No ligands.</div>
+                    {Object.entries(bindingSiteRecord).length === 0
+                        ? <div>No binding sites.</div>
                         : <>
-                            {Object.entries(ligandsRecord).map(([ligandId, isDisplayed], i) =>
-                                <div key={`${ligandId}-${i}`}>
+                            {Object.entries(bindingSiteRecord).map(([bindingSiteId, isDisplayed], i) =>
+                                <div key={`${bindingSiteId}-${i}`}>
                                     <label className="mr-2">
                                         <input type="checkbox"
                                             name="checkbox"
                                             className="mr-1"
                                             checked={isDisplayed}
                                             disabled={isDisabled}
-                                            onChange={() => onLigandToggle(ligandId, !isDisplayed)} />
-                                        {ligandId}
+                                            onChange={() => onBindingSiteToggle(bindingSiteId, !isDisplayed)} />
+                                        {bindingSiteId}
                                     </label>
                                 </div>
                             )}
@@ -60,4 +66,4 @@ function LigandTogglerPanel({ title, ligandsRecord, isDisabled, displayLoadingAn
     );
 }
 
-export default LigandTogglerPanel;
+export default TogglerPanel;
