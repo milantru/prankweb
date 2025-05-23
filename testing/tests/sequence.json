@@ -1,0 +1,131 @@
+[
+    {
+      "payload": {
+        "inputMethod": "3",
+        "sequence": "MVLSPADKTNVKAAWGKVGAHAGEYGAEALERMFLSFPTTKTYFPHF",
+        "useConservation": "true"
+      },
+      "description": "Valid protein sequence, conservation enabled",
+      "result": "sequence_"
+    },
+    {
+      "payload": {
+        "inputMethod": "3",
+        "sequence": "MVLSPADKTNVKAAWGKVGAHAGEYGAEALERMFLSFPTTKTYFPHF",
+        "useConservation": "false"
+      },
+      "description": "Valid protein sequence, conservation disabled",
+      "result": "sequence_"
+    },
+    {
+      "payload": {
+        "inputMethod": "3",
+        "sequence": "MVLSPADKTNVKAAWGKVGAHAGEYGAEALERMFLSFPTTKTYFPHF"
+      },
+      "description": "Valid protein sequence, conservation missing",
+      "result": { "error": "useConservation not found" }
+    },
+    {
+      "payload": {
+        "inputMethod": "3",
+        "sequence": "",
+        "useConservation": "true"
+      },
+      "description": "Empty sequence, conservation enabled",
+      "result": { "error": "Invalid sequence length: 0, should be in interval [1, 400]" }
+    },
+    {
+      "payload": {
+        "inputMethod": "3",
+        "sequence": "",
+        "useConservation": "false"
+      },
+      "description": "Empty sequence, conservation disabled",
+      "result": { "error": "Invalid sequence length: 0, should be in interval [1, 400]" }
+    },
+    {
+      "payload": {
+        "inputMethod": "3",
+        "sequence": ""
+      },
+      "description": "Empty sequence, conservation missing",
+      "result": { "error": "useConservation not found" }
+    },
+    {
+      "payload": {
+        "inputMethod": "3",
+        "sequence": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "useConservation": "true"
+      },
+      "description": "Too long sequence (401 A's), conservation enabled",
+      "result": { "error": "Invalid sequence length: 401, should be in interval [1, 400]" }
+    },
+    {
+      "payload": {
+        "inputMethod": "3",
+        "sequence": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "useConservation": "false"
+      },
+      "description": "Too long sequence (401 A's), conservation disabled",
+      "result": { "error": "Invalid sequence length: 401, should be in interval [1, 400]" }
+    },
+    {
+      "payload": {
+        "inputMethod": "3",
+        "sequence": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+      },
+      "description": "Too long sequence (401 A's), conservation missing",
+      "result": { "error": "useConservation not found" }
+    },
+    {
+      "payload": {
+        "inputMethod": "3",
+        "sequence": "XYZ123",
+        "useConservation": "true"
+      },
+      "description": "Sequence with invalid characters, conservation enabled",
+      "result": { "error": "Sequence not in FASTA format" }
+    },
+    {
+      "payload": {
+        "inputMethod": "3",
+        "sequence": "XYZ123",
+        "useConservation": "false"
+      },
+      "description": "Sequence with invalid characters, conservation disabled",
+      "result": { "error": "Sequence not in FASTA format" }
+    },
+    {
+      "payload": {
+        "inputMethod": "3",
+        "sequence": "XYZ123"
+      },
+      "description": "Sequence with invalid characters, conservation missing",
+      "result": { "error": "useConservation not found" }
+    },
+    {
+      "payload": {
+        "inputMethod": "3",
+        "useConservation": "true"
+      },
+      "description": "Missing sequence, conservation enabled",
+      "result": { "error": "sequence not found" }
+    },
+    {
+      "payload": {
+        "inputMethod": "3",
+        "useConservation": "false"
+      },
+      "description": "Missing sequence, conservation disabled",
+      "result": { "error": "sequence not found" }
+    },
+    {
+      "payload": {
+        "inputMethod": "3"
+      },
+      "description": "Missing sequence and conservation",
+      "result": { "error": "sequence not found" }
+    }
+  ]
+
+  

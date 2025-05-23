@@ -1,0 +1,33 @@
+name: Docker Integration Tests
+
+on:
+  push:
+    branches:
+      - main
+  schedule:
+    - cron: '0 2 * * *' # 2 AM UTC every day
+
+jobs:
+  run-integration-tests:
+    name: Run Docker Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Compose environment
+        working-directory: ./src
+        run: docker compose -f docker-compose.test.yml up -d --build > /dev/null 2>&1
+
+      - name: Make test script executable
+        run: chmod +x ./testing/run_tests.sh
+
+      - name: Run integration tests
+        working-directory: ./testing
+        run: ./run_tests.sh
+
+      - name: Tear down Docker environment
+        if: always()
+        working-directory: ./src
+        run: docker compose down

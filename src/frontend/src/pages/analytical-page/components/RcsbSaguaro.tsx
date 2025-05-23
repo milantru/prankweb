@@ -356,8 +356,10 @@ function RcsbSaguaro({ chainResult, squashBindingSites }: Props) {
                 continue;
             }
             for (const simProt of result.similarProteins) {
+                /* index was added to the id because it seems there are proteins which have multiple similar proteins
+                 * with the same name, even exactly the same ligands, e.g. 1A3N chain D */
                 const id = `${dataSourceName}-${simProt.pdbId}-${simProt.chain}`;
-                const title = simProt.pdbId;
+                const title = `${simProt.pdbId.toUpperCase()} (${simProt.chain})`;
                 const simProtColor = similarProteinColors[simProt.pdbId];
                 const simProtColorTransparent = similarProteinColors[simProt.pdbId] + "80"; // Add alpha channel
 
@@ -367,8 +369,8 @@ function RcsbSaguaro({ chainResult, squashBindingSites }: Props) {
 
                 if (squashBindingSites) {
                     if (simProt.bindingSites.length > 0) {
-                        const id = `${dataSourceName}-${simProt.pdbId}-bindingSites`;
-                        const title = `${simProt.pdbId}'s binding sites`;
+                        const id = `${dataSourceName}-${simProt.pdbId}-${simProt.chain}-bindingSites`;
+                        const title = `${simProt.pdbId.toUpperCase()}'s binding sites`;
 
                         const bindingSitesRow = createBlockRowForBindingSites(
                             id, title, simProt.bindingSites, bindingSiteColors, dataSourceColor, simProtColorTransparent);
@@ -376,8 +378,8 @@ function RcsbSaguaro({ chainResult, squashBindingSites }: Props) {
                     }
                 } else {
                     simProt.bindingSites.forEach((bindingSite, idx) => {
-                        const id = `${dataSourceName}-${simProt.pdbId}-${bindingSite.id}-${idx}`;
-                        const title = bindingSite.id;
+                        const id = `${dataSourceName}-${simProt.pdbId}-${simProt.chain}-${bindingSite.id}-${idx}`;
+                        const title = bindingSite.id.toUpperCase();
 
                         const simProtBindingSiteRow = createBlockRowForResidues(
                             id, title, bindingSite.residues, bindingSiteColors[bindingSite.id], dataSourceColor, simProtColorTransparent);

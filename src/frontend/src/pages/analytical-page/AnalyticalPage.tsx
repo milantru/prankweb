@@ -1,15 +1,15 @@
 import { useSearchParams } from "react-router-dom";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useInterval } from "../../shared/hooks/useInterval";
 import { useVisibilityChange } from "../../shared/hooks/useVisibilityChange";
 import { DataStatus, getAllChainsAPI, getConservationsAPI, getDataSourceExecutorResultAPI, getDataSourceExecutorResultStatusAPI } from "../../shared/services/apiCalls";
 import RcsbSaguaro from "./components/RcsbSaguaro";
 import { FadeLoader } from "react-spinners";
-import { MolStarWrapper } from "./components/MolstarWrapper";
+import { MolStarWrapper, MolStarWrapperHandle } from "./components/MolstarWrapper";
 import { toastWarning } from "../../shared/helperFunctions/toasts";
 import ErrorMessageBox from "./components/ErrorMessageBox";
-import { sanitizeCode, sanitizeSequence } from "../../shared/helperFunctions/validation";
-import Select from 'react-select';
+import SettingsPanel, { StructureOption } from "./components/SettingsPanel";
+import LigandToggler from "./components/LigandToggler";
 
 const POLLING_INTERVAL = 1000 * 5; // every 5 seconds
 
@@ -42,6 +42,7 @@ export type BindingSite = {
 
 type UnprocessedSimilarProtein = {
 	pdbId: string; // pdb id of the similar sequence
+	pdbUrl: string;
 	sequence: string;
 	chain: string;
 	bindingSites: BindingSite[];
@@ -72,7 +73,7 @@ type DataSourceExecutor = {
 
 type SimilarProtein = {
 	pdbId: string;
-	// pdbUrl: string; // TODO tu netreba?
+	pdbUrl: string;
 	sequence: string;
 	chain: string;
 	bindingSites: BindingSite[];
@@ -89,7 +90,7 @@ export type ProcessedResult = {
 	similarProteins: SimilarProtein[] | undefined | null;
 };
 
-type DataSourceExecutorResult = Record<string, ProcessedResult>;
+type DataSourceExecutorResult = Record<string, ProcessedResult>; // key is data source name
 
 export type ChainResult = {
 	querySequence: string,
@@ -124,6 +125,10 @@ function AnalyticalPage() {
 	const [selectedChain, setSelectedChain] = useState<string | null>(null); // Will be set when chain results are set
 	const [squashBindingSites, setSquashBindingSites] = useState<boolean>(false);
 	let lock = useMemo<boolean>(() => false, []);
+	const [queryProteinLigandData, setQueryProteinLigandData] = useState<Record<string, Record<string, Record<string, boolean>>>>(null!);
+	const [similarProteinLigandData, setSimilarProteinLigandData] = useState<Record<string, Record<string, Record<string, Record<string, boolean>>>>>(null!);
+	const [isSettingsPanelDisabled, setIsSettingsPanelDisabled] = useState<boolean>(true);
+	const molstarWrapperRef = useRef<MolStarWrapperHandle>(null!);
 
 	useEffect(() => {
 		if (isPollingFinished.every(x => x)) {
@@ -157,7 +162,7 @@ function AnalyticalPage() {
 	}, pollingInterval);
 
 	return (
-		<div>
+		<div style={{ width: "98vw" }}>
 			{errorMessages.some(errMsg => errMsg.length > 0) && (
 				<ErrorMessageBox errorMessages={errorMessages} onClose={clearErrorMessages} />
 			)}
@@ -170,32 +175,13 @@ function AnalyticalPage() {
 					{chainResults && selectedChain ? (
 						<div className="d-flex flex-column align-items-center">
 							{/* Settings/Filter panel */}
-							<div className="w-75 d-flex flex-wrap align-items-center border rounded px-3 py-2">
-								<div className="d-flex align-items-center mr-2">
-									<div className="mr-1 font-weight-bold">Chains:</div>
-									<Select
-										defaultValue={{ label: Object.keys(chainResults)[0], chain: Object.keys(chainResults)[0] }}
-										onChange={(selectedOption: any) => setSelectedChain(selectedOption.value)}
-										/* as any is used here to silence error message which seems to be irrelevant, it says
-										* the type is wrong but according to the official GitHub repo README of the package,
-										* this is how options should look like, so it should be OK. */
-										options={Object.keys(chainResults).map(chain => ({
-											label: chain,
-											value: chain
-										})) as any} />
-								</div>
-								<div className="form-check mb-0">
-									<input
-										type="checkbox"
-										id="squash-binding-sites"
-										className="form-check-input"
-										checked={squashBindingSites}
-										onChange={() => setSquashBindingSites(prevState => !prevState)}
-									/>
-									<label className="form-check-label" htmlFor="squash-binding-sites">
-										Squash binding sites
-									</label>
-								</div>
+							<div className="w-100 d-flex flex-wrap align-items-center border rounded ml-5 mr-3 px-3 py-2">
+								<SettingsPanel chainResults={chainResults}
+									onChainSelect={selectedChain => handleChainSelect(chainResults[selectedChain], selectedChain)}
+									squashBindingSites={squashBindingSites}
+									onBindingSitesSquashClick={() => setSquashBindingSites(prevState => !prevState)}
+									onStructuresSelect={handleStructuresSelect}
+									isDisabled={isSettingsPanelDisabled} />
 							</div>
 
 							<div className="w-100 mt-2">
@@ -210,8 +196,25 @@ function AnalyticalPage() {
 					)}
 				</div>
 				<div id="visualization-molstar" className="col-xs-12 col-md-6 col-xl-6">
-					<MolStarWrapper />
-					<div id="visualization-toolbox">TODO Toolbox</div>
+					{chainResults && selectedChain ? (<>
+						<div className="d-flex justify-content-center align-items-center mb-2">
+							<MolStarWrapper ref={molstarWrapperRef}
+								chainResults={chainResults}
+								selectedChain={selectedChain}
+								onStructuresLoadingStart={() => setIsSettingsPanelDisabled(true)}
+								onStructuresLoadingEnd={() => setIsSettingsPanelDisabled(false)} />
+						</div>
+						{queryProteinLigandData && similarProteinLigandData && (
+							<LigandToggler queryProteinLigandsData={queryProteinLigandData}
+								similarProteinsLigandsData={similarProteinLigandData}
+								onQueryProteinLigandToggle={handleQueryProteinLigandToggle}
+								onSimilarProteinLigandToggle={handleSimilarProteinLigandToggle} />
+						)}
+					</>) : (
+						<div className="d-flex py-2 justify-content-center align-items-center">
+							<FadeLoader color="#c3c3c3" />
+						</div>
+					)}
 				</div>
 			</div>
 		</div>
@@ -239,6 +242,7 @@ function AnalyticalPage() {
 			const { chains: chainsTmp, userFriendlyErrorMessage: allChainsFetchingErrorMessage } = await getAllChainsAPI(id);
 			if (allChainsFetchingErrorMessage.length > 0) {
 				toastWarning(allChainsFetchingErrorMessage + "\nRetrying...");
+				isFetching[dataSourceIndex] = false;
 				return;
 			}
 			setChains(chainsTmp);
@@ -315,7 +319,7 @@ function AnalyticalPage() {
 
 				chainResultsTmp[chain] = await alignSequencesAcrossAllDataSources(dataSourceResults, conservations);
 			}
-			setSelectedChain(chainsLocal[0]) // Every protein has at least 1 chain
+			handleChainSelect(chainResultsTmp[chainsLocal[0]], chainsLocal[0]); // Every protein has at least 1 chain
 			setChainResults(chainResultsTmp);
 			lock = false;
 		}
@@ -479,8 +483,9 @@ function AnalyticalPage() {
 				continue;
 			}
 			similarProteins[dataSourceName] = result.similarProteins.map<SimilarProtein>(simProt => ({
-				pdbId: sanitizeCode(simProt.pdbId),
-				chain: sanitizeSequence(simProt.chain),
+				pdbId: simProt.pdbId,
+				pdbUrl: simProt.pdbUrl,
+				chain: simProt.chain,
 				bindingSites: simProt.bindingSites,
 				sequence: "" // will be set later when aligning
 			}));
@@ -609,6 +614,136 @@ function AnalyticalPage() {
 
 	function clearErrorMessages() {
 		setErrorMessages(new Array(dataSourceExecutors.length).fill(""));
+	}
+
+	function toSimilarProteinLigandData(chainResult: ChainResult, selectedStructureOptions: StructureOption[]) {
+		const res: Record<string, Record<string, Record<string, Record<string, boolean>>>> = {};
+
+		for (const [dataSourceName, result] of Object.entries(chainResult.dataSourceExecutorResults)) {
+			if (!result.similarProteins) {
+				continue;
+			}
+
+			for (const simProt of result.similarProteins) {
+				const isStructureSelected = selectedStructureOptions.some(
+					x => x.value.dataSourceName === dataSourceName
+						&& x.value.pdbId === simProt.pdbId
+						&& x.value.chain === simProt.chain
+				);
+				if (!isStructureSelected) {
+					continue;
+				}
+
+				if (simProt.bindingSites.length === 0) {
+					if (!(dataSourceName in res)) {
+						res[dataSourceName] = {};
+					}
+					if (!(simProt.pdbId in res[dataSourceName])) {
+						res[dataSourceName][simProt.pdbId] = {};
+					}
+					if (!(simProt.chain in res[dataSourceName][simProt.pdbId])) {
+						res[dataSourceName][simProt.pdbId][simProt.chain] = {};
+					}
+				}
+				for (const bindingSite of simProt.bindingSites) {
+					if (!(dataSourceName in res)) {
+						res[dataSourceName] = {};
+					}
+					if (!(simProt.pdbId in res[dataSourceName])) {
+						res[dataSourceName][simProt.pdbId] = {};
+					}
+					if (!(simProt.chain in res[dataSourceName][simProt.pdbId])) {
+						res[dataSourceName][simProt.pdbId][simProt.chain] = {};
+					}
+
+					let newValue = false;
+					if (dataSourceName in similarProteinLigandData
+						&& simProt.pdbId in similarProteinLigandData[dataSourceName]
+						&& simProt.chain in similarProteinLigandData[dataSourceName][simProt.pdbId]
+						&& bindingSite.id in similarProteinLigandData[dataSourceName][simProt.pdbId][simProt.chain]) {
+						newValue = similarProteinLigandData[dataSourceName][simProt.pdbId][simProt.chain][bindingSite.id];
+					}
+					res[dataSourceName][simProt.pdbId][simProt.chain][bindingSite.id] = newValue;
+				}
+			}
+		}
+
+		return res;
+	}
+
+	function handleQueryProteinLigandToggle(dataSourceName: string, chain: string, ligandId: string, show: boolean) {
+		setQueryProteinLigandData(prev => ({
+			...prev,
+			[dataSourceName]: {
+				...prev[dataSourceName],
+				[chain]: {
+					...prev[dataSourceName][chain],
+					[ligandId]: show
+				}
+			}
+		}));
+
+		molstarWrapperRef.current?.toggleQueryProteinLigand(dataSourceName, chain, ligandId, show);
+	}
+
+	function handleSimilarProteinLigandToggle(dataSourceName: string, pdbCode: string, chain: string, ligandId: string, show: boolean) {
+		setSimilarProteinLigandData(prev => ({
+			...prev,
+			[dataSourceName]: {
+				...prev[dataSourceName],
+				[pdbCode]: {
+					...prev[dataSourceName][pdbCode],
+					[chain]: {
+						...prev[dataSourceName][pdbCode][chain],
+						[ligandId]: show
+					}
+				}
+			}
+		}));
+
+		molstarWrapperRef.current?.toggleSimilarProteinLigand(dataSourceName, pdbCode, chain, ligandId, show);
+	}
+
+	function handleChainSelect(chainResult: ChainResult, selectedChain: string) {
+		setSelectedChain(selectedChain);
+
+		const queryProteinLigandsDataTmp = getQueryProteinLigandsData(chainResult, selectedChain);
+		setQueryProteinLigandData(queryProteinLigandsDataTmp);
+	}
+
+	function handleStructuresSelect(selectedStructureOptions: StructureOption[]) {
+		const similarProteinLigandDataTmp = toSimilarProteinLigandData(chainResults[selectedChain], selectedStructureOptions);
+		setSimilarProteinLigandData(similarProteinLigandDataTmp);
+
+		// User selected some structures, we hide them all, and then display only the selected ones
+		molstarWrapperRef.current?.hideAllSimilarProteinStructures();
+		for (const option of selectedStructureOptions) {
+			molstarWrapperRef.current?.toggleSimilarProteinStructure(
+				option.value.dataSourceName,
+				option.value.pdbId,
+				option.value.chain,
+				true
+			);
+		}
+	}
+
+	function getQueryProteinLigandsData(chainResult: ChainResult, selectedChain: string) {
+		const queryProteinLigandsData: Record<string, Record<string, Record<string, boolean>>> = {};
+
+		const dseResult = chainResult.dataSourceExecutorResults
+		for (const [dataSourceName, result] of Object.entries(dseResult)) {
+			for (const bindingSite of result.bindingSites) {
+				if (!(dataSourceName in queryProteinLigandsData)) {
+					queryProteinLigandsData[dataSourceName] = {};
+				}
+				if (!(selectedChain in queryProteinLigandsData[dataSourceName])) {
+					queryProteinLigandsData[dataSourceName][selectedChain] = {};
+				}
+				queryProteinLigandsData[dataSourceName][selectedChain][bindingSite.id] = false;
+			}
+		}
+
+		return queryProteinLigandsData;
 	}
 }
 

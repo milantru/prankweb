@@ -1,0 +1,33 @@
+[
+    {
+      "payload": {
+        "inputMethod": "invalid",
+        "notRelevant1": "notRelevantField1",
+        "notRelevant2": "notRelevantField2"
+      },
+      "description": "Invalid input method, others not relevant",
+      "result": { "error": "Unexpected input method" }
+    },
+    {
+      "payload": {
+        "inputMethod": "4",
+        "notRelevant1": "notRelevantField1",
+        "notRelevant2": "notRelevantField2"
+      },
+      "description": "Invalid input method, others not relevant",
+      "result": { "error": "Unexpected input method" }
+    },
+    {
+      "payload": {
+        "notRelevant1": "notRelevantField1",
+        "notRelevant2": "notRelevantField2"
+      },
+      "description": "Missing input method, others not relevant",
+      "result": { "error": "inputMethod field not found in a form" }
+    },
+    {
+        "payload": {},
+        "description": "Empty form",
+        "result": { "error": "inputMethod field not found in a form" }
+    }
+]

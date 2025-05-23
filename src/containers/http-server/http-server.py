@@ -116,7 +116,14 @@ def _download_file_from_url(url: str, filename: str) -> bool:
 def _text_is_fasta_format(text: str) -> bool:
     try:
         records = list(SeqIO.parse(StringIO(text), 'fasta'))
-        return len(records) > 0  # At least one valid record
+        amino_acids = set("ARNDCQEGHILKMFPSTWYV")
+        if len(records) == 0:
+            return False
+        for record in records:
+            sequence_set = set(str(record.seq).upper())
+            if not sequence_set.issubset(amino_acids):
+                return False
+        return True
     except Exception:
         return False
 
@@ -126,7 +133,7 @@ def _try_parse_pdb(pdb_file: str, user_chains: list) -> ErrorStr | None:
     structure = None
     
     try:
-        parser = PDB.PDBParser(PERMISSIVE=False)
+        parser = PDB.PDBParser(PERMISSIVE=False, QUIET=True)
         structure = parser.get_structure('Custom structure', pdb_file)  
 
         file_chains = set()  # To avoid duplicates
@@ -156,13 +163,18 @@ def _validate_pdb(input_data: dict) -> ValidationResult:
         logger.info(f'Downloading protein metadata from: {url}')
         response = requests.get(url, timeout=(15,30))
         response.raise_for_status()
-        response_data = response.json()[pdb_id][0]
+        response_data = response.json()[pdb_id]
         logger.info('Protein metadata downloaded successfully')
-
+                
         # check chains, empty string means no chain restriction
         chains_str = input_data['chains']
         selected_chains = set((chains_str.split(',') if chains_str else []))
-        pdb_chains = set(response_data['in_chains'])
+
+        pdb_chains = set()
+        for entry in response_data:
+            if 'in_chains' in entry:
+                pdb_chains.update(set(entry['in_chains']))
+
         if not (selected_chains <= pdb_chains):
             return ValidationResult(err_msg='Wrong chains selected')
 
@@ -198,7 +210,7 @@ def _validate_custom_str(input_data: dict, input_file: FileStorage | None) -> Va
 
     err = _check_form_fields(input_data, CUSTOM_STR_FORM_FIELDS)    
     if err:
-        ValidationResult(err_msg=err)
+        return ValidationResult(err_msg=err)
         
     if not input_file:
         return ValidationResult(err_msg='userFile not found')
@@ -243,7 +255,7 @@ def _validate_uniprot(input_data: dict) -> ValidationResult:
     if err:
         return ValidationResult(err_msg=err)
         
-    uniprot_id = input_data['uniprotCode']
+    uniprot_id = input_data['uniprotCode'].upper()
     
     try:
         # check whether given Uniprot ID exists
@@ -295,8 +307,9 @@ def _validate_seq(input_data: dict) -> ValidationResult:
             err_msg=f'Invalid sequence length: {len(sequence)}, should be in interval [1, 400]'
         )
 
-    if not sequence.startswith('>'): sequence = '>PLANKWEB_SEQ\n' + sequence
-    if not _text_is_fasta_format(sequence):
+    fasta_sequence = '>PLANKWEB_SEQ\n' + sequence
+    # if not sequence.startswith('>'): sequence = '>PLANKWEB_SEQ\n' + sequence
+    if not _text_is_fasta_format(fasta_sequence):
         return ValidationResult(err_msg='Sequence not in FASTA format')
     del input_data['sequence']
     
@@ -309,7 +322,7 @@ def _validate_seq(input_data: dict) -> ValidationResult:
         delete=False
     ) as f:
         tmp_file = os.path.relpath(f.name, os.getcwd())
-        f.write(sequence)
+        f.write(fasta_sequence)
 
     # input model setup for p2rank
     input_data['inputModel'] = 'alphafold'
@@ -357,7 +370,10 @@ def upload_data() -> Response:
 
     id_payload = {
         'input_method': input_method,
-        'input_protein': validation_result.protein_id
+        'input_protein': (
+            validation_result.protein_id.lower() if validation_result.protein_id
+            else None
+        )
     }
 
     logger.info(f'Sending POST request to id-provider: {ID_PROVIDER_URL}, payload:\n {json.dumps(id_payload, indent=2)}')
@@ -365,6 +381,7 @@ def upload_data() -> Response:
         response = requests.post(ID_PROVIDER_URL, json=id_payload, timeout=(10,20))
         response.raise_for_status()
     except:
+        # should not happen
         logger.error('Failed to get ID from id-provider')
         return jsonify({'error': 'Failed to get ID from id-provider'}), 500
     
