@@ -22,6 +22,7 @@ celery.conf.update({
     'task_routes': {
         'ds_foldseek': 'ds_foldseek',
         'ds_p2rank': 'ds_p2rank',
+        'ds_plm': 'ds_plm',
         'conservation': 'conservation',
         'converter_seq_to_str': 'converter',
         'converter_str_to_seq': 'converter'
@@ -202,14 +203,6 @@ def _run_task(
     return None
 
 
-def _run_plm(id, id_existed):
-    _run_task(
-        task_name='ds_plm',
-        id=id,
-        id_existed=id_existed,
-    )
-
-
 def _run_foldseek(id: str, id_existed: bool) -> None:
     _run_task(
         task_name='ds_foldseek',
@@ -244,6 +237,14 @@ def _run_p2rank(id: str, id_existed: bool, input_model: str, use_conservation: b
     )
 
 
+def _run_plm(id: str, id_existed: bool) -> None:
+    _run_task(
+        task_name='ds_plm',
+        id=id,
+        id_existed=id_existed,
+    )
+
+
 def _run_conservation(id: str, id_existed: bool) -> AsyncResult | None:
     return _run_task(
         task_name='conservation',
@@ -268,7 +269,7 @@ def metatask_seq(input_data: dict) -> None:
         logger.critical(f'{id} Input sequence could not be prepared, all tasks are skipped')
         return
 
-    # _run_plm(id, id_existed)
+    _run_plm(id, id_existed)
 
     conservation = _run_conservation(id, id_existed)
     
@@ -349,7 +350,7 @@ def metatask_str(input_data: dict) -> None:
             # store results
             _save_converter_seq_result(id, converter_result)
 
-    # _run_plm(id, id_existed)
+    _run_plm(id, id_existed)
     
     conservation = _run_conservation(id, id_existed)
 

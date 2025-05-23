@@ -80,6 +80,7 @@ services:
     volumes:
       - foldseek:/usr/local/apache2/htdocs/data/ds_foldseek
       - p2rank:/usr/local/apache2/htdocs/data/ds_p2rank
+      - plm:/usr/local/apache2/htdocs/data/ds_plm
       - conservation:/usr/local/apache2/htdocs/data/conservation
       - inputs:/usr/local/apache2/htdocs/data/inputs
       - tmp:/usr/local/apache2/htdocs/tmp
@@ -243,6 +244,43 @@ services:
         --concurrency=4
         --events
 
+  ds-plm:
+    build:
+      context: ./containers
+      dockerfile: ./data-source-executors/executor-plm/Dockerfile
+      args:
+        UID: ${PLANKWEB_DEFAULT_UID}
+        GID: ${PLANKWEB_DEFAULT_GID}
+    container_name: ds-plm
+    restart: unless-stopped
+    depends_on:
+      message-broker:
+        condition: service_healthy
+      celery-backend:
+        condition: service_healthy
+      executor-http-api:
+        condition: service_healthy
+    environment:
+      CELERY_NAME: plankweb_tasks
+      CELERY_BROKER_URL: amqp://${PLANKWEB_SERVICE_USER}:${PLANKWEB_SERVICE_PASS}@message-broker:5672// 
+      INPUTS_URL: http://apache:80/data/inputs
+      PLANKWEB_BASE_URL: ${PLANKWEB_URL}
+      LOGGING_TZ: ${PLANKWEB_TIMEZONE:-Europe/Prague}
+    logging:
+      options:
+        max-size: "50m"
+        max-file: "5"
+    volumes:
+      - plm:/app/results
+    command: |
+      celery
+        --app=celery_worker worker
+        --queues=ds_plm
+        --hostname=plm_worker 
+        --loglevel=warning
+        --concurrency=4
+        --events
+
   conservation:
     build:
       context: ./containers
@@ -336,6 +374,8 @@ services:
       ds-foldseek:
         condition: service_started
       ds-p2rank:
+        condition: service_started
+      ds-plm:
         condition: service_started
     environment:
       CELERY_NAME: plankweb_tasks
@@ -462,6 +502,8 @@ services:
       ds-foldseek:
         condition: service_started
       ds-p2rank:
+        condition: service_started
+      ds-plm:
         condition: service_started
       metatask:
         condition: service_started
