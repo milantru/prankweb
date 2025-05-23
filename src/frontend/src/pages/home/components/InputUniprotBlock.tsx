@@ -27,7 +27,7 @@ function InputUniprotBlock({ data, setData, setErrorMessage }: Props) {
                     checked={data.useConservation}
                     onChange={e => setData({ ...data, useConservation: e.target.checked })} />
                 <label className="form-check-label" htmlFor="conservation-uniprot">
-                    Use <a href="./help#conservation" target="_blank">conservation</a>
+                    Use <a href="./help#conservation">conservation</a>
                 </label>
             </div>
         </div>

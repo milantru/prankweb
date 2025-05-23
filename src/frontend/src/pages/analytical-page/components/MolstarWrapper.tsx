@@ -107,7 +107,7 @@ export const MolStarWrapper = forwardRef(({
 					layout: {
 						initial: {
 							isExpanded: false,
-							showControls: false,
+							showControls: false, // show advanced controls
 							controlsDisplay: "reactive",
 							regionState: {
 								top: "hidden",    //sequence
