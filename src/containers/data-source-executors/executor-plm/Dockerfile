@@ -6,6 +6,8 @@ ARG GID
 RUN addgroup --gid ${GID} user \
   && useradd --uid ${UID} --gid ${GID} user
 
+RUN apt-get update && apt-get install -y git
+
 WORKDIR /app 
 
 # Copy Python source code and install needed modules
