@@ -1,4 +1,4 @@
-import Footer from "../../shared/components/footer/Footer";
+import Footer from "../../shared/components/Footer";
 import QueryProteinForm from "./components/QueryProteinForm";
 
 function Home() {

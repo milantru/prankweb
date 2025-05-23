@@ -1,3 +1,5 @@
+import Footer from "../../shared/components/Footer";
+
 function About() {
     return (
         <div className="container">
@@ -43,6 +45,8 @@ function About() {
                 supporting monomer and multimer searches, as well as clustering. We use it with the PDB100 database
                 to identify the proteins most similar to the submitted protein, along with their associated data.
             </p>
+
+            <Footer />
         </div>
     );
 }
