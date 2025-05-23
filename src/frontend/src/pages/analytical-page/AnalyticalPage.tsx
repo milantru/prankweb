@@ -125,7 +125,7 @@ function AnalyticalPage() {
 	const [squashBindingSites, setSquashBindingSites] = useState<boolean>(false);
 	const [queryProteinLigandData, setQueryProteinLigandData] = useState<Record<string, Record<string, Record<string, boolean>>>>(null!);
 	const [similarProteinLigandData, setSimilarProteinLigandData] = useState<Record<string, Record<string, Record<string, Record<string, boolean>>>>>(null!);
-	const [isSettingsPanelDisabled, setIsSettingsPanelDisabled] = useState<boolean>(true);
+	const [isMolstarLoadingStructures, setIsMolstarLoadingStructures] = useState<boolean>(true);
 	const molstarWrapperRef = useRef<MolStarWrapperHandle>(null!);
 	const [allDataFetched, setAllDataFetched] = useState<boolean>(false);
 	const chains = useRef<string[]>([]);
@@ -224,7 +224,7 @@ function AnalyticalPage() {
 									squashBindingSites={squashBindingSites}
 									onBindingSitesSquashClick={() => setSquashBindingSites(prevState => !prevState)}
 									onStructuresSelect={handleStructuresSelect}
-									isDisabled={isSettingsPanelDisabled} />
+									isDisabled={isMolstarLoadingStructures} />
 							</div>
 
 							<div className="w-100 mt-2">
@@ -246,12 +246,13 @@ function AnalyticalPage() {
 								selectedChain={selectedChain}
 								bindingSiteSupportCounter={bindingSiteSupportCounter[selectedChain]}
 								dataSourceCount={dataSourceExecutors.current.length}
-								onStructuresLoadingStart={() => setIsSettingsPanelDisabled(true)}
-								onStructuresLoadingEnd={() => setIsSettingsPanelDisabled(false)} />
+								onStructuresLoadingStart={() => setIsMolstarLoadingStructures(true)}
+								onStructuresLoadingEnd={() => setIsMolstarLoadingStructures(false)} />
 						</div>
 						{queryProteinLigandData && similarProteinLigandData && (
 							<LigandToggler queryProteinLigandsData={queryProteinLigandData}
 								similarProteinsLigandsData={similarProteinLigandData}
+								isDisabled={isMolstarLoadingStructures}
 								onQueryProteinLigandToggle={handleQueryProteinLigandToggle}
 								onSimilarProteinLigandToggle={handleSimilarProteinLigandToggle} />
 						)}

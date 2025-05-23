@@ -5,11 +5,18 @@ type Props = {
     queryProteinLigandsData: Record<string, Record<string, Record<string, boolean>>>;
     // r[data source name][pdb code][chain][ligand id] -> true/false (show/hide ligands)
     similarProteinsLigandsData: Record<string, Record<string, Record<string, Record<string, boolean>>>>;
+    isDisabled: boolean;
     onQueryProteinLigandToggle: (dataSourceName: string, chain: string, ligandId: string, newValue: boolean) => void;
     onSimilarProteinLigandToggle: (dataSourceName: string, pdbCode: string, chain: string, ligandId: string, newValue: boolean) => void;
 };
 
-function LigandToggler({ queryProteinLigandsData, similarProteinsLigandsData, onQueryProteinLigandToggle, onSimilarProteinLigandToggle }: Props) {
+function LigandToggler({
+    queryProteinLigandsData,
+    similarProteinsLigandsData,
+    isDisabled,
+    onQueryProteinLigandToggle,
+    onSimilarProteinLigandToggle
+}: Props) {
     return (
         <div>
             {/* Panels for query protein */}
@@ -18,6 +25,8 @@ function LigandToggler({ queryProteinLigandsData, similarProteinsLigandsData, on
                     <LigandTogglerPanel key={`${dataSourceName}-${chain}`}
                         title={`Query protein (chain ${chain}, source: ${dataSourceName})`}
                         ligandsRecord={ligandsRecord}
+                        isDisabled={isDisabled}
+                        displayLoadingAnimationWhenDisabled={true}
                         onLigandToggle={(ligandId, checked) => onQueryProteinLigandToggle(dataSourceName, chain, ligandId, checked)} />
                 ))}
 
@@ -28,6 +37,8 @@ function LigandToggler({ queryProteinLigandsData, similarProteinsLigandsData, on
                         <LigandTogglerPanel key={`${dataSourceName}-${pdbCode}-${chain}`}
                             title={`${pdbCode.toUpperCase()} (chain ${chain}, source: ${dataSourceName})`}
                             ligandsRecord={ligandsRecord}
+                            isDisabled={isDisabled}
+                            displayLoadingAnimationWhenDisabled={true}
                             onLigandToggle={(ligandId, checked) => onSimilarProteinLigandToggle(dataSourceName, pdbCode, chain, ligandId, checked)} />
                     )
                 ))}
