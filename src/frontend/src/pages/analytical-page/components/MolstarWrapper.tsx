@@ -192,7 +192,7 @@ export const MolStarWrapper = forwardRef(({
 	}, [isHighlightModeOn]);
 
 	return (
-		<div>
+		<div className="w-100">
 			<div className="d-flex">
 				<div className="mt-2 ml-auto"
 					title="Enables mode in which when visualising binding sites, color saturation increases with number of supporting data sources.">
@@ -201,7 +201,7 @@ export const MolStarWrapper = forwardRef(({
 				</div>
 			</div>
 
-			<div ref={parent} style={{ position: "relative", height: "70vh", width: "45vw" }}></div>
+			<div ref={parent} style={{ position: "relative", height: "70vh" }}></div>
 		</div>
 	);
 
