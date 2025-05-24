@@ -2,12 +2,12 @@ import { useState } from "react";
 import "./Switch.tsx.css"
 
 type Props = {
-    isOnInitially?: boolean;
     classes?: string;
+    isOnInitially?: boolean;
     onToggle: (state: boolean) => void;
 };
 
-function Switch({ isOnInitially = false, classes = "", onToggle }: Props) {
+function Switch({ classes = "", isOnInitially = false, onToggle }: Props) {
     const [checked, setChecked] = useState(isOnInitially);
 
     const handleChange = () => {

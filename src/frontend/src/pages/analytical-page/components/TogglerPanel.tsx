@@ -26,18 +26,14 @@ function TogglerPanel({
                 onClick={() => setIsPanelOpened(prevState => !prevState)}>
                 <div className="d-flex w-100 border-bottom mb-1 mr-auto">
                     {title}
-                    {isDisabled && displayLoadingAnimationWhenDisabled &&
-                        <ScaleLoader className="ml-2 my-auto" height={"10 %"} color="#878787" />}
-                </div>
-                <div className="mr-1 position-relative">
-                    <span className="position-absolute"
-                        style={{
-                            right: -1,
-                            bottom: 0,
-                            fontSize: "1.5rem"
-                        }} >
-                        {isPanelOpened ? "▴" : "▾"}
-                    </span>
+
+                    <div className="d-flex align-items-center ml-auto">
+                        {isDisabled && displayLoadingAnimationWhenDisabled &&
+                            <ScaleLoader className="ml-2 my-auto" height={"10 %"} color="#878787" />}
+                        <span className="ml-2" style={{ fontSize: "1.5rem" }} >
+                            {isPanelOpened ? "▴" : "▾"}
+                        </span>
+                    </div>
                 </div>
             </div>
 

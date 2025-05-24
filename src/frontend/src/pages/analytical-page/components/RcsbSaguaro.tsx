@@ -4,11 +4,12 @@ import { BindingSite, ChainResult, Conservation, Residue } from "../AnalyticalPa
 import chroma from "chroma-js";
 
 type Props = {
+    classes?: string;
     chainResult: ChainResult;
     squashBindingSites: boolean;
 };
 
-function RcsbSaguaro({ chainResult, squashBindingSites }: Props) {
+function RcsbSaguaro({ classes = "", chainResult, squashBindingSites }: Props) {
     // ID of the DOM element where the plugin is placed
     const elementId = "application-rcsb";
     const predictedPocketColor = "#00aa00";
@@ -31,27 +32,29 @@ function RcsbSaguaro({ chainResult, squashBindingSites }: Props) {
         initBoard();
     }, [squashBindingSites]);
 
-    return (<>
-        {/* Rcsb saguaro (sequence visualisation) */}
-        <div id={elementId}></div>
+    return (
+        <div className={classes}>
+            {/* Rcsb saguaro (sequence visualisation) */}
+            <div id={elementId}></div>
 
-        {/* Legend */}
-        <div className="w-75 d-flex my-3 mx-auto p-2 border justify-content-center align-items-center">
-            {colorsInitialized && Object.keys(chainResult.dataSourceExecutorResults).map(dataSourceName => (
-                <div key={dataSourceName} className="d-flex align-items-center mr-3">
-                    <span className="mr-2"
-                        style={{
-                            width: "40px",
-                            height: "20px",
-                            backgroundColor: dataSourcesColors.current[dataSourceName],
-                            display: "inline-block",
-                            border: "1px solid #ccc",
-                        }} />
-                    <span>{dataSourceName}</span>
-                </div>
-            ))}
+            {/* Legend */}
+            <div className="w-75 d-flex my-3 mx-auto p-2 border justify-content-center align-items-center">
+                {colorsInitialized && Object.keys(chainResult.dataSourceExecutorResults).map(dataSourceName => (
+                    <div key={dataSourceName} className="d-flex align-items-center mr-3">
+                        <span className="mr-2"
+                            style={{
+                                width: "40px",
+                                height: "20px",
+                                backgroundColor: dataSourcesColors.current[dataSourceName],
+                                display: "inline-block",
+                                border: "1px solid #ccc",
+                            }} />
+                        <span>{dataSourceName}</span>
+                    </div>
+                ))}
+            </div>
         </div>
-    </>);
+    );
 
     function initColors() {
         setColorsInitialized(false);

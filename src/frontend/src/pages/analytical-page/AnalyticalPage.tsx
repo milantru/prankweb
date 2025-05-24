@@ -10,6 +10,7 @@ import { toastWarning } from "../../shared/helperFunctions/toasts";
 import ErrorMessageBox from "./components/ErrorMessageBox";
 import SettingsPanel, { StructureOption } from "./components/SettingsPanel";
 import TogglerPanels from "./components/TogglerPanels";
+import "./AnalyticalPage.tsx.css"
 
 const POLLING_INTERVAL = 1000 * 5; // every 5 seconds
 
@@ -207,17 +208,16 @@ function AnalyticalPage() {
 	}, pollingInterval);
 
 	return (
-		// width is set to 98vw to get rid of horizontal scrollbar
-		<div style={{ width: "98vw" }}>
+		<div className="w-100">
 			{errorMessages.some(errMsg => errMsg.length > 0) && (
 				<ErrorMessageBox classes="mt-2" errorMessages={errorMessages} onClose={clearErrorMessages} />
 			)}
 
-			<div id="visualizations" className="row">
+			<div id="visualizations">
 				{/* Sometimes when RcsbSaguro rerendered it kept rerendering over and over again. If you resized the window,
 					it stopped (sometimes it stopped on its own without resizing). When minHeight: "100vh" was added, 
 					this weird behavior disappeared. */}
-				<div id="visualization-rcsb" className="col-xs-12 col-md-6 col-xl-6" style={{ minHeight: "100vh" }}>
+				<div id="visualization-rcsb">
 					{chainResults && selectedChain ? (
 						<div className="d-flex flex-column align-items-center">
 							{/* Settings/Filter panel */}
@@ -235,20 +235,19 @@ function AnalyticalPage() {
 								}
 							</div>
 
-							<div className="w-100 mt-2">
-								<RcsbSaguaro chainResult={chainResults[selectedChain]}
-									squashBindingSites={squashBindingSites} />
-							</div>
+							<RcsbSaguaro classes="w-100 mt-2"
+								chainResult={chainResults[selectedChain]}
+								squashBindingSites={squashBindingSites} />
 						</div>
 					) : (
-						<div className="d-flex py-2 justify-content-center align-items-center">
+						<div className="d-flex justify-content-center align-items-center" style={{ height: "100vh" }}>
 							<FadeLoader color="#c3c3c3" />
 						</div>
 					)}
 				</div>
-				<div id="visualization-molstar" className="col-xs-12 col-md-6 col-xl-6">
+				<div id="visualization-molstar">
 					{chainResults && selectedChain && selectedChain in bindingSiteSupportCounter ? (<>
-						<div className="d-flex justify-content-center align-items-center mb-2">
+						<div className="w-100 d-flex justify-content-center align-items-center mb-2 px-4">
 							<MolStarWrapper ref={molstarWrapperRef}
 								chainResults={chainResults}
 								selectedChain={selectedChain}
@@ -258,14 +257,15 @@ function AnalyticalPage() {
 								onStructuresLoadingEnd={() => setIsMolstarLoadingStructures(false)} />
 						</div>
 						{queryProteinBindingSitesData && similarProteinBindingSitesData && (
-							<TogglerPanels queryProteinBindingSitesData={queryProteinBindingSitesData}
+							<TogglerPanels classes="px-4"
+								queryProteinBindingSitesData={queryProteinBindingSitesData}
 								similarProteinsBindingSitesData={similarProteinBindingSitesData}
 								isDisabled={isMolstarLoadingStructures}
 								onQueryProteinBindingSiteToggle={handleQueryProteinBindingSiteToggle}
 								onSimilarProteinBindingSiteToggle={handleSimilarProteinBindingSiteToggle} />
 						)}
 					</>) : (
-						<div className="d-flex py-2 justify-content-center align-items-center">
+						<div className="d-flex justify-content-center align-items-center" style={{ height: "100vh" }}>
 							<FadeLoader color="#c3c3c3" />
 						</div>
 					)}

@@ -1,6 +1,7 @@
 import TogglerPanel from "./TogglerPanel";
 
 type Props = {
+    classes?: string;
     // queryProteinBindingSitesData[dataSourceName][chain][bindingSiteId] -> true/false to show bindings site (and also ligands if available)
     queryProteinBindingSitesData: Record<string, Record<string, Record<string, boolean>>>;
     // similarProteinsBindingSitesData[dataSourceName][pdbCode][chain][bindingSiteId] -> true/false to show bindings site (and also ligands if available)
@@ -11,6 +12,7 @@ type Props = {
 };
 
 function TogglerPanels({
+    classes = "",
     queryProteinBindingSitesData,
     similarProteinsBindingSitesData,
     isDisabled,
@@ -18,7 +20,7 @@ function TogglerPanels({
     onSimilarProteinBindingSiteToggle
 }: Props) {
     return (
-        <div>
+        <div className={classes}>
             {/* Panels for query protein */}
             {Object.entries(queryProteinBindingSitesData).map(([dataSourceName, chainRecord]) =>
                 Object.entries(chainRecord).map(([chain, bindingSiteRecord]) =>
