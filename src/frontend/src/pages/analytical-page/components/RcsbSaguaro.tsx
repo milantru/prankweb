@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { RcsbFv, RcsbFvTrackDataElementInterface, RcsbFvBoardConfigInterface, RcsbFvRowExtendedConfigInterface } from "@rcsb/rcsb-saguaro";
+import { useEffect, useRef, useState } from "react";
+import { RcsbFv, RcsbFvTrackDataElementInterface, RcsbFvBoardConfigInterface, RcsbFvRowExtendedConfigInterface, RcsbFvTooltipInterface } from "@rcsb/rcsb-saguaro";
 import { BindingSite, ChainResult, Conservation, Residue } from "../AnalyticalPage";
 import chroma from "chroma-js";
 
@@ -17,8 +17,68 @@ function RcsbSaguaro({ chainResult, squashBindingSites }: Props) {
     * be in negative numbers on board. */
     const shouldQuerySeqStartAtZero = false;
     const [rcsbFv, setRcsbFv] = useState<RcsbFv>(null);
+    const [colorsInitialized, setColorsInitialized] = useState<boolean>(false);
+    const dataSourcesColors = useRef<Record<string, string>>(null!); // dataSourcesColors[dataSourceName] -> color in hex, e.g. #0ff1ce
+    const bindingSitesColors = useRef<Record<string, string>>(null!); // bindingSitesColors[bindingSiteId] -> color in hex, e.g. #0ff1ce
+    const similarProteinsColors = useRef<Record<string, string>>(null!); // similarProteinsColors[pdbId] -> color in hex, e.g. #0ff1ce
 
     useEffect(() => {
+        initColors();
+        initBoard();
+    }, [chainResult]);
+
+    useEffect(() => {
+        initBoard();
+    }, [squashBindingSites]);
+
+    return (<>
+        {/* Rcsb saguaro (sequence visualisation) */}
+        <div id={elementId}></div>
+
+        {/* Legend */}
+        <div className="w-75 d-flex my-3 mx-auto p-2 border justify-content-center align-items-center">
+            {colorsInitialized && Object.keys(chainResult.dataSourceExecutorResults).map(dataSourceName => (
+                <div key={dataSourceName} className="d-flex align-items-center mr-3">
+                    <span className="mr-2"
+                        style={{
+                            width: "40px",
+                            height: "20px",
+                            backgroundColor: dataSourcesColors.current[dataSourceName],
+                            display: "inline-block",
+                            border: "1px solid #ccc",
+                        }} />
+                    <span>{dataSourceName}</span>
+                </div>
+            ))}
+        </div>
+    </>);
+
+    function initColors() {
+        setColorsInitialized(false);
+        // Colors for data sources
+        const dataSourceNames = Object.keys(chainResult.dataSourceExecutorResults);
+        dataSourcesColors.current = getUniqueColorForEachDataSource(dataSourceNames);
+        const forbiddenColors = Object.values(dataSourcesColors.current);
+
+        // Colors for binding sites
+        const allBindingSites = getAllBindingSites(chainResult);
+        /* Data source colors are forbidden here because they are in the background, if some binding site color
+         * had the same color as its data source, it would not be visible (maybe just outline). */
+        bindingSitesColors.current = getUniqueColorForEachBindingSite(allBindingSites, forbiddenColors);
+
+        // Colors for similar proteins
+        const allSimilarProteinIds: string[] = [];
+        for (const result of Object.values(chainResult.dataSourceExecutorResults)) {
+            if (!result.similarProteins) {
+                continue;
+            }
+            result.similarProteins.forEach(simProt => allSimilarProteinIds.push(simProt.pdbId));
+        }
+        similarProteinsColors.current = getUniqueColorForEachString(allSimilarProteinIds, [], [defaultTitleFlagColor]);
+        setColorsInitialized(true);
+    }
+
+    function initBoard() {
         const boardConfigData = createBoardConfigData(chainResult);
         const rowConfigData = createRowConfigData(chainResult);
 
@@ -38,13 +98,21 @@ function RcsbSaguaro({ chainResult, squashBindingSites }: Props) {
             };
             rcsbFv.updateBoardConfig(newConfig);
         }
-    }, [chainResult, squashBindingSites]);
-
-    return (
-        <div id={elementId}></div>
-    );
+    }
 
     function createBoardConfigData(chainResult: ChainResult) {
+        const tooltipGenerator: RcsbFvTooltipInterface = {
+            showTooltip: (d: RcsbFvTrackDataElementInterface): HTMLElement | undefined => {
+                const tooltipDiv = document.createElement("div");
+
+                tooltipDiv.innerHTML = `
+                    <strong>Position:</strong> ${d.begin}${d.end ? ` - ${d.end}` : ""}${d.label ? ` | ${d.label}` : ""}
+                `;
+
+                return tooltipDiv;
+            }
+        };
+
         const boardConfigData: RcsbFvBoardConfigInterface = {
             length: chainResult.querySequence.length,
             includeAxis: true,
@@ -52,6 +120,7 @@ function RcsbSaguaro({ chainResult, squashBindingSites }: Props) {
             // TODO Implement
             // highlightHoverCallback: (trackData: Array<RcsbFvTrackDataElementInterface>) => onHighlight(data, molstarPlugin, trackData),
             // elementClickCallback: (trackData?: RcsbFvTrackDataElementInterface, event?: MouseEvent) => elementClicked(data, molstarPlugin, trackData, event)
+            tooltipGenerator: tooltipGenerator
         };
 
         return boardConfigData;
@@ -162,12 +231,22 @@ function RcsbSaguaro({ chainResult, squashBindingSites }: Props) {
         return getUniqueColorForEachString(dataSourceNames, opacities);
     }
 
-    function toTrackDataItem(residues: Residue[], color: string): RcsbFvTrackDataElementInterface {
+    function toTrackDataItem(bindingSite: BindingSite, color: string, dataSourceName: string): RcsbFvTrackDataElementInterface {
+        const residues = bindingSite.residues;
         if (residues.length === 0) {
             return {};
         }
+
+        const label = `<strong>Confidence:</strong> ${bindingSite.confidence} | <strong>Source:</strong> ${dataSourceName}`;
         if (residues.length === 1) {
-            return { begin: residues[0].sequenceIndex + 1, end: residues[0].sequenceIndex + 1, gaps: [], color: color };
+            const trackDataItem: RcsbFvTrackDataElementInterface = {
+                begin: residues[0].sequenceIndex + 1,
+                end: residues[0].sequenceIndex + 1,
+                gaps: [],
+                color: color,
+                label: label
+            };
+            return trackDataItem;
         }
 
         residues.sort((a, b) => a.sequenceIndex - b.sequenceIndex);
@@ -187,7 +266,14 @@ function RcsbSaguaro({ chainResult, squashBindingSites }: Props) {
             gaps.push(gap);
         }
 
-        return { begin: min + 1, end: max + 1, gaps: gaps, color: color };
+        const trackDataItem: RcsbFvTrackDataElementInterface = {
+            begin: min + 1,
+            end: max + 1,
+            gaps: gaps,
+            color: color,
+            label: label
+        };
+        return trackDataItem;
     }
 
     function createQuerySequenceRow(querySequence: string, pdbId: string | null = null) {
@@ -215,7 +301,8 @@ function RcsbSaguaro({ chainResult, squashBindingSites }: Props) {
 
         const conservationData = conservations.map(conservation => ({
             begin: conservation.index + 1,
-            value: conservation.value / max // normalization
+            value: conservation.value / max, // normalization
+            label: `<strong>Value:</strong> ${conservation.value}`
         }));
 
         const conservationRow: RcsbFvRowExtendedConfigInterface = {
@@ -236,13 +323,13 @@ function RcsbSaguaro({ chainResult, squashBindingSites }: Props) {
         id: string,
         title: string,
         sequence: string,
-        trackColor: string,
+        dataSourceName: string,
         titleFlagColor: string
     ) {
         const similarSequenceRow: RcsbFvRowExtendedConfigInterface = {
             trackId: id,
             trackHeight: 20,
-            trackColor: trackColor,
+            trackColor: dataSourcesColors.current[dataSourceName],
             displayType: "sequence",
             nonEmptyDisplay: true,
             rowTitle: title,
@@ -262,16 +349,15 @@ function RcsbSaguaro({ chainResult, squashBindingSites }: Props) {
         id: string,
         title: string,
         bindingSite: BindingSite,
-        color: string,
-        trackColor: string,
-        titleFlagColor: string | undefined = undefined
+        dataSourceName: string,
+        titleFlagColor: string | undefined = undefined,
     ) {
-        const trackDataItem = toTrackDataItem(bindingSite.residues, color);
+        const trackDataItem = toTrackDataItem(bindingSite, bindingSitesColors.current[bindingSite.id], dataSourceName);
 
         const blockRowForResidues: RcsbFvRowExtendedConfigInterface = {
             trackId: id,
             trackHeight: 20,
-            trackColor: trackColor,
+            trackColor: dataSourcesColors.current[dataSourceName],
             displayType: "block",
             rowTitle: title,
             trackData: [trackDataItem],
@@ -285,16 +371,16 @@ function RcsbSaguaro({ chainResult, squashBindingSites }: Props) {
         id: string,
         title: string,
         bindingSites: BindingSite[],
-        bindingSiteColors: Record<string, string>,
-        trackColor: string,
-        titleFlagColor: string | undefined = undefined
+        dataSourceName: string,
+        titleFlagColor: string | undefined = undefined,
     ) {
-        const trackData = bindingSites.map(bindingSite => toTrackDataItem(bindingSite.residues, bindingSiteColors[bindingSite.id]));
+        const trackData = bindingSites.map(bindingSite =>
+            toTrackDataItem(bindingSite, bindingSitesColors.current[bindingSite.id], dataSourceName));
 
         const blockRowForBindingSites = {
             trackId: id,
             trackHeight: 20,
-            trackColor: trackColor,
+            trackColor: dataSourcesColors.current[dataSourceName],
             displayType: "block",
             rowTitle: title,
             trackData: trackData,
@@ -305,40 +391,20 @@ function RcsbSaguaro({ chainResult, squashBindingSites }: Props) {
     }
 
     function createRowConfigData(chainResult: ChainResult) {
-        // Prepare colors
-        const dataSourceNames = Object.keys(chainResult.dataSourceExecutorResults);
-        const dataSourceColors = getUniqueColorForEachDataSource(dataSourceNames);
-        const forbiddenColors = Object.values(dataSourceColors);
-
-        const allBindingSites = getAllBindingSites(chainResult);
-        /* Data source colors are forbidden here because they are in the background, if some binding site color
-         * had the same color as its data source, it would not be visible (maybe just outline). */
-        const bindingSiteColors = getUniqueColorForEachBindingSite(allBindingSites, forbiddenColors);
-
-        const allSimilarProteinIds: string[] = [];
-        for (const result of Object.values(chainResult.dataSourceExecutorResults)) {
-            if (!result.similarProteins) {
-                continue;
-            }
-            result.similarProteins.forEach(simProt => allSimilarProteinIds.push(simProt.pdbId));
-        }
-        const similarProteinColors = getUniqueColorForEachString(allSimilarProteinIds, [], [defaultTitleFlagColor]);
-
         // Create rows
         const rowConfigData: RcsbFvRowExtendedConfigInterface[] = [];
 
-        rowConfigData.push(createQuerySequenceRow(chainResult.querySequence));
+        const querySequenceRow = createQuerySequenceRow(chainResult.querySequence);
+        rowConfigData.push(querySequenceRow);
 
         for (const [dataSourceName, result] of Object.entries(chainResult.dataSourceExecutorResults)) {
-            const dataSourceColor = dataSourceColors[dataSourceName];
-
             if (squashBindingSites) {
                 if (result.bindingSites.length > 0) {
                     const id = `${dataSourceName}-bindingSites`;
                     const title = "Query protein's binding sites";
 
                     const bindingSitesRow = createBlockRowForBindingSites(
-                        id, title, result.bindingSites, bindingSiteColors, dataSourceColor, defaultTitleFlagColor)
+                        id, title, result.bindingSites, dataSourceName, defaultTitleFlagColor)
                     rowConfigData.push(bindingSitesRow);
                 }
             } else {
@@ -347,7 +413,7 @@ function RcsbSaguaro({ chainResult, squashBindingSites }: Props) {
                     const title = bindingSite.id;
 
                     const bindingSiteRow = createBlockRowForBindingSite(
-                        id, title, bindingSite, bindingSiteColors[bindingSite.id], dataSourceColor, defaultTitleFlagColor);
+                        id, title, bindingSite, dataSourceName, defaultTitleFlagColor);
                     rowConfigData.push(bindingSiteRow)
                 });
             }
@@ -360,11 +426,11 @@ function RcsbSaguaro({ chainResult, squashBindingSites }: Props) {
                  * with the same name, even exactly the same ligands, e.g. 1A3N chain D */
                 const id = `${dataSourceName}-${simProt.pdbId}-${simProt.chain}`;
                 const title = `${simProt.pdbId.toUpperCase()} (${simProt.chain})`;
-                const simProtColor = similarProteinColors[simProt.pdbId];
-                const simProtColorTransparent = similarProteinColors[simProt.pdbId] + "80"; // Add alpha channel
+                const simProtColor = similarProteinsColors.current[simProt.pdbId];
+                const simProtColorTransparent = simProtColor + "80"; // Add alpha channel
 
                 const similarSequenceRow = createSimilarSequenceRow(
-                    id, title, simProt.sequence, dataSourceColor, simProtColor);
+                    id, title, simProt.sequence, dataSourceName, simProtColor);
                 rowConfigData.push(similarSequenceRow);
 
                 if (squashBindingSites) {
@@ -373,7 +439,7 @@ function RcsbSaguaro({ chainResult, squashBindingSites }: Props) {
                         const title = `${simProt.pdbId.toUpperCase()}'s binding sites`;
 
                         const bindingSitesRow = createBlockRowForBindingSites(
-                            id, title, simProt.bindingSites, bindingSiteColors, dataSourceColor, simProtColorTransparent);
+                            id, title, simProt.bindingSites, dataSourceName, simProtColorTransparent);
                         rowConfigData.push(bindingSitesRow);
                     }
                 } else {
@@ -382,7 +448,7 @@ function RcsbSaguaro({ chainResult, squashBindingSites }: Props) {
                         const title = bindingSite.id.toUpperCase();
 
                         const simProtBindingSiteRow = createBlockRowForBindingSite(
-                            id, title, bindingSite, bindingSiteColors[bindingSite.id], dataSourceColor, simProtColorTransparent);
+                            id, title, bindingSite, dataSourceName, simProtColorTransparent);
                         rowConfigData.push(simProtBindingSiteRow)
                     });
                 }
