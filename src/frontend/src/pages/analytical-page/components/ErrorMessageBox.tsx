@@ -1,15 +1,16 @@
 type Props = {
+    classes?: string;
     errorMessages: string[] | string;
     onClose: () => void;
 };
 
-function ErrorMessageBox({ errorMessages, onClose }: Props) {
+function ErrorMessageBox({ classes = "", errorMessages, onClose }: Props) {
     if (!Array.isArray(errorMessages)) {
         errorMessages = [errorMessages as string];
     }
 
     return (
-        <div className="container-fluid mb-4">
+        <div className={`container-fluid mb-4 ${classes}`}>
             <div className="row justify-content-center">
                 <div className="col-12 col-md-10 col-xl-8">
                     <div

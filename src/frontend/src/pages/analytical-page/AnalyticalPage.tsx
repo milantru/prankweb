@@ -210,7 +210,7 @@ function AnalyticalPage() {
 		// width is set to 98vw to get rid of horizontal scrollbar
 		<div style={{ width: "98vw" }}>
 			{errorMessages.some(errMsg => errMsg.length > 0) && (
-				<ErrorMessageBox errorMessages={errorMessages} onClose={clearErrorMessages} />
+				<ErrorMessageBox classes="mt-2" errorMessages={errorMessages} onClose={clearErrorMessages} />
 			)}
 
 			<div id="visualizations" className="row">
@@ -221,7 +221,7 @@ function AnalyticalPage() {
 					{chainResults && selectedChain ? (
 						<div className="d-flex flex-column align-items-center">
 							{/* Settings/Filter panel */}
-							<div className="w-100 d-flex flex-wrap align-items-center border rounded ml-5 mr-3 px-3 py-2">
+							<div className="w-100 d-flex flex-wrap align-items-center border rounded mt-2 ml-5 mr-3 px-3 py-2">
 								<SettingsPanel chainResults={chainResults}
 									onChainSelect={selectedChain => handleChainSelect(chainResults[selectedChain], selectedChain)}
 									squashBindingSites={squashBindingSites}
