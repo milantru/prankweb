@@ -195,7 +195,7 @@ export const MolStarWrapper = forwardRef(({
 		<div className="w-100">
 			<div className="d-flex">
 				<div className="mt-2 ml-auto"
-					title="Enables mode in which when visualising binding sites, color saturation increases with number of supporting data sources.">
+					title="When the mode is enabled, the opacity of visualized binding sites increases with the number of supporting data sources.">
 					Highlight mode
 					<Switch classes="ml-2" onToggle={isOn => setIsHighlightModeOn(isOn)} />
 				</div>
