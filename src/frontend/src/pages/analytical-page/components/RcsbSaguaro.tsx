@@ -258,15 +258,15 @@ function RcsbSaguaro({ chainResult, squashBindingSites }: Props) {
         return similarSequenceRow;
     }
 
-    function createBlockRowForResidues(
+    function createBlockRowForBindingSite(
         id: string,
         title: string,
-        residues: Residue[],
+        bindingSite: BindingSite,
         color: string,
         trackColor: string,
         titleFlagColor: string | undefined = undefined
     ) {
-        const trackDataItem = toTrackDataItem(residues, color);
+        const trackDataItem = toTrackDataItem(bindingSite.residues, color);
 
         const blockRowForResidues: RcsbFvRowExtendedConfigInterface = {
             trackId: id,
@@ -346,8 +346,8 @@ function RcsbSaguaro({ chainResult, squashBindingSites }: Props) {
                     const id = `${dataSourceName}-${bindingSite.id}-${idx}`;
                     const title = bindingSite.id;
 
-                    const bindingSiteRow = createBlockRowForResidues(
-                        id, title, bindingSite.residues, bindingSiteColors[bindingSite.id], dataSourceColor, defaultTitleFlagColor);
+                    const bindingSiteRow = createBlockRowForBindingSite(
+                        id, title, bindingSite, bindingSiteColors[bindingSite.id], dataSourceColor, defaultTitleFlagColor);
                     rowConfigData.push(bindingSiteRow)
                 });
             }
@@ -381,8 +381,8 @@ function RcsbSaguaro({ chainResult, squashBindingSites }: Props) {
                         const id = `${dataSourceName}-${simProt.pdbId}-${simProt.chain}-${bindingSite.id}-${idx}`;
                         const title = bindingSite.id.toUpperCase();
 
-                        const simProtBindingSiteRow = createBlockRowForResidues(
-                            id, title, bindingSite.residues, bindingSiteColors[bindingSite.id], dataSourceColor, simProtColorTransparent);
+                        const simProtBindingSiteRow = createBlockRowForBindingSite(
+                            id, title, bindingSite, bindingSiteColors[bindingSite.id], dataSourceColor, simProtColorTransparent);
                         rowConfigData.push(simProtBindingSiteRow)
                     });
                 }
