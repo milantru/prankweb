@@ -4,7 +4,7 @@ import { useInterval } from "../../shared/hooks/useInterval";
 import { useVisibilityChange } from "../../shared/hooks/useVisibilityChange";
 import { DataStatus, getAllChainsAPI, getConservationsAPI, getDataSourceExecutorResultAPI, getDataSourceExecutorResultStatusAPI } from "../../shared/services/apiCalls";
 import RcsbSaguaro from "./components/RcsbSaguaro";
-import { FadeLoader } from "react-spinners";
+import { FadeLoader, ScaleLoader } from "react-spinners";
 import { MolStarWrapper, MolStarWrapperHandle } from "./components/MolstarWrapper";
 import { toastWarning } from "../../shared/helperFunctions/toasts";
 import ErrorMessageBox from "./components/ErrorMessageBox";
@@ -221,13 +221,18 @@ function AnalyticalPage() {
 					{chainResults && selectedChain ? (
 						<div className="d-flex flex-column align-items-center">
 							{/* Settings/Filter panel */}
-							<div className="w-100 d-flex flex-wrap align-items-center border rounded mt-2 ml-5 mr-3 px-3 py-2">
+							<div className="w-100 d-flex flex-wrap align-items-center border rounded mt-2 ml-5 mr-3 px-3 py-2 position-relative">
 								<SettingsPanel chainResults={chainResults}
 									onChainSelect={selectedChain => handleChainSelect(chainResults[selectedChain], selectedChain)}
 									squashBindingSites={squashBindingSites}
 									onBindingSitesSquashClick={() => setSquashBindingSites(prevState => !prevState)}
 									onStructuresSelect={handleStructuresSelect}
 									isDisabled={isMolstarLoadingStructures} />
+								{isMolstarLoadingStructures &&
+									<ScaleLoader className="position-absolute w-100 h-100 justify-content-center align-items-center"
+										height={"21 %"}
+										color="#878787" />
+								}
 							</div>
 
 							<div className="w-100 mt-2">
