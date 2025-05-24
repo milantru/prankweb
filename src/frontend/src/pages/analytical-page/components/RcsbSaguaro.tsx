@@ -167,7 +167,7 @@ function RcsbSaguaro({ chainResult, squashBindingSites }: Props) {
             return {};
         }
         if (residues.length === 1) {
-            return { begin: residues[0].sequenceIndex, end: residues[0].sequenceIndex, gaps: [], color: color };
+            return { begin: residues[0].sequenceIndex + 1, end: residues[0].sequenceIndex + 1, gaps: [], color: color };
         }
 
         residues.sort((a, b) => a.sequenceIndex - b.sequenceIndex);
@@ -183,11 +183,11 @@ function RcsbSaguaro({ chainResult, squashBindingSites }: Props) {
                 continue;
             }
 
-            const gap = { begin: prev, end: curr };
+            const gap = { begin: prev + 1, end: curr + 1 };
             gaps.push(gap);
         }
 
-        return { begin: min, end: max, gaps: gaps, color: color };
+        return { begin: min + 1, end: max + 1, gaps: gaps, color: color };
     }
 
     function createQuerySequenceRow(querySequence: string, pdbId: string | null = null) {
@@ -200,7 +200,7 @@ function RcsbSaguaro({ chainResult, squashBindingSites }: Props) {
             rowTitle: pdbId ?? "Query sequence",
             trackData: [
                 {
-                    begin: 0,
+                    begin: 1,
                     label: querySequence
                 }
             ],
@@ -214,7 +214,7 @@ function RcsbSaguaro({ chainResult, squashBindingSites }: Props) {
         const max = Math.max(...conservations.map(conservation => conservation.value));
 
         const conservationData = conservations.map(conservation => ({
-            begin: conservation.index,
+            begin: conservation.index + 1,
             value: conservation.value / max // normalization
         }));
 
@@ -248,7 +248,7 @@ function RcsbSaguaro({ chainResult, squashBindingSites }: Props) {
             rowTitle: title,
             trackData: [
                 {
-                    begin: 0,
+                    begin: 1,
                     label: sequence
                 }
             ],
