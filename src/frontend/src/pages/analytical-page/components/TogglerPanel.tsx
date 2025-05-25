@@ -16,7 +16,7 @@ function TogglerPanel({
     displayLoadingAnimationWhenDisabled,
     onBindingSiteToggle
 }: Props) {
-    const [isPanelOpened, setIsPanelOpened] = useState<boolean>(false);
+    const [isPanelOpened, setIsPanelOpened] = useState<boolean>(true);
 
     return (
         <div className={`border rounded mb-2 pt-2 pb-1 px-2 ${isDisabled ? "bg-light text-dark" : ""}`}
@@ -24,12 +24,12 @@ function TogglerPanel({
             <div className="d-flex flex-row mb-1"
                 style={{ cursor: "pointer" }}
                 onClick={() => setIsPanelOpened(prevState => !prevState)}>
-                <div className="d-flex w-100 border-bottom mb-1 mr-auto">
+                <div className="d-flex w-100 border-bottom mb-1 mr-auto pl-1 align-items-center">
                     {title}
 
                     <div className="d-flex align-items-center ml-auto">
                         {isDisabled && displayLoadingAnimationWhenDisabled &&
-                            <ScaleLoader className="ml-2 my-auto" height={"10 %"} color="#878787" />}
+                            <ScaleLoader className="ml-2 my-auto" height={"10px"} color="#878787" />}
                         <span className="ml-2" style={{ fontSize: "1.5rem" }} >
                             {isPanelOpened ? "▴" : "▾"}
                         </span>
@@ -37,27 +37,25 @@ function TogglerPanel({
                 </div>
             </div>
 
-            {isPanelOpened && (
-                <div className="d-flex flex-row flex-wrap pl-1">
-                    {Object.entries(bindingSiteRecord).length === 0
-                        ? <div>No binding sites.</div>
-                        : <>
-                            {Object.entries(bindingSiteRecord).map(([bindingSiteId, isDisplayed], i) =>
-                                <div key={`${bindingSiteId}-${i}`}>
-                                    <label className="mr-2">
-                                        <input type="checkbox"
-                                            name="checkbox"
-                                            className="mr-1"
-                                            checked={isDisplayed}
-                                            disabled={isDisabled}
-                                            onChange={() => onBindingSiteToggle(bindingSiteId, !isDisplayed)} />
-                                        {bindingSiteId}
-                                    </label>
-                                </div>
-                            )}
-                        </>}
-                </div>
-            )}
+            {isPanelOpened && (<>
+                {Object.entries(bindingSiteRecord).length === 0
+                    ? <div>No binding sites.</div>
+                    : <div className="d-flex flex-row flex-wrap pl-1" style={{ maxHeight: "23vh", overflow: "auto" }}>
+                        {Object.entries(bindingSiteRecord).map(([bindingSiteId, isDisplayed], i) =>
+                            <div key={`${bindingSiteId}-${i}`}>
+                                <label className="mr-2">
+                                    <input type="checkbox"
+                                        name="checkbox"
+                                        className="mr-1"
+                                        checked={isDisplayed}
+                                        disabled={isDisabled}
+                                        onChange={() => onBindingSiteToggle(bindingSiteId, !isDisplayed)} />
+                                    {bindingSiteId}
+                                </label>
+                            </div>
+                        )}
+                    </div>}
+            </>)}
         </div>
     );
 }

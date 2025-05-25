@@ -230,7 +230,7 @@ function AnalyticalPage() {
 									isDisabled={isMolstarLoadingStructures} />
 								{isMolstarLoadingStructures &&
 									<ScaleLoader className="position-absolute w-100 h-100 justify-content-center align-items-center"
-										height={"21 %"}
+										height={"21px"}
 										color="#878787" />
 								}
 							</div>
