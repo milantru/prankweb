@@ -22,15 +22,19 @@ function RcsbSaguaro({ classes = "", chainResult, squashBindingSites }: Props) {
     const dataSourcesColors = useRef<Record<string, string>>(null!); // dataSourcesColors[dataSourceName] -> color in hex, e.g. #0ff1ce
     const bindingSitesColors = useRef<Record<string, string>>(null!); // bindingSitesColors[bindingSiteId] -> color in hex, e.g. #0ff1ce
     const similarProteinsColors = useRef<Record<string, string>>(null!); // similarProteinsColors[pdbId] -> color in hex, e.g. #0ff1ce
+    const isFirstRender = useRef(true);
+
+    useEffect(() => {
+        if (!isFirstRender.current) {
+            initBoard();
+        }
+    }, [squashBindingSites]);
 
     useEffect(() => {
         initColors();
         initBoard();
+        isFirstRender.current = false;
     }, [chainResult]);
-
-    useEffect(() => {
-        initBoard();
-    }, [squashBindingSites]);
 
     return (
         <div className={classes}>
