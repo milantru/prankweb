@@ -221,13 +221,14 @@ function AnalyticalPage() {
 					{chainResults && selectedChain ? (
 						<div className="d-flex flex-column align-items-center">
 							{/* Settings/Filter panel */}
-							<div className="w-100 d-flex flex-wrap align-items-center border rounded mt-2 ml-5 mr-3 px-3 py-2 position-relative">
-								<SettingsPanel chainResults={chainResults}
-									onChainSelect={selectedChain => handleChainSelect(chainResults[selectedChain], selectedChain)}
+							<div className="d-flex w-100 position-relative px-3">
+								<SettingsPanel classes="w-100 mx-auto mt-2 px-3 py-2"
+									chainResults={chainResults}
 									squashBindingSites={squashBindingSites}
+									isDisabled={isMolstarLoadingStructures}
+									onChainSelect={selectedChain => handleChainSelect(chainResults[selectedChain], selectedChain)}
 									onBindingSitesSquashClick={() => setSquashBindingSites(prevState => !prevState)}
-									onStructuresSelect={handleStructuresSelect}
-									isDisabled={isMolstarLoadingStructures} />
+									onStructuresSelect={handleStructuresSelect} />
 								{isMolstarLoadingStructures &&
 									<ScaleLoader className="position-absolute w-100 h-100 justify-content-center align-items-center"
 										height={"21px"}
