@@ -452,9 +452,11 @@ export const MolStarWrapper = forwardRef(({
 				for (const bindingSite of result.bindingSites) {
 					const residues = bindingSite.residues.map(residue => residue.structureIndex);
 					const residuesExpressionsAndSupporters = residues.map(r => ({
-						expr: MS.struct.generator.atomGroups({
-							'chain-test': MS.core.rel.eq([MS.struct.atomProperty.macromolecular.auth_asym_id(), chain]), // TODO: probably no need for chain test
-							'residue-test': MS.core.rel.eq([MS.struct.atomProperty.macromolecular.label_seq_id(), r])
+						expr: MS.struct.modifier.wholeResidues({
+							0: MS.struct.generator.atomGroups({
+								'chain-test': MS.core.rel.eq([MS.struct.atomProperty.macromolecular.auth_asym_id(), chain]), // TODO: probably no need for chain test
+								'residue-test': MS.core.rel.eq([MS.struct.atomProperty.macromolecular.label_seq_id(), r])
+							})
 						}),
 						supportersCount: bindingSiteSupportCounter[r]
 					}));
@@ -554,9 +556,11 @@ export const MolStarWrapper = forwardRef(({
 					for (const bindingSite of simProt.bindingSites) {
 						const residues = bindingSite.residues.map(residue => residue.structureIndex);
 						const residuesExpressionsAndSupporters = residues.map(r => ({
-							expr: MS.struct.generator.atomGroups({
-								'chain-test': MS.core.rel.eq([MS.struct.atomProperty.macromolecular.auth_asym_id(), simProt.chain]), // TODO: probably no need for chain test
-								'residue-test': MS.core.rel.eq([MS.struct.atomProperty.macromolecular.label_seq_id(), r])
+							expr: MS.struct.modifier.wholeResidues({
+								0: MS.struct.generator.atomGroups({
+									'chain-test': MS.core.rel.eq([MS.struct.atomProperty.macromolecular.auth_asym_id(), simProt.chain]),
+									'residue-test': MS.core.rel.eq([MS.struct.atomProperty.macromolecular.label_seq_id(), r])
+								})
 							}),
 							supportersCount: bindingSiteSupportCounter[r]
 						}));
