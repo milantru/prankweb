@@ -429,8 +429,6 @@ function RcsbSaguaro({ classes = "", chainResult, squashBindingSites }: Props) {
                 continue;
             }
             for (const simProt of result.similarProteins) {
-                /* index was added to the id because it seems there are proteins which have multiple similar proteins
-                 * with the same name, even exactly the same ligands, e.g. 1A3N chain D */
                 const id = `${dataSourceName}-${simProt.pdbId}-${simProt.chain}`;
                 const title = `${simProt.pdbId.toUpperCase()} (${simProt.chain})`;
                 const simProtColor = similarProteinsColors.current[simProt.pdbId];
