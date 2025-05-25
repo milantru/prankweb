@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ScaleLoader } from "react-spinners";
 
 type Props = {
@@ -17,6 +17,14 @@ function TogglerPanel({
     onBindingSiteToggle
 }: Props) {
     const [isPanelOpened, setIsPanelOpened] = useState<boolean>(true);
+
+    useEffect(() => {
+        /* This useEffect ensures the following behaviour:
+         * When panel is disabled and loading animation is displayed (e.g. when user loads the page for the first time,
+         * or switches the chain) the panel is closed. When all is set and animation is stopped (panel is no more disabled),
+         * the panel opens. */
+        setIsPanelOpened(!(isDisabled && displayLoadingAnimationWhenDisabled));
+    }, [isDisabled, displayLoadingAnimationWhenDisabled]);
 
     return (
         <div className={`border rounded mb-2 pt-2 pb-1 px-2 ${isDisabled ? "bg-light text-dark" : ""}`}
