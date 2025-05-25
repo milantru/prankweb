@@ -45,7 +45,8 @@ type VisibleObject = {
 };
 
 type ResidueObject = {
-	residueObject: StateObjectSelector;
+	residueComponentObject: StateObjectSelector;
+	representationObject: StateObjectSelector;
 	supportersCount: number;
 };
 
@@ -87,6 +88,7 @@ export const MolStarWrapper = forwardRef(({
 	const similarProteinPockets = useRef<Record<string, Record<string, Record<string, Record<string, VisiblePocketObjects>>>>>({});
 	const similarProteinLigands = useRef<Record<string, Record<string, Record<string, Record<string, VisibleObject>>>>>({});
 	const [isHighlightModeOn, setIsHighlightModeOn] = useState<boolean>(false);
+	const [structuresLoaded, setStructuresLoaded] = useState<boolean>(false);
 
 	useImperativeHandle(ref, () => ({
 		toggleQueryProteinBindingSite,
@@ -151,7 +153,7 @@ export const MolStarWrapper = forwardRef(({
 			function updateTransparency(update: StateBuilder.Root, o: ResidueObject) {
 				const alpha = getPocketTransparency(o.supportersCount)
 
-				update.to(o.residueObject).update(old => {
+				update.to(o.representationObject).update(old => {
 					old.type.params.alpha = alpha;
 				});
 			}
@@ -188,8 +190,10 @@ export const MolStarWrapper = forwardRef(({
 			await update.commit();
 		}
 
-		updatePocketsTransparency();
-	}, [isHighlightModeOn]);
+		if (structuresLoaded) {
+			updatePocketsTransparency();
+		}
+	}, [isHighlightModeOn, structuresLoaded]);
 
 	return (
 		<div className="w-100">
@@ -263,7 +267,8 @@ export const MolStarWrapper = forwardRef(({
 		setSubtreeVisibility(plugin.state.data, p.ref, !showRepresentationWhenCreated);
 
 		const res: ResidueObject = {
-			residueObject: pr,
+			residueComponentObject: p,
+			representationObject: pr,
 			supportersCount: pocketExprAndSupportersCount.supportersCount
 		};
 		return res;
@@ -278,9 +283,8 @@ export const MolStarWrapper = forwardRef(({
 	) {
 		const l = await plugin.builders.structure.tryCreateComponentFromExpression(struct.object, ligandsQueryExpression, key);
 		if (!l) {
-			return null;
-		} else {
 			console.warn("Failed to create ligand representation for struct. Key: ", key);
+			return null;
 		}
 
 		await plugin.builders.structure.representation.addRepresentation(l, { type: "ball-and-stick" });
@@ -293,7 +297,7 @@ export const MolStarWrapper = forwardRef(({
 		plugin: PluginContext,
 		structs: Record<string, Record<string, Record<string, VisibleObject>>>,
 		ligandsExpression: Record<string, Record<string, Record<string, Record<string, Expression>>>>,
-		pocketsExpressions: Record<string, Record<string, Record<string, Record<string, { expr: Expression, supportersCount }[]>>>>,
+		pocketsExpressions: Record<string, Record<string, Record<string, Record<string, { expr: Expression, supportersCount: number }[]>>>>,
 		showRepresentationsWhenCreated: boolean
 	) {
 		const ls: Record<string, Record<string, Record<string, Record<string, VisibleObject>>>> = {};
@@ -429,7 +433,7 @@ export const MolStarWrapper = forwardRef(({
 		}
 
 		for (const o of visibleObjects.residueObjectsAndSupporters) {
-			setSubtreeVisibility(plugin.state.data, o.residueObject.ref, !show);
+			setSubtreeVisibility(plugin.state.data, o.residueComponentObject.ref, !show);
 		}
 		visibleObjects.isVisible = show;
 	}
@@ -732,10 +736,12 @@ export const MolStarWrapper = forwardRef(({
 	}
 
 	async function loadNewStructures(plugin: PluginUIContext, format: BuiltInTrajectoryFormat, chain: string) {
+		setStructuresLoaded(false);
 		onStructuresLoadingStart();
 		await plugin.clear();
 		await performDynamicSuperposition(plugin, format, chain);
 		onStructuresLoadingEnd();
+		setStructuresLoaded(true);
 	}
 
 	/** Toggles visibility of a pocket. If pocket contains ligand, shows/hides it as well. */
