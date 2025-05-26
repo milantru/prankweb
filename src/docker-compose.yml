@@ -315,7 +315,7 @@ services:
       INPUTS_URL: http://apache:80/data/inputs
       LOGGING_TZ: ${PLANKWEB_TIMEZONE:-Europe/Prague}
     volumes:
-      - ./containers/converter/converter_executor.py:/app/converter_executor.py
+      - ./containers/converter/converter.py:/app/converter.py
     command: |
       celery
         --app=celery_worker worker
