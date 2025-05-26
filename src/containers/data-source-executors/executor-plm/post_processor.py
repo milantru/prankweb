@@ -31,14 +31,14 @@ def process_plm_output(id, result_folder, predictions, seq_to_str_mapping, pdb_u
                             structureIndex=seq_to_str_mapping[chain][str(index)]
                         )
                     )
-
-            binding_avg = confidence_sum / binding_site_residue_count
-            binding_site = BindingSite(
-                id=f"pocket_plm",
-                confidence=binding_avg,
-                residues=binding_site_residues
-            )
-            protein_data_builder.add_binding_site(binding_site)
+            if binding_site_residue_count > 0:
+                binding_avg = confidence_sum / binding_site_residue_count
+                binding_site = BindingSite(
+                    id=f"pocket_plm",
+                    confidence=binding_avg,
+                    residues=binding_site_residues
+                )
+                protein_data_builder.add_binding_site(binding_site)
 
             protein_data_builder.add_metadata(data_source="plm")
 
