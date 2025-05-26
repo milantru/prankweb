@@ -3,7 +3,7 @@ import torch
 class BindingPredictor(torch.nn.Module):
     def __init__(self, input_dim=1280, threshold=0.5):
         super(BindingPredictor, self).__init__()
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.device = torch.device("cpu")
         self.model = torch.nn.Sequential(
             torch.nn.Linear(input_dim, 512),
             torch.nn.ReLU(),
