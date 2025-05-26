@@ -39,4 +39,5 @@ ENV TORCH_HOME=/app/cache/torch
 ENV HF_HOME=/app/cache/hf
 ENV ESM_HOME=/app/cache/esm
 
-RUN python -c "import esm; esm.pretrained.load_model_and_alphabet('esm2_t33_650M_UR50D')"
+RUN mkdir -p /app/cache/torch/hub/checkpoints && \
+    python -c "import torch; import esm; esm.pretrained.load_model_and_alphabet('esm2_t33_650M_UR50D')"
