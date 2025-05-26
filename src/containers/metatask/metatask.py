@@ -80,7 +80,11 @@ def  _prepare_seq_input(id: str, url: str) -> bool:
     if not os.path.exists(chain_json):
         with open(chain_json, 'w') as json_file:
             json.dump(
-                { 'chains': ['A'], 'fasta': {'sequence_1.fasta': ['A'] } }, 
+                { 
+                    'chains': ['A'], 
+                    'fasta': {'sequence_1.fasta': ['A'] },
+                    'seq_to_str_mapping': {'A': {}} 
+                }, 
                 json_file,
                 indent=4
             )
