@@ -4,9 +4,11 @@ import requests
 from enum import Enum
 from tasks_logger import create_logger
 from predict import embed_sequences, predict_bindings
+from post_processor import process_plm_output
 
 RESULTS_FOLDER = "results"
 INPUTS_URL = os.getenv('INPUTS_URL')
+PLANKWEB_BASE_URL = os.getenv('PLANKWEB_BASE_URL')
 
 class StatusType(Enum):
     STARTED = 0
@@ -45,6 +47,7 @@ def run_plm(id):
         chain_map = response.json()
         
         seq = []
+        seq_chains = []
         files = chain_map.get('fasta', {}).keys()
         for file in files:
             file_url = os.path.join(INPUTS_URL, id, file)
@@ -59,6 +62,9 @@ def run_plm(id):
                     continue
                 seq.append(line.strip())
 
+            chains = chain_map.get('fasta', {}).get(file, [])
+            seq_chains.append(chains)
+        
         logger.info(f'{id} Parsed all FASTA files')
 
         embeddings = embed_sequences(seq)
@@ -68,7 +74,34 @@ def run_plm(id):
         lenghts = [len(s) for s in seq]
         predictions = predict_bindings(embeddings, lenghts)
 
+        result_data = []
+
+        # convert tensor predictions to lists
+        predictions = [prediction.tolist() for prediction in predictions]
+
+        for i, chains in enumerate(seq_chains):
+            result_data.append({
+                "chains": chains,
+                "binding": predictions[i],
+                "sequence": seq[i],
+            })
+                
+        result_file_path = os.path.join(eval_folder, "result.json")
+        logger.info(f'{id} Saving results to: {result_file_path}')
+        with open(result_file_path, "w") as f:
+            json.dump(result_data, f, indent=4)
+
         logger.info(f'{id} PLM prediction finished')
+
+        query_structure_url = os.path.join(
+            PLANKWEB_BASE_URL,
+            "data",
+            "inputs",
+            f"{id}",
+            "structure.pdb"
+        )
+
+        process_plm_output(id, eval_folder, result_data, query_structure_url)
 
         update_status(status_file_path, id, StatusType.COMPLETED.value)
         
