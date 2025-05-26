@@ -47,7 +47,7 @@ function TogglerPanel({
 
             {isPanelOpened && (<>
                 {Object.entries(bindingSiteRecord).length === 0
-                    ? <div>No binding sites.</div>
+                    ? <div className="pl-1">No binding sites.</div>
                     : <div className="d-flex flex-row flex-wrap pl-1" style={{ maxHeight: "23vh", overflow: "auto" }}>
                         {Object.entries(bindingSiteRecord).map(([bindingSiteId, isDisplayed], i) =>
                             <div key={`${bindingSiteId}-${i}`}>
