@@ -1,9 +1,9 @@
 import os
 import json
 from dataclasses import asdict
-from data_format.builder import ProteinDataBuilder, BindingSite
+from data_format.builder import ProteinDataBuilder, BindingSite, Residue
 
-def process_plm_output(id, result_folder, predictions, pdb_url):
+def process_plm_output(id, result_folder, predictions, seq_to_str_mapping, pdb_url):
     for prediction in predictions:
         chains = prediction['chains']
         sequence = prediction['sequence']
@@ -17,19 +17,27 @@ def process_plm_output(id, result_folder, predictions, pdb_url):
                 pdb_url=pdb_url
             )
 
-            binding_site_predicted_indices = []
+            binding_site_residue_count = 0
             binding_avg = 0
             confidence_sum = 0
+            binding_site_residues = []
+            print(seq_to_str_mapping)
             for index, binding_value in enumerate(binding):
                 if binding_value > 0: # Assuming the values are also beyond the threshold
-                    binding_site_predicted_indices.append(index)
+                    binding_site_residue_count += 1
                     confidence_sum += binding_value
+                    binding_site_residues.append(
+                        Residue(
+                            sequenceIndex=index,
+                            structureIndex=seq_to_str_mapping[chain][str(index)]
+                        )
+                    )
 
-            binding_avg = confidence_sum / len(binding_site_predicted_indices) if binding_site_predicted_indices else 0
+            binding_avg = confidence_sum / binding_site_residue_count
             binding_site = BindingSite(
                 id=f"pocket_plm",
                 confidence=binding_avg,
-                residues=binding_site_predicted_indices
+                residues=binding_site_residues
             )
             protein_data_builder.add_binding_site(binding_site)
 

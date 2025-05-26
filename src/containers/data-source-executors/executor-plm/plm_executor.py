@@ -100,8 +100,15 @@ def run_plm(id):
             f"{id}",
             "structure.pdb"
         )
+        seq_to_str_mapping = chain_map.get('seq_to_str_mapping', {})
 
-        process_plm_output(id, eval_folder, result_data, query_structure_url)
+        process_plm_output(
+            id, 
+            eval_folder, 
+            result_data, 
+            seq_to_str_mapping, 
+            query_structure_url
+            )
 
         update_status(status_file_path, id, StatusType.COMPLETED.value)
         
