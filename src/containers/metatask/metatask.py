@@ -135,7 +135,10 @@ def _save_converter_seq_result(id: str, result: dict) -> None:
     chains = []
     file_number = 1
 
-    for sequence, chain_list in result.items():
+    result_chains = result.get('chains', {})
+    result_mapping = result.get('seq_to_str_mapping', {})
+
+    for sequence, chain_list in result_chains.items():
 
         # get chains
         chains.extend(chain_list)
@@ -156,7 +159,11 @@ def _save_converter_seq_result(id: str, result: dict) -> None:
     chains_file = os.path.join(INPUTS_FOLDER, id, 'chains.json')
     with open(chains_file, 'w') as json_file:
         json.dump(
-            { 'chains': chains, 'fasta': chain_to_sequence_mapping },
+            { 
+                'chains': chains, 
+                'fasta': chain_to_sequence_mapping,
+                'seq_to_str_mapping': result_mapping
+            },
             json_file,
             indent=4
         )
