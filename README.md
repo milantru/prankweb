@@ -10,4 +10,4 @@ Pôvodné projekty:
 * [Špecifikácia](https://docs.google.com/document/d/14Hx850b0bldpcYYky8Qy-FPD1uYN_zixqSKjVb0__-s/edit#heading=h.9i35mqlrcaay)
 * [Záznamy stretnutí](meetings/)
 
-[![Docker Integration Tests](https://github.com/milantru/prankweb/actions/workflows/github-actions-demo.yml/badge.svg)](https://github.com/milantru/prankweb/actions/workflows/github-actions-demo.yml)
+[![Plankweb tests](https://github.com/milantru/prankweb/actions/workflows/github-actions.yml/badge.svg)](https://github.com/milantru/prankweb/actions/workflows/github-actions.yml)
