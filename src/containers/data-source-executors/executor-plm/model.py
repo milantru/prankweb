@@ -29,8 +29,5 @@ class BindingPredictor(torch.nn.Module):
 
     def predict(self, x):
         probabilities = self.predict_proba(x)
-        predictions = (probabilities > self.pred_threshold).to(int)
+        predictions = (probabilities > self.pred_threshold).float() * probabilities
         return predictions
-
-
-
