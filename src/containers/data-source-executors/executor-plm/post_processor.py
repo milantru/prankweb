@@ -21,7 +21,6 @@ def process_plm_output(id, result_folder, predictions, seq_to_str_mapping, pdb_u
             binding_avg = 0
             confidence_sum = 0
             binding_site_residues = []
-            print(seq_to_str_mapping)
             for index, binding_value in enumerate(binding):
                 if binding_value > 0: # Assuming the values are also beyond the threshold
                     binding_site_residue_count += 1
