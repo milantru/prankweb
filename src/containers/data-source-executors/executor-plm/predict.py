@@ -11,7 +11,7 @@ embed_size = 1280
 def embed_sequences(sequences):
     # ESM2 model setup
     model, alphabet = esm.pretrained.esm2_t33_650M_UR50D()
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cpu")
     model.to(device)
     model.eval()
 
