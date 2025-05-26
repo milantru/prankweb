@@ -64,6 +64,12 @@ def predict_bindings(embeddings, lengths, model_path = "models/model_e10.pth"):
 
     # Predict bindings
     predictions = model.predict(embeddings).detach().cpu()
+
     lengths = np.array(lengths)
-    cropped = torch.nn.utils.rnn.unpad_sequence(predictions.permute(1,0), lengths)
+    if predictions.dim() == 1:
+        cropped = [predictions[:lengths[0]]]  # Slice by length
+    else:
+        # Multiple sequences, permute and unpad
+        cropped = torch.nn.utils.rnn.unpad_sequence(predictions.permute(1,0), lengths)
+
     return cropped
