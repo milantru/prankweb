@@ -1,7 +1,7 @@
 import json
 import os
 import requests
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 from Bio.PDB import PDBParser, PDBIO, NeighborSearch
 from Bio.PDB.Polypeptide import three_to_index, index_to_one, is_aa
 from data_format.builder import ProteinDataBuilder, SimilarProteinBuilder, BindingSite, Residue
@@ -32,7 +32,7 @@ RESULT_FILE = "{}_chain_result.json"
 logger = create_logger('ds-foldseek')
 
 
-def extract_binding_sites_for_chain(pdb_id, pdb_file_path, input_chain) -> Tuple[List[BindingSite], str]:
+def extract_binding_sites_for_chain(pdb_id, pdb_file_path, input_chain) -> Tuple[List[BindingSite], str, Dict[str, int]]:
     with open(pdb_file_path, "r") as file:
         pdb = PDBParser().get_structure(pdb_id, file)
 
@@ -41,6 +41,7 @@ def extract_binding_sites_for_chain(pdb_id, pdb_file_path, input_chain) -> Tuple
     atoms = list(pdb.get_atoms())
     ns = NeighborSearch(atom_list=atoms)
     chain_seq = ""
+    seq_to_str_mapping = {}
 
     for model in pdb:
         for chain in model:
@@ -55,8 +56,9 @@ def extract_binding_sites_for_chain(pdb_id, pdb_file_path, input_chain) -> Tuple
                 if residue.id[0] == " " and is_aa(residue, standard=True):  # Exclude heteroatoms and non-amino acids
                     residue_index = residue.id[1]  # Get residue structure index
                     residue_dict[residue_index] = sequence_index
-                    sequence_index += 1
+                    seq_to_str_mapping[sequence_index] = residue_index
                     chain_seq += index_to_one(three_to_index(residue.get_resname()))
+                    sequence_index += 1
             
             for residue in chain:
                 if residue.id[0].startswith("H_"):  # Identify ligand residues
@@ -92,7 +94,7 @@ def extract_binding_sites_for_chain(pdb_id, pdb_file_path, input_chain) -> Tuple
                         residues=sorted(residues, key=lambda r: r.sequenceIndex)
                     )
                 )
-    return binding_sites, chain_seq
+    return binding_sites, chain_seq, seq_to_str_mapping
 
 def save_results(result_folder: str, file_name: str, builder: ProteinDataBuilder):
 
@@ -132,7 +134,8 @@ def process_similar_protein(result_folder: str, fields: List[str], curr_chain: s
                 f.write(response.content)
             logger.info(f'{id} Similar protein {sim_protein_pdb_id} saved to: {pdb_filename}')
         
-        binding_sites, _ = extract_binding_sites_for_chain(id, pdb_filename, curr_chain)
+        binding_sites, _, mapping = extract_binding_sites_for_chain(id, pdb_filename, curr_chain)
+        sim_builder.set_seq_to_str_mapping(mapping)
         for binding_site in binding_sites:
             sim_builder.add_binding_site(binding_site)
     except:
@@ -176,7 +179,7 @@ def process_foldseek_output(result_folder, foldseek_result_file, id, query_struc
 
             if builder == None:
                 builder = ProteinDataBuilder(id, chain, query_seq, query_structure_file_url)
-                binding_sites, _ = extract_binding_sites_for_chain(id, query_structure_file, curr_chain)
+                binding_sites = extract_binding_sites_for_chain(id, query_structure_file, curr_chain)[0]
                 for binding_site in binding_sites:
                     builder.add_binding_site(binding_site)
 
@@ -184,7 +187,7 @@ def process_foldseek_output(result_folder, foldseek_result_file, id, query_struc
                 save_results(result_folder, RESULT_FILE.format(curr_chain), builder)
                 curr_chain = chain
                 builder = ProteinDataBuilder(id, curr_chain, query_seq, query_structure_file_url)
-                binding_sites, _ = extract_binding_sites_for_chain(id, query_structure_file, curr_chain)
+                binding_sites = extract_binding_sites_for_chain(id, query_structure_file, curr_chain)[0]
                 for binding_site in binding_sites:
                     builder.add_binding_site(binding_site)
             
@@ -198,7 +201,7 @@ def process_foldseek_output(result_folder, foldseek_result_file, id, query_struc
 
         logger.info(f'{id} Chains with no similar results: {" ".join(remaining_chains)}')
         for chain in remaining_chains:
-            binding_sites, chain_seq = extract_binding_sites_for_chain(id, query_structure_file, chain)
+            binding_sites, chain_seq, _ = extract_binding_sites_for_chain(id, query_structure_file, chain)
             builder = ProteinDataBuilder(id, chain, chain_seq, query_structure_file_url)
             for binding_site in binding_sites:
                 builder.add_binding_site(binding_site)
