@@ -103,7 +103,7 @@ services:
       args:
         WEB_SERVICE_USER: ${PLANKWEB_SERVICE_USER:-guest}
         WEB_SERVICE_PASS: ${PLANKWEB_SERVICE_PASS:-guest}
-        REACT_APP_API_BASE_URL: ${REACT_APP_API_BASE_URL:-http://localhost:9864/}
+        REACT_APP_API_BASE_URL: ${PLANKWEB_URL:-http://localhost:9864}
     container_name: gateway
     restart: unless-stopped
     depends_on:
