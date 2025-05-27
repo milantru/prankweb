@@ -42,7 +42,7 @@ def get_or_generate():
 
     input_method = request.json.get('input_method')
     input_protein = request.json.get('input_protein')
-    logger.info(f'generate POST request received: input_method -> {input_method}, input_protein -> {input_protein}')
+    logger.info(f'generate POST request received: {{input_method: {input_method}, input_protein: {input_protein}}}')
 
     if input_method is None or (input_protein is None and input_method != InputMethods.CUSTOM_STR.value):
         logger.info('Wrong input from a user, status code 400')
@@ -82,21 +82,25 @@ def get_id():
     input_protein = request.args.get('input_protein')
     logger.info(f'get-id GET request received: input_method -> {input_method}, input_protein -> {input_protein}')
 
-    key = f'{InputMethods[input_method.upper()].value}:{input_protein}'
-    logger.info(f'Key for database search created from input: {key}')
+    if not input_method:
+        logger.info('input_method not specified, status code 400')
+        return jsonify({'error': 'input_method not specified'}), 400
+    
+    if not input_protein:
+        logger.info('Input protein not specified, status code 400')
+        return jsonify({'error': 'input_protein not specified'}), 400
 
     if input_method not in (
         InputMethods.PDB.name, InputMethods.PDB.name.lower(),
         InputMethods.UNIPROT.name, InputMethods.UNIPROT.name.lower(),
         InputMethods.SEQUENCE.name, InputMethods.SEQUENCE.name.lower()
     ):
-        logger.info(f'{key} Unsupported input method ({input_method}), status code 400')
+        logger.info(f'Unsupported input method ({input_method}), status code 400')
         return jsonify({'error': f'Input method {input_method} not supported'}), 400
     
-    if not input_protein:
-        logger.info(f'{key} Input protein not specified, status code 400')
-        return jsonify({'error': 'Input protein not specified'}), 400
-    
+    key = f'{InputMethods[input_method.upper()].value}:{input_protein.lower()}'
+    logger.info(f'Key for database search created from input: {key}')
+
     id = _check(key)
 
     if not id:

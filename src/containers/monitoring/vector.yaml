@@ -9,6 +9,7 @@ sources:
       - conservation
       - ds-foldseek
       - ds-p2rank
+      - ds-plm
 
 transforms:
   clean_logs:

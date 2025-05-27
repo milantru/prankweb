@@ -27,7 +27,7 @@ function InputUserFileBlock({ data, setData, setErrorMessage }: Props) {
         <div id="input-user-file-block">
             <div className="mb-3">
                 <label htmlFor="user-file" className="form-label">
-                    Structure file (PDB/mmCIF) with biologically relevant unit
+                    Structure file (PDB) with biologically relevant unit
                 </label>
                 <input className="form-control" type="file" id="user-file" onChange={handleFileChange} />
             </div>
@@ -55,7 +55,7 @@ function InputUserFileBlock({ data, setData, setErrorMessage }: Props) {
                     checked={data.userInputModel === UserInputModel.ConservationHmm}
                     title="If selected, a default prediction model with conservation will be used." />
                 <label htmlFor="user-input-model-2" className="form-label">
-                    Default model with <a href="./help#conservation" target="_blank">conservation</a></label><br />
+                    Default model with <a href="./help#conservation">conservation</a></label><br />
 
                 <input type="radio" name="user-input-model" id="user-input-model-3"
                     value={UserInputModel.Alphafold} onChange={selectUserInputModel}
@@ -68,7 +68,7 @@ function InputUserFileBlock({ data, setData, setErrorMessage }: Props) {
                     checked={data.userInputModel === UserInputModel.AlphafoldConservationHmm}
                     title="If selected, an AlphaFold prediction model with conservation will be used." />
                 <label htmlFor="user-input-model-4" className="form-label">
-                    AlphaFold model with <a href="./help#conservation" target="_blank">conservation</a></label><br />
+                    AlphaFold model with <a href="./help#conservation">conservation</a></label><br />
             </div>
         </div>
     );

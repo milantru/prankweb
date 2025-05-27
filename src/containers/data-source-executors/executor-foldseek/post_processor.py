@@ -12,7 +12,7 @@ from tasks_logger import create_logger
 
 #   - OUTPUT FORMAT - columns in result file [MORE](https://github.com/soedinglab/MMseqs2/wiki#custom-alignment-format-with-convertalis)
 #   - `query` - Query sequence identifier
-#   - `target` - Target sequence identifier
+#   - `target` - Target sequence identifier ---> 5d52-assembly1.cif.gz_A  first 4 characters are PDB ID, after "_" is chain ID
 #   - `alnlen` - Alignment length
 #   - `qseq` - Query sequence - FULL
 #   - `qstart` - 1-indexed alignment start position in query sequence
@@ -26,7 +26,7 @@ from tasks_logger import create_logger
 
 PDB_FILE_URL = "https://files.rcsb.org/download/{}.pdb"
 INPUTS_URL = os.getenv('INPUTS_URL')
-APACHE_URL = os.getenv('APACHE_URL')
+PLANKWEB_BASE_URL = os.getenv('PLANKWEB_BASE_URL')
 RESULT_FILE = "{}_chain_result.json"
 
 logger = create_logger('ds-foldseek')
@@ -107,9 +107,9 @@ def save_results(result_folder: str, file_name: str, builder: ProteinDataBuilder
     logger.info(f'{id} Results saved')
 
 def process_similar_protein(result_folder: str, fields: List[str], curr_chain: str, id: str) -> SimilarProteinBuilder:
-    sim_protein_pdb_id, sim_protein_chain = fields[1][:4], fields[1].split("_")[1]
+    sim_protein_pdb_id, sim_protein_chain = fields[1][:4], fields[1].split("_")[1][0]
     pdb_filename = os.path.join(result_folder, f"{sim_protein_pdb_id}.pdb")
-    sim_prot_url = os.path.join(APACHE_URL, "ds_foldseek", id, f"{sim_protein_pdb_id}.pdb")
+    sim_prot_url = os.path.join(PLANKWEB_BASE_URL, "data", "ds_foldseek", id, f"{sim_protein_pdb_id}.pdb")
 
     sim_builder = SimilarProteinBuilder(sim_protein_pdb_id, fields[8], sim_protein_chain, sim_prot_url)
 
@@ -125,7 +125,7 @@ def process_similar_protein(result_folder: str, fields: List[str], curr_chain: s
     try:
         if not os.path.exists(pdb_filename):
             logger.info(f'{id} Downloading similar protein: {sim_protein_pdb_id}')
-            response = requests.get(PDB_FILE_URL.format(sim_protein_pdb_id))
+            response = requests.get(PDB_FILE_URL.format(sim_protein_pdb_id), timeout=(15,30))
             response.raise_for_status()
             logger.info(f'{id} Similar protein {sim_protein_pdb_id} downloaded successfully')
             with open(pdb_filename, "wb") as f:
@@ -149,7 +149,7 @@ def process_foldseek_output(result_folder, foldseek_result_file, id, query_struc
         chains_json = os.path.join(INPUTS_URL, id, "chains.json")
         logger.info(f'{id} Downloading chains file from: {chains_json}') 
         try:
-            response = requests.get(chains_json, stream=True)
+            response = requests.get(chains_json, stream=True, timeout=(10,20))
             response.raise_for_status()
         except requests.RequestException as e:
             logger.critical(f'{id} Failed to download chains file')

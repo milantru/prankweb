@@ -10,7 +10,19 @@ export function sanitizeChains(chains: string, useSpaceAsComma: boolean = false)
 }
 
 export function sanitizeSequence(sequence: string): string {
-    return sequence.replace(/[^a-z]/gi, "").toUpperCase();
+    const proteinLetters = "ACDEFGHIKLMNPQRSTVWY";
+    let sanitizedSequence = "";
+
+    sequence = sequence.toUpperCase();
+    for (const c of sequence) {
+        if (!proteinLetters.includes(c)) {
+            continue;
+        }
+
+        sanitizedSequence += c;
+    }
+
+    return sanitizedSequence;
 }
 
 export function validatePdbCode(pdbCode: string): boolean {

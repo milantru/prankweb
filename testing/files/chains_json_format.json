@@ -1,0 +1,28 @@
+{
+    "type": "object",
+    "required": [ "chains", "fasta", "seq_to_str_mapping" ],
+    "properties": {
+        "chains": {
+            "type": "array",
+            "items": { "type": "string" }
+        },
+        "fasta": {
+            "type": "object",
+            "patternProperties": {
+                "^sequence_\\d+\\.fasta$": {
+                    "type": "array",
+                    "items": { "type": "string" }
+                }
+            }
+        },
+        "seq_to_str_mapping": {
+            "type": [ "object", "null" ],
+            "additionalProperties": {
+                "type":"object",
+                "patternProperties": {
+                    "^[0-9]+$": { "type": "integer" }
+                }
+            }
+        }
+    }
+}

@@ -3,6 +3,8 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+.vscode
+
 foldseek
 database
 uploads
@@ -12,6 +14,8 @@ node_modules
 *.pdb
 *.fasta
 *.cif
+*.csv
+*.parquet
 
 # C extensions
 *.so
@@ -133,6 +137,7 @@ celerybeat.pid
 
 # Environments
 # .env
+.env
 .venv
 env/
 venv/

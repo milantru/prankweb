@@ -11,6 +11,7 @@ from tasks_logger import create_logger
 RESULTS_FOLDER = "results"
 INPUTS_URL = os.getenv('INPUTS_URL')
 CONSERVATION_FILES_URL = os.getenv('CONSERVATION_URL')
+PLANKWEB_BASE_URL = os.getenv('PLANKWEB_BASE_URL')
 
 class StatusType(Enum):
     STARTED = 0
@@ -37,7 +38,7 @@ def prepare_hom_files(id, eval_folder):
 
     logger.info(f'{id} Downloading chains file from: {chains_json}')
     try:
-        response = requests.get(chains_json, stream=True)
+        response = requests.get(chains_json, stream=True, timeout=(10,20))
         response.raise_for_status()
     except requests.RequestException as e:
         logger.critical(f'{id} Failed to download chains file')
@@ -53,7 +54,7 @@ def prepare_hom_files(id, eval_folder):
 
         logger.info(f'{id} Downloading hom file from: {chain_hom_file}')
         try:
-            response = requests.get(chain_hom_file, stream=True)
+            response = requests.get(chain_hom_file, stream=True, timeout=(10,20))
             response.raise_for_status()
         except requests.RequestException as e:
             logger.error(f'{id} Failed to download hom file')
@@ -87,7 +88,7 @@ def run_p2rank(id, params):
         pdb_url = os.path.join(INPUTS_URL, id, "structure.pdb")
         query_structure_file = os.path.join(eval_folder, "input.pdb")
         logger.info(f'{id} Downloading PDB file from: {pdb_url}')
-        response = requests.get(pdb_url, stream=True)
+        response = requests.get(pdb_url, stream=True, timeout=(10,20))
         response.raise_for_status()
         logger.info(f'{id} PDB file downloaded successfully')
 
@@ -111,7 +112,20 @@ def run_p2rank(id, params):
         subprocess.run(command, check=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
         logger.info(f'{id} P2rank subprocess finished')
 
-        post_processor.process_p2rank_output(id, eval_folder, query_structure_file, pdb_url)
+        query_structure_url = os.path.join(
+            PLANKWEB_BASE_URL,
+            "data",
+            "inputs",
+            f"{id}",
+            "structure.pdb"
+        )
+
+        post_processor.process_p2rank_output(
+            id,
+            eval_folder,
+            query_structure_file,
+            query_structure_url
+        )
 
         update_status(status_file_path, id, StatusType.COMPLETED.value)
         

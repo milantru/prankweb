@@ -14,6 +14,7 @@ services:
       test: rabbitmq-diagnostics -q status
       interval: 30s
       timeout: 30s
+      start_period: 15s
       retries: 3
 
   id-database:
@@ -26,6 +27,7 @@ services:
       test: redis-cli info
       interval: 30s
       timeout: 30s
+      start_period: 15s
       retries: 3
     user: redis
     command: |
@@ -45,6 +47,7 @@ services:
       test: redis-cli info
       interval: 30s
       timeout: 30s
+      start_period: 15s
       retries: 3
     user: redis
     command: |
@@ -64,13 +67,15 @@ services:
     volumes:
       - foldseek:/usr/local/apache2/htdocs/data/ds_foldseek
       - p2rank:/usr/local/apache2/htdocs/data/ds_p2rank
+      - plm:/usr/local/apache2/htdocs/data/ds_plm
       - conservation:/usr/local/apache2/htdocs/data/conservation
       - inputs:/usr/local/apache2/htdocs/data/inputs
-      - tmp:/usr/local/apache2/htdocs/data/tmp
+      - tmp:/usr/local/apache2/htdocs/tmp
     healthcheck:
       test: curl -f http://localhost/server-status?auto
       interval: 30s
       timeout: 30s
+      start_period: 15s
       retries: 3
     command: httpd -D FOREGROUND
 
@@ -89,9 +94,7 @@ services:
     environment:
       REDIS_PASS: ${PLANKWEB_SERVICE_PASS:-guest}
       LOGGING_TZ: ${PLANKWEB_TIMEZONE:-Europe/Prague}
-    volumes:
-      - ./containers/id-provider/id-provider.py:/app/id-provider.py
-    command: gunicorn -b :5000 id-provider:app --log-level warning
+    command: gunicorn -w 2 -b :5000 id-provider:app --log-level warning
 
   gateway:
     build:
@@ -110,7 +113,7 @@ services:
       swagger-ui:
         condition: service_started
     ports:
-      - 80:80
+      - 127.0.0.1:9864:80
 
   http-server:
     build:
@@ -133,14 +136,13 @@ services:
       metatask:
         condition: service_started
     environment:
-      CELERY_NAME: ${PLANKWEB_CELERY_NAME:-plankweb_tasks}
+      CELERY_NAME: plankweb_tasks
       CELERY_BROKER_URL: amqp://${PLANKWEB_SERVICE_USER:-guest}:${PLANKWEB_SERVICE_PASS:-guest}@message-broker:5672// 
-      APACHE_URL: http://apache:80/data
+      APACHE_URL: http://apache:80/
       ID_PROVIDER_URL: http://id-provider:5000/generate
       LOGGING_TZ: ${PLANKWEB_TIMEZONE:-Europe/Prague}
     volumes:
-      - tmp:/tmp
-      - ./containers/http-server/http-server.py:/app/http-server.py
+      - tmp:/app/tmp
     command: gunicorn -w 4 -b :3000 http-server:app --log-level warning
 
   ds-foldseek:
@@ -160,22 +162,20 @@ services:
       executor-http-api:
         condition: service_healthy
     environment:
-      CELERY_NAME: ${PLANKWEB_CELERY_NAME:-plankweb_tasks}
+      CELERY_NAME: plankweb_tasks
       CELERY_BROKER_URL: amqp://${PLANKWEB_SERVICE_USER:-guest}:${PLANKWEB_SERVICE_PASS:-guest}@message-broker:5672// 
-      APACHE_URL: http://apache:80/data
       INPUTS_URL: http://apache:80/data/inputs
+      PLANKWEB_BASE_URL: ${PLANKWEB_URL:-http://localhost:9864}
       LOGGING_TZ: ${PLANKWEB_TIMEZONE:-Europe/Prague}
     volumes:
       - foldseek:/app/results
-      - ./containers/data-source-executors/executor-foldseek/foldseek_executor.py:/app/foldseek_executor.py
-      - ./containers/data-source-executors/executor-foldseek/post_processor.py:/app/post_processor.py
-      - ./containers/data-source-executors/data_format/builder.py:/app/data_format/builder.py
     command: |
       celery
         --app=celery_worker worker
         --queues=ds_foldseek
         --hostname=foldseek_worker 
         --loglevel=warning
+        --concurrency=4
         --events
 
   ds-p2rank:
@@ -195,22 +195,54 @@ services:
       executor-http-api:
         condition: service_healthy
     environment:
-      CELERY_NAME: ${PLANKWEB_CELERY_NAME:-plankweb_tasks}
+      CELERY_NAME: plankweb_tasks
       CELERY_BROKER_URL: amqp://${PLANKWEB_SERVICE_USER:-guest}:${PLANKWEB_SERVICE_PASS:-guest}@message-broker:5672//
       INPUTS_URL: http://apache:80/data/inputs
       CONSERVATION_URL: http://apache:80/data/conservation
+      PLANKWEB_BASE_URL: ${PLANKWEB_URL:-http://localhost:9864}
       LOGGING_TZ: ${PLANKWEB_TIMEZONE:-Europe/Prague}
     volumes:
       - p2rank:/app/results
-      - ./containers/data-source-executors/executor-p2rank/p2rank_executor.py:/app/p2rank_executor.py
-      - ./containers/data-source-executors/executor-p2rank/post_processor.py:/app/post_processor.py
-      - ./containers/data-source-executors/data_format/builder.py:/app/data_format/builder.py
     command: |
       celery
         --app=celery_worker worker
         --queues=ds_p2rank
         --hostname=p2rank_worker
         --loglevel=warning
+        --concurrency=4
+        --events
+
+  ds-plm:
+    build:
+      context: ./containers
+      dockerfile: ./data-source-executors/executor-plm/Dockerfile
+      args:
+        UID: ${PLANKWEB_DEFAULT_UID:-1453}
+        GID: ${PLANKWEB_DEFAULT_GID:-1453}
+    container_name: ds-plm
+    restart: unless-stopped
+    depends_on:
+      message-broker:
+        condition: service_healthy
+      celery-backend:
+        condition: service_healthy
+      executor-http-api:
+        condition: service_healthy
+    environment:
+      CELERY_NAME: plankweb_tasks
+      CELERY_BROKER_URL: amqp://${PLANKWEB_SERVICE_USER:-guest}:${PLANKWEB_SERVICE_PASS:-guest}@message-broker:5672// 
+      INPUTS_URL: http://apache:80/data/inputs
+      PLANKWEB_BASE_URL: ${PLANKWEB_URL:-http://localhost:9864}
+      LOGGING_TZ: ${PLANKWEB_TIMEZONE:-Europe/Prague}
+    volumes:
+      - plm:/app/results
+    command: |
+      celery
+        --app=celery_worker worker
+        --queues=ds_plm
+        --hostname=plm_worker 
+        --loglevel=warning
+        --concurrency=4
         --events
 
   conservation:
@@ -228,21 +260,20 @@ services:
       executor-http-api:
         condition: service_healthy
     environment:
-      CELERY_NAME: ${PLANKWEB_CELERY_NAME:-plankweb_tasks}
+      CELERY_NAME: plankweb_tasks
       CELERY_BROKER_URL: amqp://${PLANKWEB_SERVICE_USER:-guest}:${PLANKWEB_SERVICE_PASS:-guest}@message-broker:5672//
       CELERY_BACKEND_URL: redis://:${PLANKWEB_SERVICE_PASS:-guest}@celery-backend:6379/0
       INPUTS_URL: http://apache:80/data/inputs
       LOGGING_TZ: ${PLANKWEB_TIMEZONE:-Europe/Prague}
     volumes:
       - conservation:/app/results
-      - ./containers/conservation/celery_worker.py:/app/celery_worker.py
-      - ./containers/conservation/conservation.py:/app/conservation.py
     command: |
       celery
         --app=celery_worker worker
         --queues=conservation
         --hostname=conservation_worker
         --loglevel=warning
+        --concurrency=4
         --events
 
   converter:
@@ -262,19 +293,18 @@ services:
       executor-http-api:
         condition: service_healthy
     environment:
-      CELERY_NAME: ${PLANKWEB_CELERY_NAME:-plankweb_tasks}
+      CELERY_NAME: plankweb_tasks
       CELERY_BROKER_URL: amqp://${PLANKWEB_SERVICE_USER:-guest}:${PLANKWEB_SERVICE_PASS:-guest}@message-broker:5672// 
       CELERY_BACKEND_URL: redis://:${PLANKWEB_SERVICE_PASS:-guest}@celery-backend:6379/0
       INPUTS_URL: http://apache:80/data/inputs
       LOGGING_TZ: ${PLANKWEB_TIMEZONE:-Europe/Prague}
-    volumes:
-      - ./containers/converter/converter_executor.py:/app/converter_executor.py
     command: |
       celery
         --app=celery_worker worker
         --queues=converter
         --hostname=converter_worker
         --loglevel=warning
+        --concurrency=4
         --events
 
   metatask:
@@ -301,21 +331,23 @@ services:
         condition: service_started
       ds-p2rank:
         condition: service_started
+      ds-plm:
+        condition: service_started
     environment:
-      CELERY_NAME: ${PLANKWEB_CELERY_NAME:-plankweb_tasks}
+      CELERY_NAME: plankweb_tasks
       CELERY_BROKER_URL: amqp://${PLANKWEB_SERVICE_USER:-guest}:${PLANKWEB_SERVICE_PASS:-guest}@message-broker:5672// 
       CELERY_BACKEND_URL: redis://:${PLANKWEB_SERVICE_PASS:-guest}@celery-backend:6379/0
       APACHE_URL: http://apache:80/data
       LOGGING_TZ: ${PLANKWEB_TIMEZONE:-Europe/Prague}
     volumes:
       - inputs:/app/inputs
-      - ./containers/metatask/metatask.py:/app/metatask.py
     command: |
       celery
         --app=metatask worker
         --queues=metatask
         --hostname=metatask_worker
         --loglevel=warning
+        --concurrency=4
         --events
 
   flower:
@@ -331,110 +363,6 @@ services:
       CELERY_BROKER_URL: amqp://${PLANKWEB_SERVICE_USER:-guest}:${PLANKWEB_SERVICE_PASS:-guest}@message-broker:5672//
     command: celery flower --url_prefix=service/flower
 
-  gateway-exporter:
-    image: nginx/nginx-prometheus-exporter:1.4.1
-    container_name: gateway-exporter
-    depends_on:
-      gateway:
-        condition: service_started
-    command: --nginx.scrape-uri=http://gateway:8080/nginx_status
-
-  id-database-exporter: 
-    image: oliver006/redis_exporter:v1.70.0
-    container_name: id-database-exporter
-    depends_on:
-      id-database:
-        condition: service_started
-    environment:
-      REDIS_ADDR: redis://id-database:6379
-      REDIS_PASSWORD: ${PLANKWEB_SERVICE_PASS:-guest}
-
-  celery-backend-exporter:
-    image: oliver006/redis_exporter:v1.70.0
-    container_name: celery-backend-exporter
-    depends_on:
-      celery-backend:
-        condition: service_healthy
-    environment:
-      REDIS_ADDR: redis://:${PLANKWEB_SERVICE_PASS:-guest}@celery-backend:6379/0
-
-  executor-http-api-exporter:
-    image: bitnami/apache-exporter:1.0.10
-    container_name: apache-exporter
-    depends_on:
-      executor-http-api:
-        condition: service_started
-    command: --scrape_uri=http://apache:80/server-status?auto
-
-  prometheus:
-    image: prom/prometheus:v3.3.0
-    container_name: prometheus
-    restart: unless-stopped
-    depends_on:
-      gateway-exporter:
-        condition: service_started
-      id-database-exporter:
-        condition: service_started
-      celery-backend-exporter:
-        condition: service_started
-      executor-http-api-exporter:
-        condition: service_started
-      message-broker:
-        condition: service_started
-      flower:
-        condition: service_started
-    volumes:
-      - ./containers/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-    command:
-      - --config.file=/etc/prometheus/prometheus.yml
-      - --storage.tsdb.path=/prometheus
-      - --web.external-url=http://localhost/service/prometheus/
-
-  vector:
-    image: timberio/vector:0.45.0-debian
-    container_name: vector
-    volumes:
-      - ./containers/monitoring/vector.yaml:/etc/vector/vector.yaml:ro
-      - /var/run/docker.sock:/var/run/docker.sock
-    restart: unless-stopped
-    depends_on:
-      id-provider:
-        condition: service_started
-      converter:
-        condition: service_started
-      conservation:
-        condition: service_started
-      ds-foldseek:
-        condition: service_started
-      ds-p2rank:
-        condition: service_started
-      metatask:
-        condition: service_started
-      http-server:
-        condition: service_started
-      loki:
-        condition: service_started
-
-  loki:
-    image: grafana/loki:2.9.0
-    container_name: loki
-    command: -config.file=/etc/loki/local-config.yaml
-
-  grafana:
-    image: grafana/grafana:11.6.0
-    container_name: grafana
-    depends_on:
-      prometheus:
-        condition: service_started
-      loki:
-        condition: service_started
-    environment:
-      GF_SECURITY_ADMIN_USER: ${PLANKWEB_SERVICE_USER:-guest}
-      GF_SECURITY_ADMIN_PASSWORD: ${PLANKWEB_SERVICE_PASS:-guest}
-      GF_SERVER_ROOT_URL: http://localhost/service/grafana/
-      GF_SERVER_SERVE_FROM_SUB_PATH: true
-    volumes:
-      - grafana:/var/lib/grafana
   swagger-ui:
     image: swaggerapi/swagger-ui
     container_name: openapi
@@ -442,13 +370,14 @@ services:
       SWAGGER_JSON: /app/swagger.yaml
     volumes:
       - ./swagger.yaml:/app/swagger.yaml
+
 volumes:
   rabbitmq:
   redis:
+  celery:
   foldseek:
   p2rank:
+  plm:
   inputs:
   conservation:
-  celery:
-  grafana:
   tmp:

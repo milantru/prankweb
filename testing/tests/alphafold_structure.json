@@ -1,0 +1,77 @@
+[
+  {
+    "payload": {
+      "inputMethod": "2",
+      "uniprotCode": "P12345",
+      "useConservation": "true"
+    },
+    "description": "Valid Uniprot ID, conservation enabled",
+    "result": "uniprot_p12345"
+  },
+  {
+    "payload": {
+      "inputMethod": "2",
+      "uniprotCode": "P12345",
+      "useConservation": "false"
+    },
+    "description": "Valid Uniprot ID, conservation disabled",
+    "result": "uniprot_p12345"
+  },
+  {
+    "payload": {
+      "inputMethod": "2",
+      "uniprotCode": "P12345"
+    },
+    "description": "Valid Uniprot ID, conservation missing",
+    "result": { "error": "useConservation not found" }
+  },
+  {
+    "payload": {
+      "inputMethod": "2",
+      "uniprotCode": "INVALID_ID",
+      "useConservation": "true"
+    },
+    "description": "Invalid Uniprot ID, conservation enabled",
+    "result": { "error": "Uniprot ID INVALID_ID not found in database due to an error:" }
+  },
+  {
+    "payload": {
+      "inputMethod": "2",
+      "uniprotCode": "INVALID_ID",
+      "useConservation": "false"
+    },
+    "description": "Invalid Uniprot ID, conservation disabled",
+    "result": { "error": "Uniprot ID INVALID_ID not found in database due to an error:" }
+  },
+  {
+    "payload": {
+      "inputMethod": "2",
+      "uniprotCode": "INVALID_ID"
+    },
+    "description": "Invalid Uniprot ID, conservation missing",
+    "result": { "error": "useConservation not found" }
+  },
+  {
+    "payload": {
+      "inputMethod": "2",
+      "useConservation": "true"
+    },
+    "description": "Missing Uniprot ID, conservation enabled",
+    "result": { "error": "uniprotCode not found" }
+  },
+  {
+    "payload": {
+      "inputMethod": "2",
+      "useConservation": "false"
+    },
+    "description": "Missing Uniprot ID, conservation disabled",
+    "result": { "error": "uniprotCode not found" }
+  },
+  {
+    "payload": {
+      "inputMethod": "2"
+    },
+    "description": "Missing Uniprot ID and conservation",
+    "result": { "error": "uniprotCode not found" }
+  }
+]

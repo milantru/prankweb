@@ -1,15 +1,16 @@
 import { useSearchParams } from "react-router-dom";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useInterval } from "../../shared/hooks/useInterval";
 import { useVisibilityChange } from "../../shared/hooks/useVisibilityChange";
 import { DataStatus, getAllChainsAPI, getConservationsAPI, getDataSourceExecutorResultAPI, getDataSourceExecutorResultStatusAPI } from "../../shared/services/apiCalls";
 import RcsbSaguaro from "./components/RcsbSaguaro";
-import { FadeLoader } from "react-spinners";
-import { MolStarWrapper } from "./components/MolstarWrapper";
+import { FadeLoader, ScaleLoader } from "react-spinners";
+import { MolStarWrapper, MolStarWrapperHandle } from "./components/MolstarWrapper";
 import { toastWarning } from "../../shared/helperFunctions/toasts";
 import ErrorMessageBox from "./components/ErrorMessageBox";
-import { sanitizeCode, sanitizeSequence } from "../../shared/helperFunctions/validation";
-import Select from 'react-select';
+import SettingsPanel, { StructureOption } from "./components/SettingsPanel";
+import TogglerPanels from "./components/TogglerPanels";
+import "./AnalyticalPage.tsx.css"
 
 const POLLING_INTERVAL = 1000 * 5; // every 5 seconds
 
@@ -42,6 +43,7 @@ export type BindingSite = {
 
 type UnprocessedSimilarProtein = {
 	pdbId: string; // pdb id of the similar sequence
+	pdbUrl: string;
 	sequence: string;
 	chain: string;
 	bindingSites: BindingSite[];
@@ -55,7 +57,6 @@ type Metadata = {
 
 export type UnprocessedResult = {
 	id: string; // id from the IdProvider
-	// TODO pdbId nebude pre query?
 	sequence: string; // query sequence
 	chain: string;
 	pdbUrl: string;
@@ -72,7 +73,7 @@ type DataSourceExecutor = {
 
 type SimilarProtein = {
 	pdbId: string;
-	// pdbUrl: string; // TODO tu netreba?
+	pdbUrl: string;
 	sequence: string;
 	chain: string;
 	bindingSites: BindingSite[];
@@ -89,7 +90,7 @@ export type ProcessedResult = {
 	similarProteins: SimilarProtein[] | undefined | null;
 };
 
-type DataSourceExecutorResult = Record<string, ProcessedResult>;
+type DataSourceExecutorResult = Record<string, ProcessedResult>; // key is data source name
 
 export type ChainResult = {
 	querySequence: string,
@@ -105,28 +106,39 @@ function AnalyticalPage() {
 	if (!id) {
 		return <>No id provided.</>
 	}
-	const [chains, setChains] = useState<string[]>(searchParams.get("chains")
+	const chainsFromParams = searchParams.get("chains")
 		? searchParams.get("chains").split(",").filter(x => x.length > 0)
 		: [] // When no chains are selected by the user, we select all of them (we fetch all chains later when fetching results)
-	);
+
 	const useConservation = searchParams.get("useConservation")?.toLowerCase() === "true";
 	// When pollingInterval is set to null, it is turned off (initially it's turned off, it will be turned on after component loading)
 	const [pollingInterval, setPollingInterval] = useState<number | null>(null);
 	const isPageVisible = useVisibilityChange();
-	const dataSourceExecutors = useMemo<DataSourceExecutor[]>(() => [
+	const dataSourceExecutors = useRef<DataSourceExecutor[]>([
+		{ name: "plm", results: [] },
 		{ name: "p2rank", results: [] },
 		{ name: "foldseek", results: [] }
-	], []);
-	const isFetching = useMemo<boolean[]>(() => new Array(dataSourceExecutors.length).fill(false), []);
-	const isPollingFinished = useMemo<boolean[]>(() => new Array(dataSourceExecutors.length).fill(false), []);
-	const [errorMessages, setErrorMessages] = useState<string[]>(new Array(dataSourceExecutors.length).fill(""));
+	]);
+	const isFetching = useRef<boolean[]>(new Array(dataSourceExecutors.current.length).fill(false));
+	const isPollingFinished = useRef<boolean[]>(new Array(dataSourceExecutors.current.length).fill(false));
+	const [errorMessages, setErrorMessages] = useState<string[]>(new Array(dataSourceExecutors.current.length).fill(""));
 	const [chainResults, setChainResults] = useState<ChainResults | null>(null);
 	const [selectedChain, setSelectedChain] = useState<string | null>(null); // Will be set when chain results are set
 	const [squashBindingSites, setSquashBindingSites] = useState<boolean>(false);
-	let lock = useMemo<boolean>(() => false, []);
+	// queryProteinLigandData[dataSourceName][chain][bindingSiteId] -> true/false to show bindings site (and also ligands if available)
+	// similarProteinLigandData[dataSourceName][pdbCode][chain][bindingSiteId] -> true/false to show bindings site (and also ligands if available)
+	// bindingSiteId can be e.g. H_SO4, but it can also be prediction e.g. pocket_1
+	const [queryProteinBindingSitesData, setQueryProteinBindingSitesData] = useState<Record<string, Record<string, Record<string, boolean>>>>(null!);
+	const [similarProteinBindingSitesData, setSimilarProteinBindingSitesData] = useState<Record<string, Record<string, Record<string, Record<string, boolean>>>>>(null!);
+	const [isMolstarLoadingStructures, setIsMolstarLoadingStructures] = useState<boolean>(true);
+	const molstarWrapperRef = useRef<MolStarWrapperHandle>(null!);
+	const [allDataFetched, setAllDataFetched] = useState<boolean>(false);
+	const chains = useRef<string[]>([]);
+	// bindingSiteSupportCounter[chain][residue index in structure (of pocket)] -> number of data sources supporting that residue is part of binding site
+	const [bindingSiteSupportCounter, setBindingSiteSupportCounter] = useState<Record<string, Record<number, number>>>({});
 
 	useEffect(() => {
-		if (isPollingFinished.every(x => x)) {
+		if (isPollingFinished.current.every(x => x)) {
 			/* If polling is finished for every data source, we don't want to turn it on again.
 			 * That is why we have this if here.
 			 * Moreover, we don't have to set pollingInterval to null here (in this if), because
@@ -140,155 +152,15 @@ function AnalyticalPage() {
 		/* There is a polling implemented in useInterval but it would start after POLLING_INTERVAL. If we want to try to
 		 * fetch data immediatelly after loading page (and not wait POLLING_INTERVAL), we use this useEffect.
 		 * If all of the data is not fetched yet, no problem, there is polling in useInterval which will poll for the rest. */
-		for (let dataSourceExecutorIdx = 0; dataSourceExecutorIdx < dataSourceExecutors.length; dataSourceExecutorIdx++) {
+		for (let dataSourceExecutorIdx = 0; dataSourceExecutorIdx < dataSourceExecutors.current.length; dataSourceExecutorIdx++) {
 			fetchDataFromDataSource(dataSourceExecutorIdx);
 		}
 
 		setPollingInterval(POLLING_INTERVAL); // turn on the polling
 	}, []);
 
-	useInterval(() => {
-		for (let dataSourceExecutorIdx = 0; dataSourceExecutorIdx < dataSourceExecutors.length; dataSourceExecutorIdx++) {
-			if (isFetching[dataSourceExecutorIdx] || isPollingFinished[dataSourceExecutorIdx]) {
-				continue;
-			}
-			fetchDataFromDataSource(dataSourceExecutorIdx);
-		}
-	}, pollingInterval);
-
-	return (
-		<div>
-			{errorMessages.some(errMsg => errMsg.length > 0) && (
-				<ErrorMessageBox errorMessages={errorMessages} onClose={clearErrorMessages} />
-			)}
-
-			<div id="visualizations" className="row">
-				{/* Sometimes when RcsbSaguro rerendered it kept rerendering over and over again. If you resized the window,
-					it stopped (sometimes it stopped on its own without resizing). When minHeight: "100vh" was added, 
-					this weird behavior disappeared. */}
-				<div id="visualization-rcsb" className="col-xs-12 col-md-6 col-xl-6" style={{ minHeight: "100vh" }}>
-					{chainResults && selectedChain ? (
-						<div className="d-flex flex-column align-items-center">
-							{/* Settings/Filter panel */}
-							<div className="w-75 d-flex flex-wrap align-items-center border rounded px-3 py-2">
-								<div className="d-flex align-items-center mr-2">
-									<div className="mr-1 font-weight-bold">Chains:</div>
-									<Select
-										defaultValue={{ label: Object.keys(chainResults)[0], chain: Object.keys(chainResults)[0] }}
-										onChange={(selectedOption: any) => setSelectedChain(selectedOption.value)}
-										/* as any is used here to silence error message which seems to be irrelevant, it says
-										* the type is wrong but according to the official GitHub repo README of the package,
-										* this is how options should look like, so it should be OK. */
-										options={Object.keys(chainResults).map(chain => ({
-											label: chain,
-											value: chain
-										})) as any} />
-								</div>
-								<div className="form-check mb-0">
-									<input
-										type="checkbox"
-										id="squash-binding-sites"
-										className="form-check-input"
-										checked={squashBindingSites}
-										onChange={() => setSquashBindingSites(prevState => !prevState)}
-									/>
-									<label className="form-check-label" htmlFor="squash-binding-sites">
-										Squash binding sites
-									</label>
-								</div>
-							</div>
-
-							<div className="w-100 mt-2">
-								<RcsbSaguaro chainResult={chainResults[selectedChain]}
-									squashBindingSites={squashBindingSites} />
-							</div>
-						</div>
-					) : (
-						<div className="d-flex py-2 justify-content-center align-items-center">
-							<FadeLoader color="#c3c3c3" />
-						</div>
-					)}
-				</div>
-				<div id="visualization-molstar" className="col-xs-12 col-md-6 col-xl-6">
-					<MolStarWrapper />
-					<div id="visualization-toolbox">TODO Toolbox</div>
-				</div>
-			</div>
-		</div>
-	);
-
-	async function fetchDataFromDataSource(dataSourceIndex: number) {
-		console.log("Polling data source executor: " + dataSourceExecutors[dataSourceIndex].name);
-		isFetching[dataSourceIndex] = true;
-		const {
-			status,
-			userFriendlyErrorMessage: statusFetchingErrorMessage
-		} = await getDataSourceExecutorResultStatusAPI(dataSourceExecutors[dataSourceIndex].name, id, useConservation);
-		if (statusFetchingErrorMessage.length > 0) {
-			console.warn(statusFetchingErrorMessage + "\nRetrying...");
-			isFetching[dataSourceIndex] = false;
-			return;
-		}
-		console.log("Status:" + status)
-
-		let chainsLocal: string[] = null!;
-		if (chains.length === 0) {
-			/* Every protein has at least one chain. No chains means none was selected by the user so we select all.
-			 * When status is ready, the chains.json (on the server, containing all the chains) should be ready as well,
-			 * so if we don't have the chains, we can get all of them from it. */
-			const { chains: chainsTmp, userFriendlyErrorMessage: allChainsFetchingErrorMessage } = await getAllChainsAPI(id);
-			if (allChainsFetchingErrorMessage.length > 0) {
-				toastWarning(allChainsFetchingErrorMessage + "\nRetrying...");
-				return;
-			}
-			setChains(chainsTmp);
-			chainsLocal = chainsTmp;
-		} else {
-			chainsLocal = chains;
-		}
-
-		if (status === DataStatus.Processing) {
-			isFetching[dataSourceIndex] = false;
-			return;
-		}
-
-		if (status === DataStatus.Failed) {
-			const errMsg = `Failed to fetch data from ${dataSourceExecutors[dataSourceIndex].name}, so they won't be displayed.`;
-			updateErrorMessages(dataSourceIndex, errMsg);
-		} else if (status === DataStatus.Completed) {
-			const results: UnprocessedResult[] = [];
-
-			for (let i = 0; i < chainsLocal.length; i++) {
-				const chain = chainsLocal[i];
-
-				const {
-					result,
-					userFriendlyErrorMessage: dataFetchingErrorMessage
-				} = await getDataSourceExecutorResultAPI(dataSourceExecutors[dataSourceIndex].name, id, chain, useConservation);
-				if (dataFetchingErrorMessage.length > 0) {
-					toastWarning(dataFetchingErrorMessage + "\nRetrying...");
-					i--; // Try again for the same chain
-					continue;
-				}
-				results.push(result);
-			}
-
-			console.log("Results:" + results)
-			dataSourceExecutors[dataSourceIndex].results = results;
-		} else {
-			throw new Error("Unknown status."); // This should never happen.
-		}
-
-		/* Either was processing successful and we got the result (Status.Completed),
-		 * or it failed and we won't get result ever (Status.Failed). This means polling for this
-		 * data source result is not required anymore, and we can stop it. */
-		isPollingFinished[dataSourceIndex] = true;
-		if (isPollingFinished.every(x => x)) {
-			if (lock) {
-				isFetching[dataSourceIndex] = false;
-				return;
-			}
-			lock = true;
+	useEffect(() => {
+		async function processData(dataSourceExecutors: DataSourceExecutor[], defaultChain: string) {
 			setPollingInterval(null); // turn off polling entirely (for all data sources)
 
 			// TODO zmen nazvy refactor?
@@ -299,7 +171,7 @@ function AnalyticalPage() {
 			for (let i = 0; i < entries.length; i++) {
 				const [chain, dataSourceResults] = entries[i];
 
-				let conservations = [];
+				let conservations: Conservation[] = [];
 				if (useConservation) {
 					const {
 						conservations: conservationsTmp,
@@ -313,13 +185,205 @@ function AnalyticalPage() {
 					conservations = conservationsTmp;
 				}
 
-				chainResultsTmp[chain] = await alignSequencesAcrossAllDataSources(dataSourceResults, conservations);
+				chainResultsTmp[chain] = alignSequencesAcrossAllDataSources(dataSourceResults, conservations, chain);
 			}
-			setSelectedChain(chainsLocal[0]) // Every protein has at least 1 chain
+			handleChainSelect(chainResultsTmp[defaultChain], defaultChain); // Every protein has at least 1 chain
 			setChainResults(chainResultsTmp);
-			lock = false;
 		}
-		isFetching[dataSourceIndex] = false;
+
+		if (allDataFetched) {
+			// both dataSourceExecutors and chains should be already initialized when allDataFetched is set to true
+			const defaultChain = chains.current[0]; // Protein always has at least 1 chain
+
+			processData(dataSourceExecutors.current, defaultChain);
+		}
+	}, [allDataFetched]);
+
+	useInterval(() => {
+		for (let dataSourceExecutorIdx = 0; dataSourceExecutorIdx < dataSourceExecutors.current.length; dataSourceExecutorIdx++) {
+			if (isFetching.current[dataSourceExecutorIdx] || isPollingFinished.current[dataSourceExecutorIdx]) {
+				continue;
+			}
+			fetchDataFromDataSource(dataSourceExecutorIdx);
+		}
+	}, pollingInterval);
+
+	return (
+		<div className="w-100">
+			{errorMessages.some(errMsg => errMsg.length > 0) && (
+				<ErrorMessageBox classes="mt-2" errorMessages={errorMessages} onClose={clearErrorMessages} />
+			)}
+
+			<div id="visualizations">
+				{/* Sometimes when RcsbSaguro rerendered it kept rerendering over and over again. If you resized the window,
+					it stopped (sometimes it stopped on its own without resizing). When minHeight: "100vh" was added, 
+					this weird behavior disappeared. */}
+				<div id="visualization-rcsb">
+					{chainResults && selectedChain ? (
+						<div className="d-flex flex-column align-items-center">
+							{/* Settings/Filter panel */}
+							<div className="d-flex w-100 position-relative px-3">
+								<SettingsPanel classes="w-100 mx-auto mt-2 px-3 py-2"
+									chainResults={chainResults}
+									squashBindingSites={squashBindingSites}
+									isDisabled={isMolstarLoadingStructures}
+									onChainSelect={selectedChain => handleChainSelect(chainResults[selectedChain], selectedChain)}
+									onBindingSitesSquashClick={() => setSquashBindingSites(prevState => !prevState)}
+									onStructuresSelect={handleStructuresSelect} />
+								{isMolstarLoadingStructures &&
+									<ScaleLoader className="position-absolute w-100 h-100 justify-content-center align-items-center"
+										height={"21px"}
+										color="#878787" />
+								}
+							</div>
+
+							<RcsbSaguaro classes="w-100 mt-2"
+								chainResult={chainResults[selectedChain]}
+								squashBindingSites={squashBindingSites} />
+						</div>
+					) : (
+						<div className="d-flex justify-content-center align-items-center" style={{ height: "100vh" }}>
+							<FadeLoader color="#c3c3c3" />
+						</div>
+					)}
+				</div>
+				<div id="visualization-molstar">
+					{chainResults && selectedChain && selectedChain in bindingSiteSupportCounter ? (<>
+						<div className="w-100 d-flex justify-content-center align-items-center mb-2 px-4">
+							<MolStarWrapper ref={molstarWrapperRef}
+								chainResults={chainResults}
+								selectedChain={selectedChain}
+								bindingSiteSupportCounter={bindingSiteSupportCounter[selectedChain]}
+								dataSourceCount={dataSourceExecutors.current.length}
+								onStructuresLoadingStart={() => setIsMolstarLoadingStructures(true)}
+								onStructuresLoadingEnd={() => setIsMolstarLoadingStructures(false)} />
+						</div>
+						{queryProteinBindingSitesData && similarProteinBindingSitesData && (
+							<TogglerPanels classes="px-4"
+								queryProteinBindingSitesData={queryProteinBindingSitesData}
+								similarProteinsBindingSitesData={similarProteinBindingSitesData}
+								isDisabled={isMolstarLoadingStructures}
+								onQueryProteinBindingSiteToggle={handleQueryProteinBindingSiteToggle}
+								onSimilarProteinBindingSiteToggle={handleSimilarProteinBindingSiteToggle} />
+						)}
+					</>) : (
+						<div className="d-flex justify-content-center align-items-center" style={{ height: "100vh" }}>
+							<FadeLoader color="#c3c3c3" />
+						</div>
+					)}
+				</div>
+			</div>
+		</div>
+	);
+
+	async function tryGetChains(): Promise<{ chains: string[], errMsg: string }> {
+		let chainsRes: string[] = [];
+
+		if (chainsFromParams.length === 0) {
+			/* Every protein has at least one chain. No chains means none was selected by the user so we select all.
+			 * When status is ready, the chains.json (on the server, containing all the chains) should be ready as well,
+			 * so if we don't have the chains, we can get all of them from it. */
+			const { chains, userFriendlyErrorMessage } = await getAllChainsAPI(id);
+			if (userFriendlyErrorMessage.length > 0) {
+				return { chains: [], errMsg: userFriendlyErrorMessage };
+			}
+
+			chainsRes = chains;
+		} else {
+			chainsRes = chainsFromParams;
+		}
+
+		return { chains: chainsRes, errMsg: "" };
+	}
+
+	async function tryGetResult(
+		dataSourceName: string,
+		id: string,
+		chain: string,
+		useConservation: boolean
+	): Promise<{ result: UnprocessedResult | null, errMsg: string }> {
+		const {
+			result,
+			userFriendlyErrorMessage
+		} = await getDataSourceExecutorResultAPI(dataSourceName, id, chain, useConservation);
+
+		if (userFriendlyErrorMessage.length > 0) {
+			return { result: null, errMsg: userFriendlyErrorMessage };
+		}
+
+		return { result: result, errMsg: "" };
+	}
+
+	async function getResults(dataSourceIndex: number, id: string, chains: string[], useConservation: boolean) {
+		const results: UnprocessedResult[] = [];
+
+		for (let i = 0; i < chains.length; i++) {
+			const {
+				result,
+				errMsg: dataFetchingErrorMessage
+			} = await tryGetResult(dataSourceExecutors.current[dataSourceIndex].name, id, chains[i], useConservation);
+
+			if (dataFetchingErrorMessage.length > 0) {
+				toastWarning(dataFetchingErrorMessage + "\nRetrying...");
+				i--; // Try again for the same chain
+				continue;
+			}
+			results.push(result);
+		}
+
+		return results;
+	}
+
+	async function fetchDataFromDataSource(dataSourceIndex: number) {
+		isFetching.current[dataSourceIndex] = true;
+		console.info("Polling data source executor: " + dataSourceExecutors.current[dataSourceIndex].name);
+
+		// Get status
+		const {
+			status,
+			userFriendlyErrorMessage: statusFetchingErrorMessage
+		} = await getDataSourceExecutorResultStatusAPI(dataSourceExecutors.current[dataSourceIndex].name, id, useConservation);
+		if (statusFetchingErrorMessage.length > 0) {
+			console.warn(statusFetchingErrorMessage + "\nRetrying...");
+			isFetching.current[dataSourceIndex] = false;
+			return;
+		}
+
+		// Init chains (either from params, or from servers chains file which should be already created when status is retrieved)
+		const { chains: chainsTmp, errMsg: allChainsFetchingErrorMessage } = await tryGetChains();
+		if (allChainsFetchingErrorMessage.length > 0) {
+			toastWarning(allChainsFetchingErrorMessage + "\nRetrying...");
+			isFetching.current[dataSourceIndex] = false;
+			return;
+		}
+		chains.current = chainsTmp;
+		const defaultChain = chainsTmp[0]; // Protein always has at least 1 chain
+		setSelectedChain(defaultChain);
+
+		// Choose next action depending on status
+		if (status === DataStatus.Processing) {
+			isFetching.current[dataSourceIndex] = false;
+			return;
+		} else if (status === DataStatus.Failed) {
+			const errMsg = `Failed to fetch data from ${dataSourceExecutors.current[dataSourceIndex].name}, so they won't be displayed.`;
+			updateErrorMessages(dataSourceIndex, errMsg);
+		} else if (status === DataStatus.Completed) {
+			const results = await getResults(dataSourceIndex, id, chainsTmp, useConservation);
+			dataSourceExecutors.current[dataSourceIndex].results = results;
+		} else {
+			throw new Error("Unknown status."); // This should never happen.
+		}
+
+		/* Either was processing successful and we got the result (Status.Completed),
+		 * or it failed and we won't get result ever (Status.Failed). This means polling for this
+		 * data source result is not required anymore, and we can stop it. */
+		isPollingFinished.current[dataSourceIndex] = true;
+
+		if (isPollingFinished.current.every(x => x)) {
+			// Polling is finished for all data sources
+			setAllDataFetched(true);
+		}
+		isFetching.current[dataSourceIndex] = false;
 	}
 
 	function replaceWithAlignedPart(
@@ -442,7 +506,8 @@ function AnalyticalPage() {
 
 	function alignSequencesAcrossAllDataSources(
 		unprocessedResultPerDataSourceExecutor: Record<string, UnprocessedResult>,
-		conservations: Conservation[]
+		conservations: Conservation[],
+		chain: string
 	): ChainResult {
 		const dataSourceExecutorsCount = Object.keys(unprocessedResultPerDataSourceExecutor).length;
 		if (dataSourceExecutorsCount == 0) {
@@ -479,13 +544,13 @@ function AnalyticalPage() {
 				continue;
 			}
 			similarProteins[dataSourceName] = result.similarProteins.map<SimilarProtein>(simProt => ({
-				pdbId: sanitizeCode(simProt.pdbId),
-				chain: sanitizeSequence(simProt.chain),
+				pdbId: simProt.pdbId,
+				pdbUrl: simProt.pdbUrl,
+				chain: simProt.chain,
 				bindingSites: simProt.bindingSites,
 				sequence: "" // will be set later when aligning
 			}));
 		}
-
 
 		const offsets: Record<string, number[]> = {};
 		for (const [dataSourceName, result] of Object.entries(unprocessedResultPerDataSourceExecutor)) {
@@ -573,22 +638,61 @@ function AnalyticalPage() {
 			}
 		}
 
-		// "Postprocessing phase": Update all residue indices of each binding site
-		Object.entries(unprocessedResultPerDataSourceExecutor).forEach(([dataSourceName, result]) => {
-			// Update residues of binding sites of query protein
-			result.bindingSites.forEach(bindingSite =>
-				updateBindingSiteResiduesIndices(bindingSite, mapping));
+		/* "Postprocessing phase": Update all residue indices of each binding site, 
+		 * also count how many data sources support certain binding site. */
+		// bindingSiteSupportCounterTmp[residue index in structure (of pocket)]: number of data sources supporting pocket on the index
+		const bindingSiteSupportCounterTmp: Record<number, number> = {};
+		for (const [dataSourceName, result] of Object.entries(unprocessedResultPerDataSourceExecutor)) {
+			let supporterCounted: Record<number, boolean> = {}; // one data source can support residue just once
 
-			if (result.similarProteins) {
-				// Update residues of binding sites of all similar proteins
-				result.similarProteins.forEach((simProt, simProtIdx) =>
-					simProt.bindingSites.forEach(bindingSite =>
-						updateBindingSiteResiduesIndices(bindingSite, similarProteinsMapping[dataSourceName][simProtIdx])));
+			// Update residues of binding sites of query protein and count supporters
+			for (const bindingSite of result.bindingSites) {
+				updateBindingSiteResiduesIndices(bindingSite, mapping);
+
+				for (const residue of bindingSite.residues) {
+					if (supporterCounted[residue.structureIndex]) {
+						continue;
+					}
+
+					if (!(residue.structureIndex in bindingSiteSupportCounterTmp)) {
+						bindingSiteSupportCounterTmp[residue.structureIndex] = 0;
+					}
+					bindingSiteSupportCounterTmp[residue.structureIndex] += 1;
+					supporterCounted[residue.structureIndex] = true;
+				}
 			}
-		});
+
+			if (!result.similarProteins) {
+				continue;
+			}
+			// Update residues of binding sites of all similar proteins and count supporters
+			for (let simProtIdx = 0; simProtIdx < result.similarProteins.length; simProtIdx++) {
+				const simProt = result.similarProteins[simProtIdx];
+
+				for (const bindingSite of simProt.bindingSites) {
+					updateBindingSiteResiduesIndices(bindingSite, similarProteinsMapping[dataSourceName][simProtIdx]);
+
+					for (const residue of bindingSite.residues) {
+						if (supporterCounted[residue.structureIndex]) {
+							continue;
+						}
+
+						if (!(residue.structureIndex in bindingSiteSupportCounterTmp)) {
+							bindingSiteSupportCounterTmp[residue.structureIndex] = 0;
+						}
+						bindingSiteSupportCounterTmp[residue.structureIndex] += 1;
+						supporterCounted[residue.structureIndex] = true;
+					}
+				}
+			}
+		}
 		for (const conservation of conservations) {
 			conservation.index = mapping[conservation.index];
 		}
+		setBindingSiteSupportCounter(prevState => ({
+			...prevState,
+			[chain]: bindingSiteSupportCounterTmp
+		}));
 
 		const dataSourceExecutorResultsTmp: Record<string, ProcessedResult> = {};
 		Object.entries(unprocessedResultPerDataSourceExecutor).forEach(([dataSourceName, result]) =>
@@ -608,7 +712,137 @@ function AnalyticalPage() {
 	};
 
 	function clearErrorMessages() {
-		setErrorMessages(new Array(dataSourceExecutors.length).fill(""));
+		setErrorMessages(new Array(dataSourceExecutors.current.length).fill(""));
+	}
+
+	function toSimilarProteinLigandData(chainResult: ChainResult, selectedStructureOptions: StructureOption[]) {
+		const res: Record<string, Record<string, Record<string, Record<string, boolean>>>> = {};
+
+		for (const [dataSourceName, result] of Object.entries(chainResult.dataSourceExecutorResults)) {
+			if (!result.similarProteins) {
+				continue;
+			}
+
+			for (const simProt of result.similarProteins) {
+				const isStructureSelected = selectedStructureOptions.some(
+					x => x.value.dataSourceName === dataSourceName
+						&& x.value.pdbId === simProt.pdbId
+						&& x.value.chain === simProt.chain
+				);
+				if (!isStructureSelected) {
+					continue;
+				}
+
+				if (simProt.bindingSites.length === 0) {
+					if (!(dataSourceName in res)) {
+						res[dataSourceName] = {};
+					}
+					if (!(simProt.pdbId in res[dataSourceName])) {
+						res[dataSourceName][simProt.pdbId] = {};
+					}
+					if (!(simProt.chain in res[dataSourceName][simProt.pdbId])) {
+						res[dataSourceName][simProt.pdbId][simProt.chain] = {};
+					}
+				}
+				for (const bindingSite of simProt.bindingSites) {
+					if (!(dataSourceName in res)) {
+						res[dataSourceName] = {};
+					}
+					if (!(simProt.pdbId in res[dataSourceName])) {
+						res[dataSourceName][simProt.pdbId] = {};
+					}
+					if (!(simProt.chain in res[dataSourceName][simProt.pdbId])) {
+						res[dataSourceName][simProt.pdbId][simProt.chain] = {};
+					}
+
+					let newValue = false;
+					if (dataSourceName in similarProteinBindingSitesData
+						&& simProt.pdbId in similarProteinBindingSitesData[dataSourceName]
+						&& simProt.chain in similarProteinBindingSitesData[dataSourceName][simProt.pdbId]
+						&& bindingSite.id in similarProteinBindingSitesData[dataSourceName][simProt.pdbId][simProt.chain]) {
+						newValue = similarProteinBindingSitesData[dataSourceName][simProt.pdbId][simProt.chain][bindingSite.id];
+					}
+					res[dataSourceName][simProt.pdbId][simProt.chain][bindingSite.id] = newValue;
+				}
+			}
+		}
+
+		return res;
+	}
+
+	function handleQueryProteinBindingSiteToggle(dataSourceName: string, chain: string, bindingSiteId: string, show: boolean) {
+		setQueryProteinBindingSitesData(prev => ({
+			...prev,
+			[dataSourceName]: {
+				...prev[dataSourceName],
+				[chain]: {
+					...prev[dataSourceName][chain],
+					[bindingSiteId]: show
+				}
+			}
+		}));
+
+		molstarWrapperRef.current?.toggleQueryProteinBindingSite(dataSourceName, chain, bindingSiteId, show);
+	}
+
+	function handleSimilarProteinBindingSiteToggle(dataSourceName: string, pdbCode: string, chain: string, bindingSiteId: string, show: boolean) {
+		setSimilarProteinBindingSitesData(prev => ({
+			...prev,
+			[dataSourceName]: {
+				...prev[dataSourceName],
+				[pdbCode]: {
+					...prev[dataSourceName][pdbCode],
+					[chain]: {
+						...prev[dataSourceName][pdbCode][chain],
+						[bindingSiteId]: show
+					}
+				}
+			}
+		}));
+
+		molstarWrapperRef.current?.toggleSimilarProteinBindingSite(dataSourceName, pdbCode, chain, bindingSiteId, show);
+	}
+
+	function handleChainSelect(chainResult: ChainResult, selectedChain: string) {
+		setSelectedChain(selectedChain);
+
+		const queryProteinLigandsDataTmp = getQueryProteinLigandsData(chainResult, selectedChain);
+		setQueryProteinBindingSitesData(queryProteinLigandsDataTmp);
+	}
+
+	function handleStructuresSelect(selectedStructureOptions: StructureOption[]) {
+		const similarProteinLigandDataTmp = toSimilarProteinLigandData(chainResults[selectedChain], selectedStructureOptions);
+		setSimilarProteinBindingSitesData(similarProteinLigandDataTmp);
+
+		// User selected some structures, we hide them all, and then display only the selected ones
+		molstarWrapperRef.current?.hideAllSimilarProteinStructures(selectedStructureOptions);
+		for (const option of selectedStructureOptions) {
+			molstarWrapperRef.current?.toggleSimilarProteinStructure(
+				option.value.dataSourceName,
+				option.value.pdbId,
+				option.value.chain,
+				true
+			);
+		}
+	}
+
+	function getQueryProteinLigandsData(chainResult: ChainResult, selectedChain: string) {
+		const queryProteinLigandsData: Record<string, Record<string, Record<string, boolean>>> = {};
+
+		const dseResult = chainResult.dataSourceExecutorResults;
+		for (const [dataSourceName, result] of Object.entries(dseResult)) {
+			for (const bindingSite of result.bindingSites) {
+				if (!(dataSourceName in queryProteinLigandsData)) {
+					queryProteinLigandsData[dataSourceName] = {};
+				}
+				if (!(selectedChain in queryProteinLigandsData[dataSourceName])) {
+					queryProteinLigandsData[dataSourceName][selectedChain] = {};
+				}
+				queryProteinLigandsData[dataSourceName][selectedChain][bindingSite.id] = false;
+			}
+		}
+
+		return queryProteinLigandsData;
 	}
 }
 
