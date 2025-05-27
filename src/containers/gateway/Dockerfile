@@ -18,6 +18,9 @@ FROM frontend AS build
 # copy the rest of the source codes and build the application
 COPY ./frontend/ ./
 
+ARG REACT_APP_API_BASE_URL
+ENV REACT_APP_API_BASE_URL=$REACT_APP_API_BASE_URL
+
 RUN npm run build
 
 #
@@ -29,8 +32,6 @@ RUN apt-get update && apt-get -y install apache2-utils
 
 ARG WEB_SERVICE_USER
 ARG WEB_SERVICE_PASS
-ARG REACT_APP_API_BASE_URL
-ENV REACT_APP_API_BASE_URL=$REACT_APP_API_BASE_URL
 
 WORKDIR /opt/htpasswd
 # https://docs.nginx.com/nginx/admin-guide/security-controls/configuring-http-basic-authentication/
