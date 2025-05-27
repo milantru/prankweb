@@ -115,6 +115,7 @@ function AnalyticalPage() {
 	const [pollingInterval, setPollingInterval] = useState<number | null>(null);
 	const isPageVisible = useVisibilityChange();
 	const dataSourceExecutors = useRef<DataSourceExecutor[]>([
+		{ name: "plm", results: [] },
 		{ name: "p2rank", results: [] },
 		{ name: "foldseek", results: [] }
 	]);
