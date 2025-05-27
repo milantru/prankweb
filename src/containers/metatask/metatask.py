@@ -83,7 +83,7 @@ def  _prepare_seq_input(id: str, url: str) -> bool:
                 { 
                     'chains': ['A'], 
                     'fasta': {'sequence_1.fasta': ['A'] },
-                    'seq_to_str_mapping': {'A': {}} 
+                    'seqToStrMapping': {'A': {}} 
                 }, 
                 json_file,
                 indent=4
@@ -166,7 +166,7 @@ def _save_converter_seq_result(id: str, result: dict) -> None:
             { 
                 'chains': chains, 
                 'fasta': chain_to_sequence_mapping,
-                'seq_to_str_mapping': result_mapping
+                'seqToStrMapping': result_mapping
             },
             json_file,
             indent=4
