@@ -7,28 +7,30 @@ type Props = {
     classes?: string;
     chainResult: ChainResult;
     squashBindingSites: boolean;
+    startQuerySequenceAtZero: boolean;
 };
 
-function RcsbSaguaro({ classes = "", chainResult, squashBindingSites }: Props) {
+function RcsbSaguaro({ classes = "", chainResult, squashBindingSites, startQuerySequenceAtZero }: Props) {
     // ID of the DOM element where the plugin is placed
     const elementId = "application-rcsb";
     const predictedPocketColor = "#00aa00";
     const defaultTitleFlagColor = "lightgrey"
     /* If query seq is set to start at 0, it means some sequences might 
     * be in negative numbers on board. */
-    const shouldQuerySeqStartAtZero = false;
+    const shouldQuerySeqStartAtZero = false; // TODO delete probably
     const [rcsbFv, setRcsbFv] = useState<RcsbFv>(null);
     const [colorsInitialized, setColorsInitialized] = useState<boolean>(false);
     const dataSourcesColors = useRef<Record<string, string>>(null!); // dataSourcesColors[dataSourceName] -> color in hex, e.g. #0ff1ce
     const bindingSitesColors = useRef<Record<string, string>>(null!); // bindingSitesColors[bindingSiteId] -> color in hex, e.g. #0ff1ce
     const similarProteinsColors = useRef<Record<string, string>>(null!); // similarProteinsColors[pdbId] -> color in hex, e.g. #0ff1ce
     const isFirstRender = useRef(true);
+    const offset = useRef(0);
 
     useEffect(() => {
         if (!isFirstRender.current) {
             initBoard();
         }
-    }, [squashBindingSites]);
+    }, [squashBindingSites, startQuerySequenceAtZero]);
 
     useEffect(() => {
         initColors();
@@ -60,6 +62,19 @@ function RcsbSaguaro({ classes = "", chainResult, squashBindingSites }: Props) {
         </div>
     );
 
+    function getSequenceStartIndex(sequenceWithGaps: string) {
+        let counter = 0;
+
+        for (const aminoAcidOrGap of sequenceWithGaps) {
+            if (aminoAcidOrGap !== "-") {
+                return counter;
+            }
+            counter++;
+        }
+
+        return counter;
+    }
+
     function initColors() {
         setColorsInitialized(false);
         // Colors for data sources
@@ -86,6 +101,16 @@ function RcsbSaguaro({ classes = "", chainResult, squashBindingSites }: Props) {
     }
 
     function initBoard() {
+        if (startQuerySequenceAtZero) {
+            const querySequenceStartIdx = getSequenceStartIndex(chainResult.querySequence);
+            /* +1 is here to "negate" +1 which we use when visualissing items
+             * (we use +1 when visualising items because it seems rcsb saguaro 
+             * expects sequence to start from 1 and not from 0).*/
+            offset.current = querySequenceStartIdx + 1;
+        } else {
+            offset.current = 0;
+        }
+
         const boardConfigData = createBoardConfigData(chainResult);
         const rowConfigData = createRowConfigData(chainResult);
 
@@ -121,7 +146,10 @@ function RcsbSaguaro({ classes = "", chainResult, squashBindingSites }: Props) {
         };
 
         const boardConfigData: RcsbFvBoardConfigInterface = {
-            length: chainResult.querySequence.length,
+            range: {
+                min: 0 - offset.current,
+                max: chainResult.querySequence.length - 1 - offset.current
+            },
             includeAxis: true,
             highlightHoverPosition: true,
             // TODO Implement
@@ -247,8 +275,8 @@ function RcsbSaguaro({ classes = "", chainResult, squashBindingSites }: Props) {
         const label = `<strong>Confidence:</strong> ${bindingSite.confidence} | <strong>Source:</strong> ${dataSourceName}`;
         if (residues.length === 1) {
             const trackDataItem: RcsbFvTrackDataElementInterface = {
-                begin: residues[0].sequenceIndex + 1,
-                end: residues[0].sequenceIndex + 1,
+                begin: residues[0].sequenceIndex + 1 - offset.current,
+                end: residues[0].sequenceIndex + 1 - offset.current,
                 gaps: [],
                 color: color,
                 label: label
@@ -269,13 +297,13 @@ function RcsbSaguaro({ classes = "", chainResult, squashBindingSites }: Props) {
                 continue;
             }
 
-            const gap = { begin: prev + 1, end: curr + 1 };
+            const gap = { begin: prev + 1 - offset.current, end: curr + 1 - offset.current };
             gaps.push(gap);
         }
 
         const trackDataItem: RcsbFvTrackDataElementInterface = {
-            begin: min + 1,
-            end: max + 1,
+            begin: min + 1 - offset.current,
+            end: max + 1 - offset.current,
             gaps: gaps,
             color: color,
             label: label
@@ -293,7 +321,7 @@ function RcsbSaguaro({ classes = "", chainResult, squashBindingSites }: Props) {
             rowTitle: pdbId ?? "Query sequence",
             trackData: [
                 {
-                    begin: 1,
+                    begin: 1 - offset.current,
                     label: querySequence
                 }
             ],
@@ -307,7 +335,7 @@ function RcsbSaguaro({ classes = "", chainResult, squashBindingSites }: Props) {
         const max = Math.max(...conservations.map(conservation => conservation.value));
 
         const conservationData = conservations.map(conservation => ({
-            begin: conservation.index + 1,
+            begin: conservation.index + 1 - offset.current,
             value: conservation.value / max, // normalization
             label: `<strong>Value:</strong> ${conservation.value}`
         }));
@@ -342,7 +370,7 @@ function RcsbSaguaro({ classes = "", chainResult, squashBindingSites }: Props) {
             rowTitle: title,
             trackData: [
                 {
-                    begin: 1,
+                    begin: 1 - offset.current,
                     label: sequence
                 }
             ],

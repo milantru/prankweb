@@ -11,9 +11,11 @@ type Props = {
     classes?: string;
     chainResults: ChainResults;
     squashBindingSites: boolean;
+    startQuerySequenceAtZero: boolean;
     isDisabled: boolean;
     onChainSelect: (selectedChain: string) => void;
     onBindingSitesSquashClick: () => void;
+    onStartQuerySequenceAtZero: () => void;
     onStructuresSelect: (selectedStructureOptions: StructureOption[]) => void;
 };
 
@@ -21,9 +23,11 @@ function SettingsPanel({
     classes = "",
     chainResults,
     squashBindingSites,
+    startQuerySequenceAtZero,
     isDisabled,
     onChainSelect,
     onBindingSitesSquashClick,
+    onStartQuerySequenceAtZero,
     onStructuresSelect
 }: Props) {
     const chains = Object.keys(chainResults);
@@ -73,7 +77,7 @@ function SettingsPanel({
                     })) as any} />
             </div>
 
-            <div className="form-check mb-0 mr-2">
+            <div className="d-flex align-items-center form-check mb-0 mr-2">
                 <input
                     type="checkbox"
                     id="squash-binding-sites"
@@ -83,6 +87,19 @@ function SettingsPanel({
                     onChange={onBindingSitesSquashClick} />
                 <label className="form-check-label" htmlFor="squash-binding-sites">
                     Squash binding sites
+                </label>
+            </div>
+
+            <div className="d-flex align-items-center form-check mb-0 mr-2">
+                <input
+                    type="checkbox"
+                    id="start-query-seq-at-zero"
+                    className="form-check-input"
+                    disabled={isDisabled}
+                    checked={startQuerySequenceAtZero}
+                    onChange={onStartQuerySequenceAtZero} />
+                <label className="form-check-label" htmlFor="start-query-seq-at-zero">
+                    Start query sequence at 0 (Experimental)
                 </label>
             </div>
 
