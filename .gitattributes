@@ -5,3 +5,4 @@
 # Binary files.
 *.png binary
 *.svg binary
+*.pth binary

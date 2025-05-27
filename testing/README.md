@@ -9,6 +9,8 @@
 | **get-id**               | `./run_tests.(bat/sh) get-id`               |
 | **ds-results**           | `./run_tests.(bat/sh) ds-results`           |
 | **conservation-results** | `./run_tests.(bat/sh) conservation-results` |
+| **inputs**               | `./run_tests.(bat/sh) inputs`               |
+| **builder**              | `./run_tests.(bat/sh) builder`              |
 
 ## Cleanup
 

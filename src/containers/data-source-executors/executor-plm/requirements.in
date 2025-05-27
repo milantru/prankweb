@@ -1,0 +1,10 @@
+--extra-index-url https://download.pytorch.org/whl/cpu
+
+torch
+
+git+https://github.com/facebookresearch/esm.git#egg=fair-esm
+
+numpy
+celery
+requests
+pytz
