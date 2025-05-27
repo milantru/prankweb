@@ -1,0 +1,32 @@
+#visualizations {
+    display: flex;
+    flex-wrap: wrap;
+    flex-direction: row;
+    width: 100%;
+}
+
+#visualization-rcsb,
+#visualization-molstar {
+    width: 50%;
+}
+
+@media (max-width: 1474px) {
+
+    /* Stack displays vertically on smaller screens */
+    #visualizations {
+        flex-direction: column;
+    }
+
+    /* Make displays full width */
+    #visualization-rcsb,
+    #visualization-molstar {
+        width: 100%;
+    }
+
+    /* This rules is here because of the Rcsb panel (with +, - and arrows) located on the right side
+     * which pops up when hovered. When Rcsb visualisation is in full width, there would be no space between panel 
+     * and window without this rule, which doesn't look nice. */
+    #visualization-rcsb {
+        padding-right: 5px;
+    }
+}
