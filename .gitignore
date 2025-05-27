@@ -3,6 +3,8 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+.vscode
+
 foldseek
 database
 uploads
@@ -132,7 +134,7 @@ celerybeat.pid
 *.sage.py
 
 # Environments
-# .env
+.env
 .venv
 env/
 venv/

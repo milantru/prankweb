@@ -1,0 +1,11 @@
+{
+    "type": "array",
+    "items": {
+        "type": "object",
+        "required": [ "index", "value" ],
+        "propeties": {
+            "index": { "type": "integer" },
+            "value": { "type": "string" }
+        }
+    }
+}
