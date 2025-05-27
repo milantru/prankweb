@@ -1,1 +1,1 @@
-export const apiBaseUrl = "https://prankweb2.ksi.projekty.ms.mff.cuni.cz";
+export const apiBaseUrl = process.env.REACT_APP_API_BASE_URL || "http://localhost:9864";
