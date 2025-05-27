@@ -119,7 +119,7 @@ services:
       args:
         WEB_SERVICE_USER: ${PLANKWEB_SERVICE_USER}
         WEB_SERVICE_PASS: ${PLANKWEB_SERVICE_PASS}
-        REACT_APP_API_BASE_URL: ${PLANKWEB_URL}
+        VITE_API_BASE_URL: ${PLANKWEB_URL}
     container_name: gateway
     restart: unless-stopped
     logging:
