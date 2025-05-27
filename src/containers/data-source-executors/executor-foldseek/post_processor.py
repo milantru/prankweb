@@ -12,7 +12,7 @@ from tasks_logger import create_logger
 
 #   - OUTPUT FORMAT - columns in result file [MORE](https://github.com/soedinglab/MMseqs2/wiki#custom-alignment-format-with-convertalis)
 #   - `query` - Query sequence identifier
-#   - `target` - Target sequence identifier
+#   - `target` - Target sequence identifier ---> 5d52-assembly1.cif.gz_A  first 4 characters are PDB ID, after "_" is chain ID
 #   - `alnlen` - Alignment length
 #   - `qseq` - Query sequence - FULL
 #   - `qstart` - 1-indexed alignment start position in query sequence
@@ -107,7 +107,7 @@ def save_results(result_folder: str, file_name: str, builder: ProteinDataBuilder
     logger.info(f'{id} Results saved')
 
 def process_similar_protein(result_folder: str, fields: List[str], curr_chain: str, id: str) -> SimilarProteinBuilder:
-    sim_protein_pdb_id, sim_protein_chain = fields[1][:4], fields[1].split("_")[1]
+    sim_protein_pdb_id, sim_protein_chain = fields[1][:4], fields[1].split("_")[1][0]
     pdb_filename = os.path.join(result_folder, f"{sim_protein_pdb_id}.pdb")
     sim_prot_url = os.path.join(PLANKWEB_BASE_URL, "data", "ds_foldseek", id, f"{sim_protein_pdb_id}.pdb")
 
