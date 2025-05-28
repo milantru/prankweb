@@ -16,6 +16,8 @@ node_modules
 *.cif
 *.csv
 *.parquet
+*.npy
+*.pkl
 
 # C extensions
 *.so
