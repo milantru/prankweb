@@ -60,7 +60,7 @@ const RcsbSaguaro = forwardRef(({
             <div id={elementId}></div>
 
             {/* Legend */}
-            <div className="w-75 d-flex my-3 mx-auto p-2 border justify-content-center align-items-center">
+            <div className="w-75 d-flex flex-wrap my-3 mx-auto p-2 border justify-content-center align-items-center">
                 {colorsInitialized && Object.keys(chainResult.dataSourceExecutorResults).map(dataSourceName => (
                     <div key={dataSourceName} className="d-flex align-items-center mr-3">
                         <span className="mr-2"
