@@ -125,10 +125,15 @@ class ProteinDataBuilder(ProteinBuilderBase):
         super().__init__(sequence, chain, pdb_url)
         self._id = id
         self._similar_proteins = []
+        self._similar_protein_keys = set()
         self._metadata = None
 
     def add_similar_protein(self, similar_protein: SimilarProtein):
+        key = (similar_protein.pdbId, similar_protein.chain)
+        if key in self._similar_protein_keys: # We dont want to add the same similar protein twice
+            return self
         self._similar_proteins.append(similar_protein)
+        self._similar_protein_keys.add(key)
         return self
 
     def add_metadata(self, data_source: str, timestamp: Optional[str] = None):
