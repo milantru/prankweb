@@ -30,12 +30,12 @@ function About() {
                 In the application, the model is used to predict which residues are part of specific binding sites.
             </p>
 
-            <h3 id="esmfold">ESMFold</h3>
+            <h3 id="esm2">ESM-2</h3>
             <p>
-                <a href="https://github.com/facebookresearch/esm" target="_blank" rel="noopener noreferrer">ESMFold</a> is a
+                <a href="https://github.com/facebookresearch/esm" target="_blank" rel="noopener noreferrer">ESM-2</a> is a
                 protein Language Model (pLM) that we use to generate embeddings for each residue.
                 These embeddings are then passed to a classification neural network to determine whether
-                a residue is part of a binding site.
+                a residue is part of a binding site without any information about the protein 3D structure.
             </p>
 
             <h3 id="foldseek">Foldseek</h3>
