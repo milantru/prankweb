@@ -76,6 +76,13 @@ def  _prepare_seq_input(id: str, url: str) -> bool:
     
     logger.info(f'{id} {fasta_file} prepared')
 
+    fasta_file = os.path.join(INPUTS_FOLDER, id, 'sequence_1.fasta')
+
+    with open(fasta_file, 'r') as f:
+        content = f.read()
+
+    seq_len = len(content.split('\n')[1])
+
     logger.info(f'{id} Preparing {chain_json}...')
     if not os.path.exists(chain_json):
         with open(chain_json, 'w') as json_file:
@@ -83,7 +90,7 @@ def  _prepare_seq_input(id: str, url: str) -> bool:
                 { 
                     'chains': ['A'], 
                     'fasta': {'sequence_1.fasta': ['A'] },
-                    'seqToStrMapping': {'A': {}} 
+                    'seqToStrMapping': {'A': {str(i): i + 1 for i in range(seq_len)}} # Predicted structure is 1-indexed
                 }, 
                 json_file,
                 indent=4
