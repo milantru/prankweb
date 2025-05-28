@@ -133,8 +133,7 @@ def process_similar_protein(result_folder: str, fields: List[str], curr_chain: s
             with open(pdb_filename, "wb") as f:
                 f.write(response.content)
             logger.info(f'{id} Similar protein {sim_protein_pdb_id} saved to: {pdb_filename}')
-        
-        binding_sites, _, mapping = extract_binding_sites_for_chain(id, pdb_filename, curr_chain)
+        binding_sites, _, mapping = extract_binding_sites_for_chain(id, pdb_filename, sim_protein_chain)
         sim_builder.set_seq_to_str_mapping(mapping)
         for binding_site in binding_sites:
             sim_builder.add_binding_site(binding_site)
