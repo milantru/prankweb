@@ -100,7 +100,7 @@ def run_plm(id):
             f"{id}",
             "structure.pdb"
         )
-        seq_to_str_mapping = chain_map.get('seq_to_str_mapping', {})
+        seq_to_str_mapping = chain_map.get('seqToStrMapping', {})
 
         process_plm_output(
             id, 
