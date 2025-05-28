@@ -1,16 +1,28 @@
-import { useEffect, useRef, useState } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { RcsbFv, RcsbFvTrackDataElementInterface, RcsbFvBoardConfigInterface, RcsbFvRowExtendedConfigInterface, RcsbFvTooltipInterface } from "@rcsb/rcsb-saguaro";
-import { BindingSite, ChainResult, Conservation, Residue } from "../AnalyticalPage";
+import { BindingSite, ChainResult, Conservation } from "../AnalyticalPage";
 import chroma from "chroma-js";
+
+export type RcsbSaguaroHandle = {
+    getRcsbPlugin: () => RcsbFv | null;
+};
 
 type Props = {
     classes?: string;
     chainResult: ChainResult;
     squashBindingSites: boolean;
     startQuerySequenceAtZero: boolean;
+    onHighlight: (structureIndex: number) => void;
+    onClick: (structureIndex: number) => void;
 };
 
-function RcsbSaguaro({ classes = "", chainResult, squashBindingSites, startQuerySequenceAtZero }: Props) {
+const RcsbSaguaro = forwardRef(({
+    classes = "",
+    chainResult,
+    squashBindingSites,
+    startQuerySequenceAtZero,
+    onHighlight,
+    onClick }: Props, ref) => {
     // ID of the DOM element where the plugin is placed
     const elementId = "application-rcsb";
     const predictedPocketColor = "#00aa00";
@@ -25,6 +37,10 @@ function RcsbSaguaro({ classes = "", chainResult, squashBindingSites, startQuery
     const similarProteinsColors = useRef<Record<string, string>>(null!); // similarProteinsColors[pdbId] -> color in hex, e.g. #0ff1ce
     const isFirstRender = useRef(true);
     const offset = useRef(0);
+
+    useImperativeHandle(ref, () => ({
+        getRcsbPlugin
+    }));
 
     useEffect(() => {
         if (!isFirstRender.current) {
@@ -116,12 +132,12 @@ function RcsbSaguaro({ classes = "", chainResult, squashBindingSites, startQuery
 
         if (rcsbFv === null) {
             // Initial load
-            const pfv = new RcsbFv({
+            const rcsbPlugin = new RcsbFv({
                 boardConfigData,
                 rowConfigData,
                 elementId
             });
-            setRcsbFv(pfv);
+            setRcsbFv(rcsbPlugin);
         } else {
             // Rerender/Update
             const newConfig = {
@@ -130,6 +146,11 @@ function RcsbSaguaro({ classes = "", chainResult, squashBindingSites, startQuery
             };
             rcsbFv.updateBoardConfig(newConfig);
         }
+    }
+
+    function getRcsbPlugin(): RcsbFv | null {
+        // Theoretically may return null if plugin was not created yet (when component is not initialized yet)
+        return rcsbFv;
     }
 
     function createBoardConfigData(chainResult: ChainResult) {
@@ -153,8 +174,8 @@ function RcsbSaguaro({ classes = "", chainResult, squashBindingSites, startQuery
             includeAxis: true,
             highlightHoverPosition: true,
             // TODO Implement
-            // highlightHoverCallback: (trackData: Array<RcsbFvTrackDataElementInterface>) => onHighlight(data, molstarPlugin, trackData),
-            // elementClickCallback: (trackData?: RcsbFvTrackDataElementInterface, event?: MouseEvent) => elementClicked(data, molstarPlugin, trackData, event)
+            highlightHoverCallback: handleHighlight,
+            elementClickCallback: (trackData?: RcsbFvTrackDataElementInterface, _?: MouseEvent) => elementClicked(trackData),
             tooltipGenerator: tooltipGenerator
         };
 
@@ -573,6 +594,41 @@ function RcsbSaguaro({ classes = "", chainResult, squashBindingSites, startQuery
         };
         return range;
     }
-}
+
+    function handleHighlight(trackData: Array<RcsbFvTrackDataElementInterface>) {
+        if (trackData.length === 0) return;
+        const lastElement = trackData[0].begin;
+
+        // 100ms debounce
+        setTimeout(() => {
+            if (trackData && trackData.length > 0 && lastElement === trackData[0].begin) {
+                const structIdx = chainResult.seqToStrMapping[lastElement - 1];
+                if (structIdx) {
+                    onHighlight(structIdx);
+                }
+            }
+        }, 100);
+    }
+
+    /**
+     * Method called when any element is clicked in the viewer.
+     * @param trackData Data of the clicked track
+     * @returns void
+     */
+    function elementClicked(trackData?: RcsbFvTrackDataElementInterface) {
+        if (!trackData) {
+            return;
+        }
+        const lastElement = trackData.rectBegin ?? trackData.begin;
+        if (!lastElement) {
+            return;
+        }
+
+        let structIdx = chainResult.seqToStrMapping[lastElement - 1];
+        if (structIdx) {
+            onClick(structIdx);
+        }
+    }
+});
 
 export default RcsbSaguaro;

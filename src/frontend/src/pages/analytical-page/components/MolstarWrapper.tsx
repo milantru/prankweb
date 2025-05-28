@@ -25,12 +25,16 @@ import { setSubtreeVisibility } from 'molstar/lib/mol-plugin/behavior/static/sta
 import { Color } from "molstar/lib/mol-util/color";
 import { StructureOption } from "./SettingsPanel";
 import Switch from "./Switch";
+import { Script } from "molstar/lib/mol-script/script";
 
 export type MolStarWrapperHandle = {
 	toggleQueryProteinBindingSite: (dataSourceName: string, chain: string, bindingSiteId: string, show: boolean) => void;
 	toggleSimilarProteinBindingSite: (dataSourceName: string, pdbCode: string, chain: string, bindingSiteId: string, show: boolean) => void;
 	toggleSimilarProteinStructure: (dataSourceName: string, pdbCode: string, chain: string, show: boolean) => void;
 	hideAllSimilarProteinStructures: (except: StructureOption[]) => void;
+	highlight: (structureIndex: number) => void;
+	focus: (structureIndex: number) => void;
+	getMolstarPlugin: () => PluginUIContext;
 };
 
 declare global {
@@ -94,7 +98,10 @@ export const MolStarWrapper = forwardRef(({
 		toggleQueryProteinBindingSite,
 		toggleSimilarProteinBindingSite,
 		toggleSimilarProteinStructure,
-		hideAllSimilarProteinStructures
+		hideAllSimilarProteinStructures,
+		highlight,
+		focus,
+		getMolstarPlugin
 	}));
 
 	// In debug mode of react's strict mode, this code will
@@ -208,6 +215,15 @@ export const MolStarWrapper = forwardRef(({
 			<div ref={parent} style={{ position: "relative", height: "70vh" }}></div>
 		</div>
 	);
+
+	function getMolstarPlugin(): PluginUIContext | null {
+		const plugin: PluginUIContext = window.molstar;
+		if (!plugin) {
+			return null;
+		}
+
+		return plugin;
+	}
 
 	function getQuerySequenceUrl(chainResult: ChainResult) {
 		const dseResults = Object.values(chainResult.dataSourceExecutorResults) as ProcessedResult[];
@@ -824,5 +840,62 @@ export const MolStarWrapper = forwardRef(({
 				}
 			}
 		}
+	}
+
+	/**
+	 * Method which gets selection from specified chainId and residues.
+	 * @param plugin Mol* plugin
+	 * @param chainId Chain (letter) to be focused on
+	 * @param positions Residue ids
+	 * @returns StructureSelection of the desired residues
+	 */
+	function getSelectionFromChainAuthId(plugin: PluginUIContext, chainId: string, positions: number[]) {
+		const query = MS.struct.generator.atomGroups({
+			'chain-test': MS.core.rel.eq([MS.struct.atomProperty.macromolecular.auth_asym_id(), chainId]),
+			'residue-test': MS.core.set.has([MS.set(...positions), MS.struct.atomProperty.macromolecular.auth_seq_id()]),
+			'group-by': MS.struct.atomProperty.macromolecular.residueKey()
+		});
+		return Script.getStructureSelection(query, plugin.managers.structure.hierarchy.current.structures[0].cell.obj!.data);
+	}
+
+	/**
+	 * Method which focuses on the specified residues loci.
+	 * @param structureIndex Residue id in structure viewer
+	 * @returns void
+	 */
+	function highlight(structureIndex: number) {
+		const plugin = window.molstar;
+		if (!plugin) {
+			console.warn("Tried to highlight item in Mol* viewer, but the plugin is missing.");
+			return;
+		}
+
+		const data = plugin.managers.structure.hierarchy.current.structures[0]?.cell.obj?.data;
+		if (!data) return;
+
+		const sel = getSelectionFromChainAuthId(plugin, selectedChain, [structureIndex]);
+		const loci = StructureSelection.toLociWithSourceUnits(sel);
+		plugin.managers.interactivity.lociHighlights.highlightOnly({ loci });
+	}
+
+	/**
+	 * Method which focuses on the specified loci.
+	 * @param structureIndex Residue id in structure viewer
+	 * @returns void
+	 */
+	function focus(structureIndex: number) {
+		const plugin = window.molstar;
+		if (!plugin) {
+			console.warn("Tried to focus on item in Mol* viewer, but the plugin is missing.");
+			return;
+		}
+
+		const data = plugin.managers.structure.hierarchy.current.structures[0]?.cell.obj?.data;
+		if (!data) return;
+
+		const sel = getSelectionFromChainAuthId(plugin, selectedChain, [structureIndex]);
+		const loci = StructureSelection.toLociWithSourceUnits(sel);
+		plugin.managers.interactivity.lociHighlights.highlightOnly({ loci });
+		plugin.managers.camera.focusLoci(loci);
 	}
 });

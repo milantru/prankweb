@@ -152,13 +152,33 @@ export async function getAllChainsAPI(id: string): Promise<{ chains: string[], u
 	try {
 		const response = await axios.get(url);
 
-		const chains = response.data["chains"];
+		const chains: string[] = response.data["chains"];
 		return { chains: chains, userFriendlyErrorMessage: "" };
 	} catch (error) {
 		const errMsgs = getErrorMessages(error);
 		errMsgs.forEach(errMsg => console.error(errMsg));
 
 		return { chains: [], userFriendlyErrorMessage: errorMessage };
+	}
+}
+
+export async function getQuerySeqToStrMappingsAPI(
+	id: string
+): Promise<{ seqToStrMappings: Record<string, Record<number, number>>, userFriendlyErrorMessage: string }> {
+	const url = `${apiBaseUrl}/data/inputs/${id}/chains.json`;
+	const errorMessage = "Failed to fetch sequence to structure mappings for query protein.";
+
+	try {
+		const response = await axios.get(url);
+
+		// Mapping for query protein, seqToStrMappings[chain][seqIdx] -> structIdx
+		const seqToStrMappings: Record<string, Record<number, number>> = response.data["seqToStrMapping"];
+		return { seqToStrMappings: seqToStrMappings, userFriendlyErrorMessage: "" };
+	} catch (error) {
+		const errMsgs = getErrorMessages(error);
+		errMsgs.forEach(errMsg => console.error(errMsg));
+
+		return { seqToStrMappings: {}, userFriendlyErrorMessage: errorMessage };
 	}
 }
 

@@ -2,15 +2,20 @@ import { useSearchParams } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
 import { useInterval } from "../../shared/hooks/useInterval";
 import { useVisibilityChange } from "../../shared/hooks/useVisibilityChange";
-import { DataStatus, getAllChainsAPI, getConservationsAPI, getDataSourceExecutorResultAPI, getDataSourceExecutorResultStatusAPI } from "../../shared/services/apiCalls";
-import RcsbSaguaro from "./components/RcsbSaguaro";
+import { DataStatus, getAllChainsAPI, getConservationsAPI, getDataSourceExecutorResultAPI, getDataSourceExecutorResultStatusAPI, getQuerySeqToStrMappingsAPI } from "../../shared/services/apiCalls";
+import RcsbSaguaro, { RcsbSaguaroHandle } from "./components/RcsbSaguaro";
 import { FadeLoader, ScaleLoader } from "react-spinners";
 import { MolStarWrapper, MolStarWrapperHandle } from "./components/MolstarWrapper";
 import { toastWarning } from "../../shared/helperFunctions/toasts";
 import ErrorMessageBox from "./components/ErrorMessageBox";
 import SettingsPanel, { StructureOption } from "./components/SettingsPanel";
 import TogglerPanels from "./components/TogglerPanels";
+import { RcsbFv } from "@rcsb/rcsb-saguaro";
 import "./AnalyticalPage.tsx.css"
+import { Canvas3D } from "molstar/lib/mol-canvas3d/canvas3d";
+import { Bond, StructureElement, StructureProperties } from "molstar/lib/mol-model/structure";
+import { Loci } from "molstar/lib/mol-model/loci";
+import { PluginUIContext } from "molstar/lib/mol-plugin-ui/context";
 
 const POLLING_INTERVAL = 1000 * 5; // every 5 seconds
 
@@ -47,6 +52,7 @@ type UnprocessedSimilarProtein = {
 	sequence: string;
 	chain: string;
 	bindingSites: BindingSite[];
+	seqToStrMapping: Record<number, number>; // seqToStrMapping[seqIdx] -> structIdx
 	alignmentData: AlignmentData;
 };
 
@@ -77,6 +83,7 @@ type SimilarProtein = {
 	sequence: string;
 	chain: string;
 	bindingSites: BindingSite[];
+	seqToStrMapping: Record<number, number>; // seqToStrMapping[seqIdx] -> structIdx
 };
 
 export type ProcessedResult = {
@@ -94,6 +101,7 @@ type DataSourceExecutorResult = Record<string, ProcessedResult>; // key is data 
 
 export type ChainResult = {
 	querySequence: string,
+	seqToStrMapping: Record<number, number>; // seqToStrMapping[seqIdx] -> structIdx
 	dataSourceExecutorResults: DataSourceExecutorResult;
 	conservations: Conservation[];
 };
@@ -133,10 +141,14 @@ function AnalyticalPage() {
 	const [similarProteinBindingSitesData, setSimilarProteinBindingSitesData] = useState<Record<string, Record<string, Record<string, Record<string, boolean>>>>>(null!);
 	const [isMolstarLoadingStructures, setIsMolstarLoadingStructures] = useState<boolean>(true);
 	const molstarWrapperRef = useRef<MolStarWrapperHandle>(null!);
+	const rcsbSaguaroRef = useRef<RcsbSaguaroHandle>(null!);
 	const [allDataFetched, setAllDataFetched] = useState<boolean>(false);
 	const chains = useRef<string[]>([]);
+	// After data processing it will be possible to do seqToStrMappings[chain][rcsb position - 1] -> structure index in molstar
+	const seqToStrMappings = useRef<Record<string, Record<number, number>>>(null!); // seqToStrMappings[chain][seqIdx] -> structIdx
 	// bindingSiteSupportCounter[chain][residue index in structure (of pocket)] -> number of data sources supporting that residue is part of binding site
 	const [bindingSiteSupportCounter, setBindingSiteSupportCounter] = useState<Record<string, Record<number, number>>>({});
+	const isMolstarLinkedToRcsb = useRef<boolean>(false);
 
 	useEffect(() => {
 		if (isPollingFinished.current.every(x => x)) {
@@ -200,6 +212,16 @@ function AnalyticalPage() {
 		}
 	}, [allDataFetched]);
 
+	useEffect(() => {
+		if (isMolstarLinkedToRcsb.current || isMolstarLoadingStructures || !molstarWrapperRef.current || !rcsbSaguaroRef.current) {
+			return;
+		}
+
+		const molstarPlugin = molstarWrapperRef.current.getMolstarPlugin();
+		const rcsbPlugin = rcsbSaguaroRef.current.getRcsbPlugin();
+		linkMolstarToRcsb(molstarPlugin, rcsbPlugin);
+	}, [isMolstarLoadingStructures]);
+
 	useInterval(() => {
 		for (let dataSourceExecutorIdx = 0; dataSourceExecutorIdx < dataSourceExecutors.current.length; dataSourceExecutorIdx++) {
 			if (isFetching.current[dataSourceExecutorIdx] || isPollingFinished.current[dataSourceExecutorIdx]) {
@@ -240,10 +262,13 @@ function AnalyticalPage() {
 								}
 							</div>
 
-							<RcsbSaguaro classes="w-100 mt-2"
+							<RcsbSaguaro ref={rcsbSaguaroRef}
+								classes="w-100 mt-2"
 								chainResult={chainResults[selectedChain]}
 								squashBindingSites={squashBindingSites}
-								startQuerySequenceAtZero={startQuerySequenceAtZero} />
+								startQuerySequenceAtZero={startQuerySequenceAtZero}
+								onHighlight={handleRcsbHighlight}
+								onClick={handleRcsbClick} />
 						</div>
 					) : (
 						<div className="d-flex justify-content-center align-items-center" style={{ height: "100vh" }}>
@@ -364,6 +389,22 @@ function AnalyticalPage() {
 		const defaultChain = chainsTmp[0]; // Protein always has at least 1 chain
 		setSelectedChain(defaultChain);
 
+		/* Init seq to struct mappings if not init yet (just for query protein now, 
+		 * later, alfter aligning, gaps may occur in master query seq, so to fill each
+		 * position, even gaps, mappings and struct indices from similar proteins will be used). */
+		if (!seqToStrMappings.current) {
+			const {
+				seqToStrMappings: seqToStrMappingsTmp,
+				userFriendlyErrorMessage: querySeqToStrMappingsFetchingErrorMessage
+			} = await getQuerySeqToStrMappingsAPI(id);
+			if (querySeqToStrMappingsFetchingErrorMessage.length > 0) {
+				toastWarning(querySeqToStrMappingsFetchingErrorMessage + "\nRetrying...");
+				isFetching.current[dataSourceIndex] = false;
+				return;
+			}
+			seqToStrMappings.current = seqToStrMappingsTmp;
+		}
+
 		// Choose next action depending on status
 		if (status === DataStatus.Processing) {
 			isFetching.current[dataSourceIndex] = false;
@@ -434,6 +475,34 @@ function AnalyticalPage() {
 		}
 	}
 
+	/**
+	 * Updates a sequence-to-structure mapping based on a provided index remapping.
+	 *
+	 * This function takes an existing mapping (`mappingToUpdate`) from sequence indices to structure indices,
+	 * and remaps its keys using another mapping (`mappingUsedToUpdate`). The resulting mapping uses the new
+	 * sequence indices (from `mappingUsedToUpdate`) while preserving the original structure indices.
+	 *
+	 * @param mappingToUpdate - A record where keys are original sequence indices and values are structure indices.
+	 * @param mappingUsedToUpdate - A record mapping old sequence indices to new sequence indices.
+	 * @returns A new record mapping the updated sequence indices to the original structure indices.
+	 *
+	 * @example
+	 * getUpdatedSeqToStructMapping({0: 100, 1: 101}, {0: 10, 1: 11})
+	 * // Returns: {10: 100, 11: 101}
+	 */
+	function getUpdatedSeqToStructMapping(mappingToUpdate: Record<number, number>, mappingUsedToUpdate: Record<number, number>) {
+		const newSeqToStrMapping: Record<number, number> = {};
+
+		for (const [seqIdx, structIdx] of Object.entries(mappingToUpdate)) {
+			const newSeqIdx = mappingUsedToUpdate[seqIdx];
+			if (newSeqIdx !== undefined) { // TODO this if should not be needed
+				newSeqToStrMapping[newSeqIdx] = structIdx;
+			}
+		}
+
+		return newSeqToStrMapping;
+	}
+
 	function alignQueryAndSimilarSequence(querySequence: string, similarProtein: UnprocessedSimilarProtein) {
 		let querySeq = replaceWithAlignedPart(
 			querySequence,
@@ -476,6 +545,9 @@ function AnalyticalPage() {
 		similarProtein.bindingSites.forEach(bindingSite =>
 			updateBindingSiteResiduesIndices(bindingSite, mapping));
 
+		// Update seq indices in seq to struct mapping
+		similarProtein.seqToStrMapping = getUpdatedSeqToStructMapping(similarProtein.seqToStrMapping, mapping);
+
 		// Update with aligned query and similar seq
 		similarProtein.alignmentData.querySequence = querySeq;
 		similarProtein.alignmentData.similarSequence = similarSeq;
@@ -516,8 +588,7 @@ function AnalyticalPage() {
 		const dataSourceExecutorsCount = Object.keys(unprocessedResultPerDataSourceExecutor).length;
 		if (dataSourceExecutorsCount == 0) {
 			// if we dont have any result from any data source executor, then we have nothing to align
-			return { querySequence: "", dataSourceExecutorResults: {}, conservations: [] };
-			// return dataSourceExecutorsResults; // TODO asi skor toto vrat potom
+			return { querySequence: "", seqToStrMapping: {}, dataSourceExecutorResults: {}, conservations: [] };
 		}
 		// TODO what if we have data source executor results but no with sim prots? Maybe add if?
 
@@ -552,6 +623,7 @@ function AnalyticalPage() {
 				pdbUrl: simProt.pdbUrl,
 				chain: simProt.chain,
 				bindingSites: simProt.bindingSites,
+				seqToStrMapping: simProt.seqToStrMapping,
 				sequence: "" // will be set later when aligning
 			}));
 		}
@@ -601,7 +673,6 @@ function AnalyticalPage() {
 			const aminoAcidOrGapOfMasterQuerySeqCurrIdx = masterQuerySeq.length;
 			mapping[aminoAcidIdx] = aminoAcidOrGapOfMasterQuerySeqCurrIdx;
 			for (const [dataSourceName, result] of Object.entries(unprocessedResultPerDataSourceExecutor)) {
-
 				if (!result.similarProteins) {
 					continue;
 				}
@@ -642,12 +713,15 @@ function AnalyticalPage() {
 			}
 		}
 
-		/* "Postprocessing phase": Update all residue indices of each binding site, 
+		/* "Postprocessing phase": Update all residue indices of each binding site, seq to struct mappings,
 		 * also count how many data sources support certain binding site. */
 		// bindingSiteSupportCounterTmp[residue index in structure (of pocket)]: number of data sources supporting pocket on the index
 		const bindingSiteSupportCounterTmp: Record<number, number> = {};
 		for (const [dataSourceName, result] of Object.entries(unprocessedResultPerDataSourceExecutor)) {
 			let supporterCounted: Record<number, boolean> = {}; // one data source can support residue just once
+
+			// Update seq to struct indices mapping (mapping from query protein)
+			seqToStrMappings.current[chain] = getUpdatedSeqToStructMapping(seqToStrMappings.current[chain], mapping);
 
 			// Update residues of binding sites of query protein and count supporters
 			for (const bindingSite of result.bindingSites) {
@@ -669,12 +743,23 @@ function AnalyticalPage() {
 			if (!result.similarProteins) {
 				continue;
 			}
-			// Update residues of binding sites of all similar proteins and count supporters
+			// Update residues of binding sites of all similar proteins, update seq to struct mappings, and also count supporters
 			for (let simProtIdx = 0; simProtIdx < result.similarProteins.length; simProtIdx++) {
 				const simProt = result.similarProteins[simProtIdx];
+				const simProtMapping = similarProteinsMapping[dataSourceName][simProtIdx];
 
+				// Update seq to struct mappings (from similar proteins)
+				simProt.seqToStrMapping = getUpdatedSeqToStructMapping(simProt.seqToStrMapping, simProtMapping);
+				for (const [seqIdx, structIdx] of Object.entries(simProt.seqToStrMapping)) {
+					if (seqIdx in seqToStrMappings.current[chain]) {
+						continue;
+					}
+					seqToStrMappings.current[chain][seqIdx] = structIdx;
+				}
+
+				// Update residues of binding sites and count supporters
 				for (const bindingSite of simProt.bindingSites) {
-					updateBindingSiteResiduesIndices(bindingSite, similarProteinsMapping[dataSourceName][simProtIdx]);
+					updateBindingSiteResiduesIndices(bindingSite, simProtMapping);
 
 					for (const residue of bindingSite.residues) {
 						if (supporterCounted[residue.structureIndex]) {
@@ -706,13 +791,18 @@ function AnalyticalPage() {
 				similarProteins: similarProteins[dataSourceName]
 			}
 		);
-		return { querySequence: masterQuerySeq, dataSourceExecutorResults: dataSourceExecutorResultsTmp, conservations: conservations };
+
+		return {
+			querySequence: masterQuerySeq,
+			seqToStrMapping: seqToStrMappings.current[chain],
+			dataSourceExecutorResults: dataSourceExecutorResultsTmp,
+			conservations: conservations
+		};
 	}
 
 	function updateErrorMessages(dataSourceIndex: number, errorMessage: string) {
-		const updatedErrorMessages = [...errorMessages];
-		updatedErrorMessages[dataSourceIndex] = errorMessage;
-		setErrorMessages(updatedErrorMessages);
+		setErrorMessages(prevState =>
+			prevState.map((errMsg, i) => dataSourceIndex === i ? errorMessage : errMsg));
 	};
 
 	function clearErrorMessages() {
@@ -847,6 +937,74 @@ function AnalyticalPage() {
 		}
 
 		return queryProteinLigandsData;
+	}
+
+	function handleRcsbHighlight(structureIndex: number) {
+		molstarWrapperRef.current?.highlight(structureIndex);
+	}
+
+	function handleRcsbClick(structureIndex: number) {
+		molstarWrapperRef.current?.focus(structureIndex);
+	}
+
+	/**
+	 * Method which connects Mol* viewer activity to the RCSB plugin
+	 * @param molstarPlugin Mol* plugin
+	 * @param rcsbPlugin Rcsb plugin
+	 * @returns void
+	 */
+	function linkMolstarToRcsb(molstarPlugin: PluginUIContext, rcsbPlugin: RcsbFv) {
+		//cc: https://github.com/scheuerv/molart/
+		function getStructureElementLoci(loci: Loci): StructureElement.Loci | undefined {
+			if (loci.kind == "bond-loci") {
+				return Bond.toStructureElementLoci(loci);
+			} else if (loci.kind == "element-loci") {
+				return loci;
+			}
+			return undefined;
+		}
+
+		// cc: https://github.com/scheuerv/molart/
+		// listens for hover event over anything on Mol* plugin and then it determines
+		// if it is loci of type StructureElement. If it is StructureElement then it
+		// propagates this event from MolstarPlugin transformed as MolstarResidue.
+		// in our modification it also highlights the section in RCSB viewer
+		molstarPlugin.canvas3d?.interaction.hover.subscribe((event: Canvas3D.HoverEvent) => {
+			const structureElementLoci = getStructureElementLoci(event.current.loci);
+			if (structureElementLoci) {
+				const structureElement = StructureElement.Stats.ofLoci(structureElementLoci);
+				const location = structureElement.firstElementLoc;
+				const molstarResidue = {
+					authName: StructureProperties.atom.auth_comp_id(location),
+					name: StructureProperties.atom.label_comp_id(location),
+					isHet: StructureProperties.residue.hasMicroheterogeneity(location),
+					insCode: StructureProperties.residue.pdbx_PDB_ins_code(location),
+					index: StructureProperties.residue.key(location),
+					seqNumber: StructureProperties.residue.label_seq_id(location),
+					authSeqNumber: StructureProperties.residue.auth_seq_id(location),
+					chain: {
+						asymId: StructureProperties.chain.label_asym_id(location),
+						authAsymId: StructureProperties.chain.auth_asym_id(location),
+						entity: {
+							entityId: StructureProperties.entity.id(location),
+							index: StructureProperties.entity.key(location)
+						},
+						index: StructureProperties.chain.key(location)
+					}
+				};
+				const toFind = molstarResidue.authSeqNumber;
+				const structureIndices = Object.values(seqToStrMappings.current[selectedChain]);
+				const positionInRcsb = structureIndices.indexOf(toFind) + 1;
+				rcsbPlugin.setSelection({
+					elements: {
+						begin: positionInRcsb
+					},
+					mode: 'hover'
+				});
+			}
+		});
+
+		isMolstarLinkedToRcsb.current = true;
 	}
 }
 
