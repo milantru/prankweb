@@ -46,6 +46,12 @@ function About() {
                 the proteins most similar to the submitted protein, along with their associated data.
             </p>
 
+            <h2 id="structure-prediction">Structure prediction</h2>
+            <p>
+                For sequence input, the application uses the <a href="https://esmatlas.com/resources?action=fold" target="_blank" rel="noopener noreferrer">ESMFold API</a>
+                to predict the 3D structure of the provided protein sequence.
+            </p>
+
             <Footer />
         </div>
     );
