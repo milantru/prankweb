@@ -1,1 +1,1 @@
-export const apiBaseUrl = "https://prankweb2.ksi.projekty.ms.mff.cuni.cz";
+export const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
