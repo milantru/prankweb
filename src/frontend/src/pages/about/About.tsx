@@ -35,7 +35,7 @@ function About() {
                 <a href="https://github.com/facebookresearch/esm" target="_blank" rel="noopener noreferrer">ESM-2</a> is a
                 protein Language Model (pLM) that we use to generate embeddings for each residue.
                 These embeddings are then passed to a classification neural network to determine whether
-                a residue is part of a binding site without any information about the protein 3D structure.
+                a residue is part of a binding site without needing any information about the protein’s 3D structure.
             </p>
 
             <h3 id="foldseek">Foldseek</h3>
