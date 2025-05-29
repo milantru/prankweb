@@ -109,7 +109,12 @@ def save_results(result_folder: str, file_name: str, builder: ProteinDataBuilder
     logger.info(f'{id} Results saved')
 
 def process_similar_protein(result_folder: str, fields: List[str], curr_chain: str, id: str) -> SimilarProteinBuilder:
+    
     sim_protein_pdb_id, sim_protein_chain = fields[1][:4], fields[1].split("_")[1][0]
+    if len(id)> 4 and id[-4:] == sim_protein_pdb_id and curr_chain == sim_protein_chain:
+        logger.info(f'{id} Skipping similar protein {sim_protein_pdb_id} for chain {curr_chain} as it is the same as query')
+        return None
+    
     pdb_filename = os.path.join(result_folder, f"{sim_protein_pdb_id}.pdb")
     sim_prot_url = os.path.join(PLANKWEB_BASE_URL, "data", "ds_foldseek", id, f"{sim_protein_pdb_id}.pdb")
 
