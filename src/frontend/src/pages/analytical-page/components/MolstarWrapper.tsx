@@ -85,12 +85,20 @@ export const MolStarWrapper = forwardRef(({
 		return <div>No data for the selected chain.</div>
 	}
 	const parent = createRef<HTMLDivElement>();
+
 	const queryStructure = useRef<VisibleObject>(null!);
+	// queryProteinPockets[dataSourceName][chain][bindingSiteId]
 	const queryProteinPockets = useRef<Record<string, Record<string, Record<string, VisiblePocketObjects>>>>({});
+	// queryProteinLigands[dataSourceName][chain][bindingSiteId]
 	const queryProteinLigands = useRef<Record<string, Record<string, Record<string, VisibleObject>>>>({});
+
+	// similarProteinStructures[dataSourceName][pdbCode][chain]
 	const similarProteinStructures = useRef<Record<string, Record<string, Record<string, VisibleObject>>>>({});
+	// similarProteinPockets[dataSourceName][pdbCode][chain][bindingSiteId]
 	const similarProteinPockets = useRef<Record<string, Record<string, Record<string, Record<string, VisiblePocketObjects>>>>>({});
+	// similarProteinLigands[dataSourceName][pdbCode][chain][bindingSiteId]
 	const similarProteinLigands = useRef<Record<string, Record<string, Record<string, Record<string, VisibleObject>>>>>({});
+
 	const [isHighlightModeOn, setIsHighlightModeOn] = useState<boolean>(false);
 	const [structuresLoaded, setStructuresLoaded] = useState<boolean>(false);
 
@@ -415,7 +423,7 @@ export const MolStarWrapper = forwardRef(({
 		}
 	}
 
-	async function _loadStructure(plugin: PluginContext, structureUrl: string, format: BuiltInTrajectoryFormat) {
+	async function _loadStructure(plugin: PluginContext, structureUrl: string, format: BuiltInTrajectoryFormat): Promise<VisibleObject> {
 		const data = await plugin.builders.data.download({
 			url: Asset.Url(structureUrl),
 			isBinary: false
@@ -460,6 +468,7 @@ export const MolStarWrapper = forwardRef(({
 			const queryStructureTmp = await _loadStructure(plugin, querySequenceUrl, format);
 			queryStructure.current = queryStructureTmp;
 
+			// Load query protein bindings sites/pockets (and also ligands if available)
 			const queryProteinPocketsExpression: Record<string, Record<string, Record<string, { expr: Expression, supportersCount: number }[]>>> = {};
 			const queryProteinLigandsExpression: Record<string, Record<string, Record<string, Expression>>> = {};
 			const dseResult = chainResult.dataSourceExecutorResults
@@ -475,11 +484,6 @@ export const MolStarWrapper = forwardRef(({
 						}),
 						supportersCount: bindingSiteSupportCounter[r]
 					}));
-					// TODO netreba to ako v prankwebe v zdrojaku je?
-					// const wholeResiduesExpression = MS.struct.generator.atomGroups({
-					// 	'chain-test': MS.core.rel.eq([MS.struct.atomProperty.macromolecular.auth_asym_id(), chain]),
-					// 	'residue-test': MS.core.logic.or(partsExpressions)
-					// });
 
 					if (!(dataSourceName in queryProteinPocketsExpression)) {
 						queryProteinPocketsExpression[dataSourceName] = {};
@@ -538,6 +542,7 @@ export const MolStarWrapper = forwardRef(({
 			}
 			similarProteinStructures.current = structuresTmp;
 
+			// Load similar proteins binding sites/pockets (and also ligands if available) 
 			const similarProteinPocketsExpression: Record<string, Record<string, Record<string, Record<string, { expr: Expression, supportersCount: number }[]>>>> = {};
 			const similarProteinLigandsExpression: Record<string, Record<string, Record<string, Record<string, Expression>>>> = {};
 			for (const [dataSourceName, result] of Object.entries(chainResult.dataSourceExecutorResults)) {
@@ -579,11 +584,6 @@ export const MolStarWrapper = forwardRef(({
 							}),
 							supportersCount: bindingSiteSupportCounter[r]
 						}));
-						// TODO netreba to ako v prankwebe v zdrojaku je?
-						// const wholeResiduesExpression = MS.struct.generator.atomGroups({
-						// 	'chain-test': MS.core.rel.eq([MS.struct.atomProperty.macromolecular.auth_asym_id(), chain]),
-						// 	'residue-test': MS.core.logic.or(partsExpressions)
-						// });
 
 						if (!(dataSourceName in similarProteinPocketsExpression)) {
 							similarProteinPocketsExpression[dataSourceName] = {};
@@ -631,7 +631,8 @@ export const MolStarWrapper = forwardRef(({
 
 			const xs = plugin.managers.structure.hierarchy.current.structures;
 			if (xs.length === 0) {
-				console.warn("No structures to display.");
+				// This should never happen, always at least query struct is displayed
+				console.error("No structures to display.");
 				return;
 			}
 

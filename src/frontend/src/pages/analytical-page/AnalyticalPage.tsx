@@ -553,18 +553,6 @@ function AnalyticalPage() {
 		similarProtein.alignmentData.similarSequence = similarSeq;
 	}
 
-	function getQuerySeqLength(querySeqWithGaps: string) {
-		let counter = 0;
-
-		for (const c of querySeqWithGaps) {
-			if (c !== '-') {
-				counter++;
-			}
-		}
-
-		return counter;
-	}
-
 	function transform(unprocessedResults: UnprocessedResult[]) {
 		// should transform results so we can access them like this: res[chain][dataSourceName] -> result
 		const res: Record<string, Record<string, UnprocessedResult>> = {};
@@ -592,7 +580,6 @@ function AnalyticalPage() {
 		}
 		// TODO what if we have data source executor results but no with sim prots? Maybe add if?
 
-		// TODO mozno zmat getQuerySeqLength aj ten riadok cely: const querySeqLength = getQuerySeqLength(dataSourceExecutors[0].results[0].sequence);
 		// TODO issue #23 ["foldseek"] a ?? nestaci, binding sity nie su poposuvane...
 		const querySeq = unprocessedResultPerDataSourceExecutor["foldseek"]?.sequence
 			?? Object.values(unprocessedResultPerDataSourceExecutor)[0].sequence;
@@ -809,7 +796,9 @@ function AnalyticalPage() {
 		setErrorMessages(new Array(dataSourceExecutors.current.length).fill(""));
 	}
 
+	/** Creates object which holds information which binding sites (and ligands if available) are displayed.  */
 	function toSimilarProteinLigandData(chainResult: ChainResult, selectedStructureOptions: StructureOption[]) {
+		// res[dataSourceName][pdbCode][chain][bindingSiteId] -> true/false whether is binding site (and ligands if available) displayed
 		const res: Record<string, Record<string, Record<string, Record<string, boolean>>>> = {};
 
 		for (const [dataSourceName, result] of Object.entries(chainResult.dataSourceExecutorResults)) {
