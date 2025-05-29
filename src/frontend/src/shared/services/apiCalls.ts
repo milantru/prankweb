@@ -55,7 +55,8 @@ export enum DataStatus {
 
 type DataStatusResponse = {
 	status: number;
-	errorMessages: string;
+	infoMessage: string;
+	errorMessage: string;
 	lastUpdated: Date;
 };
 
@@ -63,7 +64,7 @@ export async function getDataSourceExecutorResultStatusAPI(
 	dataSourceName: string,
 	id: string,
 	useConservation: boolean = false
-): Promise<{ status: DataStatus | null, userFriendlyErrorMessage: string }> {
+): Promise<{ status: DataStatus | null, infoMessage: string, userFriendlyErrorMessage: string }> {
 	const url = dataSourceName === "p2rank" && useConservation
 		? `${apiBaseUrl}/data/ds_${dataSourceName}/${id}/conservation/status.json`
 		: `${apiBaseUrl}/data/ds_${dataSourceName}/${id}/status.json`;
@@ -79,7 +80,7 @@ export async function getDataSourceExecutorResultStatusAPI(
 		console.log(dataStatusResponse);
 
 		const status = dataStatusResponse.data.status as DataStatus;
-		return { status: status, userFriendlyErrorMessage: "" };
+		return { status: status, infoMessage: dataStatusResponse.data.infoMessage, userFriendlyErrorMessage: "" };
 	}
 	catch (error) {
 		if (error?.status === 404) {
@@ -89,7 +90,7 @@ export async function getDataSourceExecutorResultStatusAPI(
 			errMsgs.forEach(errMsg => console.error(errMsg));
 		}
 
-		return { status: null, userFriendlyErrorMessage: errorMessage };
+		return { status: null, infoMessage: "", userFriendlyErrorMessage: errorMessage };
 	}
 }
 
