@@ -43,7 +43,9 @@ export async function uploadDataAPI(
 		const errMsgs = getErrorMessages(error);
 		errMsgs.forEach(errMsg => console.error(errMsg));
 
-		return { id: "", userFriendlyErrorMessage: errorMessage };
+		let message = error.response?.data?.error || errorMessage;
+
+		return { id: "", userFriendlyErrorMessage: message };
 	}
 }
 
