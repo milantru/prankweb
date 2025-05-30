@@ -455,7 +455,7 @@ function AnalyticalPage() {
 			updateStatusMessages(dataSourceIndex, `${dataSourceExecutors.current[dataSourceIndex].displayName}: ${infoMessage}`, false);
 			return;
 		} else if (status === DataStatus.Failed) {
-			const errMsg = `Failed to fetch data from ${dataSourceExecutors.current[dataSourceIndex].displayName}, skipping.}`;
+			const errMsg = `Failed to fetch data from ${dataSourceExecutors.current[dataSourceIndex].displayName}, skipping.`;
 			updateErrorMessages(dataSourceIndex, errMsg);
 		} else if (status === DataStatus.Completed) {
 			const results = await getResults(dataSourceIndex, id, chainsTmp, useConservation);
