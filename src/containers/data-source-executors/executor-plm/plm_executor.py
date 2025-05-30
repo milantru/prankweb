@@ -3,6 +3,9 @@ import json
 import requests
 from enum import Enum
 from tasks_logger import create_logger
+from status_manager import update_status, StatusType
+
+
 from predict import embed_sequences, predict_bindings
 from post_processor import process_plm_output
 
@@ -10,24 +13,10 @@ RESULTS_FOLDER = "results"
 INPUTS_URL = os.getenv('INPUTS_URL')
 PLANKWEB_BASE_URL = os.getenv('PLANKWEB_BASE_URL')
 
-class StatusType(Enum):
-    STARTED = 0
-    COMPLETED = 1
-    FAILED = 2
-
 logger = create_logger('ds-plm')
 
 os.makedirs(RESULTS_FOLDER, exist_ok=True)
 logger.info(f'{id} Results folder prepared: {RESULTS_FOLDER}')
-
-def update_status(status_file_path, id, status, message=""):
-    logger.info(f'{id} Changing status in {status_file_path} to: {status}')
-    try:
-        with open(status_file_path, "w") as f:
-            json.dump({"status": status, "errorMessages": message}, f)
-        logger.info(f'{id} Status changed')
-    except Exception as e:
-        logger.error(f'{id} Status change failed: {str(e)}')
 
 def run_plm(id):
     logger.info(f'{id} ds_plm started')
@@ -36,7 +25,7 @@ def run_plm(id):
     os.makedirs(eval_folder, exist_ok=True)
     logger.info(f'{id} Evaluation folder created: {eval_folder}')
     status_file_path = os.path.join(eval_folder, "status.json")
-    update_status(status_file_path, id, StatusType.STARTED.value)
+    update_status(status_file_path, id, StatusType.STARTED, infoMessage="Execution started")
 
     try:
         chain_map_file = os.path.join(INPUTS_URL, id, 'chains.json')
@@ -66,10 +55,13 @@ def run_plm(id):
             seq_chains.append(chains)
         
         logger.info(f'{id} Parsed all FASTA files')
+        update_status(status_file_path, id, StatusType.STARTED, infoMessage="Embedding sequences")
+
 
         embeddings = embed_sequences(seq)
 
         logger.info(f'{id} Successfully embedded sequences')
+        update_status(status_file_path, id, StatusType.STARTED, infoMessage="Predicting bindings")
 
         lenghts = [len(s) for s in seq]
         predictions = predict_bindings(embeddings, lenghts)
@@ -101,6 +93,7 @@ def run_plm(id):
             "structure.pdb"
         )
         seq_to_str_mapping = chain_map.get('seqToStrMapping', {})
+        update_status(status_file_path, id, StatusType.STARTED, infoMessage="Processing pLM output")
 
         process_plm_output(
             id, 
@@ -110,11 +103,14 @@ def run_plm(id):
             query_structure_url
             )
 
-        update_status(status_file_path, id, StatusType.COMPLETED.value)
+        update_status(status_file_path, id, StatusType.COMPLETED, infoMessage="Execution completed successfully")
         
+    except requests.RequestException as e:
+        logger.error(f'{id} Failed to download PDB file: {str(e)}')
+        update_status(status_file_path, id, StatusType.FAILED, errorMessage = f"Failed to download Fasta file: {str(e)}")
     except Exception as e:
-        logger.error(f'{id} An unexpected error occurred ({type(e).__name__}): {str(e)}')
-        update_status(status_file_path, id, StatusType.FAILED.value, f"An unexpected error occurred: {str(e)}")
+        logger.error(f'{id} An unexpected error occurred: {str(e)}')
+        update_status(status_file_path, id, StatusType.FAILED, errorMessage = f"An unexpected error occurred: {e}")
 
     logger.info(f'{id} ds_plm finished')
 

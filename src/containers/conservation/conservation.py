@@ -9,6 +9,7 @@ import json
 from enum import Enum
 
 from tasks_logger import create_logger
+from status_manager import update_status, StatusType
 
 PHMMER_DIR = "./hmmer-3.4/src/"
 ESL_DIR = "./hmmer-3.4/easel/miniapps/"
@@ -18,21 +19,9 @@ RESULT_FOLDER = "./results/{id}/"
 MAX_SEQS = 100
 INPUTS_URL = os.getenv('INPUTS_URL')
 
-class StatusType(Enum):
-    STARTED = 0
-    COMPLETED = 1
-    FAILED = 2
 
 logger = create_logger('conservation')
 
-def update_status(status_file_path, id, status, message=""):
-    logger.info(f'{id} Changing status in {status_file_path} to: {status}')
-    try:
-        with open(status_file_path, "w") as f:
-            json.dump({"status": status, "errorMessages": message}, f)
-        logger.info(f'{id} Status changed')
-    except Exception as e:
-        logger.error(f'{id} Status change failed: {str(e)}')
 
 
 def compute_conservation(id):
@@ -41,7 +30,7 @@ def compute_conservation(id):
     os.makedirs(result_folder, exist_ok=True)
     logger.info(f'{id} Result folder prepared: {result_folder}')
     status_file_path = os.path.join(result_folder, "status.json")
-    update_status(status_file_path, id, StatusType.STARTED.value)
+    update_status(status_file_path, id, StatusType.STARTED, infoMessage="Conservation computation started")
 
     try:
         json_url = os.path.join(INPUTS_URL, f"{id}/chains.json")
@@ -92,13 +81,13 @@ def compute_conservation(id):
         shutil.rmtree(temp_folder)
         logger.info(f'{id} Temporary folder removed: {temp_folder}')
 
-        update_status(status_file_path, id, StatusType.COMPLETED.value)
+        update_status(status_file_path, id, StatusType.COMPLETED, infoMessage="Conservation computation completed successfully")
 
     except HTTPError as e:
-        update_status(status_file_path, id, StatusType.FAILED.value, str(e))
+        update_status(status_file_path, id, StatusType.FAILED, errorMessage=str(e))
         logger.error(f'{id} HTTP error occurred: {str(e)}')
     except Exception as e:
-        update_status(status_file_path, id, StatusType.FAILED.value, str(e))
+        update_status(status_file_path, id, StatusType.FAILED, errorMessage=str(e))
         logger.error(f'{id} Error computing conservation: {str(e)}')
  
     logger.info(f'{id} conservation finished')

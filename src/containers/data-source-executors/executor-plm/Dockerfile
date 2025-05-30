@@ -14,6 +14,7 @@ WORKDIR /app
 COPY --chown=user:user \
         ./shared/install-requirements.sh \
         ./shared/tasks_logger.py \
+        ./shared/status_manager.py \
         ./shared/mapping.json \
         ./data-source-executors/executor-plm/requirements.in \
         ./

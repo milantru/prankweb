@@ -147,7 +147,7 @@ def _save_converter_seq_result(id: str, result: dict) -> None:
     file_number = 1
 
     result_chains = result.get('chains', {})
-    result_mapping = result.get('seq_to_str_mapping', {})
+    result_mapping = result.get('seqToStrMapping', {})
 
     for sequence, chain_list in result_chains.items():
 
