@@ -403,4 +403,4 @@ def test_builder_no_seq_to_str_mapping_error():
     sim_prot_builder = SimilarProteinBuilder(pdb_id="2SRC", sequence="ABCDE", chain="A", pdb_url="http://example.com/2SRC")
     sim_prot_builder.set_alignment_data(0, 5, "ABCDE", "VWXYZABCDE", 5, 10, "ABCDE")
     with pytest.raises(ValueError):
-        sim_prot_builder.build()  # Should raise an error because seq_to_str_mapping is not set
+        sim_prot_builder.build()  # Should raise an error because seqToStrMapping is not set

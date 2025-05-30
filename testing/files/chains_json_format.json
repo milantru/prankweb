@@ -1,6 +1,6 @@
 {
     "type": "object",
-    "required": [ "chains", "fasta", "seq_to_str_mapping" ],
+    "required": [ "chains", "fasta", "seqToStrMapping" ],
     "properties": {
         "chains": {
             "type": "array",
@@ -15,7 +15,7 @@
                 }
             }
         },
-        "seq_to_str_mapping": {
+        "seqToStrMapping": {
             "type": [ "object", "null" ],
             "additionalProperties": {
                 "type":"object",

@@ -76,7 +76,7 @@ def run_structure_to_sequence(id):
     logger.info(f'{id} converter_str_to_seq finished, returning {len(chains)} unique sequences')
     return {
         "chains": chains,
-        "seq_to_str_mapping": seq_to_str_mapping
+        "seqToStrMapping": seq_to_str_mapping
     }
 
 def run_sequence_to_structure(id):
