@@ -19,7 +19,7 @@ import { PluginUIContext } from "molstar/lib/mol-plugin-ui/context";
 import Skeleton from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
 
-const POLLING_INTERVAL = 1000 * 5; // every 5 seconds
+const POLLING_INTERVAL = 1000 * 0.5; // every 0,5 second
 
 export type Conservation = {
 	index: number;
