@@ -5,7 +5,7 @@ function Navigation() {
         <nav role="navigation" aria-label="main" className="navbar navbar-expand-md navbar-light bg-light">
             <div className="container" id="navigation">
                 <Link className="navbar-brand" to="/">
-                    <img src="assets/images/logo.svg" style={{ height: "1.4em" }} alt="Logo" />
+                    <img src="assets/images/logo_no_icon.svg" style={{ height: "1.4em" }} alt="Logo" />
                 </Link>
                 <button className="navbar-toggler" type="button" data-toggle="collapse" data-target="#mainNavBar"
                     aria-controls="mainNavBar" aria-expanded="false" aria-label="Toggle navigation">
