@@ -111,25 +111,13 @@ function Help() {
             <h3 id="conservation">Conservation</h3>
             <p>
                 Besides selecting what protein to analyze, one can also specify whether evolutionary conservation should be
-                included in the prediction model by checking the <em>Use conservation</em> checkbox.
-            </p>
-            <p>
-                The new conservation pipeline operates as follows.
-                First, polypeptide chain sequences are extracted from the input file using P2Rank.
-                The phmmer tool from the <a href="http://hmmer.org/" target="_blank" rel="noopener noreferrer">HMMER
-                    software package</a> is then used to identify and align similar sequences for each respective query; UniRef50
-                Release 2021 03 is used as the single target sequence database.
-                Up to 1,000 sequences are then randomly selected from each MSA to form the respective sample MSAs; weights are
-                assigned to the individual sequences constituting the sample MSAs using the Gerstein/Sonnhammer/Chothia algorithm
-                implemented in the <em>esl-weigh</em> miniapp included with the HMMER software.
-                Finally, per-column information content (i.e., conservation score) and gap character frequency values are
-                calculated using the <em>esl-alistat</em> miniapp, taking the individual sequence weights into account; positions
-                containing the gap character in more than 50% of sequences are masked to appear as possessing no conservation at
-                all.
-            </p>
-            <p>
-                The range of the conservation corresponds to the range of the per-residue of information content which is between
-                0 and ~&nbsp;4 (&nbsp;=&nbsp;log<sub>2</sub>(20)&nbsp;) with higher values corresponding to higher conservation.
+                included in the P2Rank prediction by checking the <em>Use conservation</em> checkbox. Slightly modified
+                <a href="https://github.com/cusbg/prankweb/blob/main/conservation/hmm_based/conservation_hmm_based.py"> script </a>
+                is used to calculate per-position information content (IC) values for amino acid residues which is between 0 and ~ 4 ( = log2(20) ) 
+                with higher values corresponding to higher conservation.
+                <a href="https://ftp.expasy.org/databases/uniprot/current_release/knowledgebase/complete/uniprot_sprot.fasta.gz"> 
+                &nbsp; UniProtKB/Swiss-Prot </a>
+                protein sequence database is used as the single target sequence database.
             </p>
 
             <h2 id="contact-us">Contact us</h2>

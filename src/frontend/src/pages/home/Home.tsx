@@ -8,16 +8,16 @@ function Home() {
 				<h1 className="text-center">
 					PlankWeb: Ligand Binding Site Analysis
 				</h1>
-				<p className="text-center description">
-					PlankWeb builds upon P2Rank and pLM&nbsp;‐ a machine and deep learning-based methods for prediction of
-					ligand binding sites from protein structure.
+				<p className="text-center description"> 
+					PlankWeb integrates diverse data sources and computational methods to enhance the analysis of 
+					protein structures and the prediction of ligand binding sites. 
 				</p>
 
 				<QueryProteinForm />
 
-				<div style={{ clear: "both" }}>
+				{/* <div style={{ clear: "both" }}>
 					<Footer />
-				</div>
+				</div> */}
 			</div>
 		</>
 	);
