@@ -173,7 +173,6 @@ const RcsbSaguaro = forwardRef(({
             },
             includeAxis: true,
             highlightHoverPosition: true,
-            // TODO Implement
             highlightHoverCallback: handleHighlight,
             elementClickCallback: (trackData?: RcsbFvTrackDataElementInterface, _?: MouseEvent) => elementClicked(trackData),
             tooltipGenerator: tooltipGenerator

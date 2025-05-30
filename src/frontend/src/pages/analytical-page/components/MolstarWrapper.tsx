@@ -7,7 +7,7 @@ see https://webpack.js.org/loaders/sass-loader/ for example.
 create-react-app should support this natively. */
 import "molstar/lib/mol-plugin-ui/skin/light.scss";
 import { DefaultPluginUISpec } from "molstar/lib/mol-plugin-ui/spec";
-import { ChainResult, ChainResults, ProcessedResult, Residue } from "../AnalyticalPage";
+import { ChainResult, ProcessedResult, Residue, SimilarProtein } from "../AnalyticalPage";
 import { StateBuilder, StateObjectRef, StateObjectSelector } from "molstar/lib/mol-state";
 import { Asset } from "molstar/lib/mol-util/assets";
 import { MolScriptBuilder as MS } from "molstar/lib/mol-script/language/builder";
@@ -63,8 +63,9 @@ type VisiblePocketObjects = {
 };
 
 type Props = {
-	chainResults: ChainResults;
+	chainResult: ChainResult;
 	selectedChain: string;
+	selectedStructures: StructureOption[];
 	// bindingSiteSupportCounter[residue index in structure (of pocket)] -> number of data sources supporting that the residue index is part of binding site
 	bindingSiteSupportCounter: Record<number, number>;
 	dataSourceCount: number;
@@ -73,17 +74,14 @@ type Props = {
 };
 
 export const MolStarWrapper = forwardRef(({
-	chainResults,
+	chainResult,
 	selectedChain,
+	selectedStructures,
 	bindingSiteSupportCounter,
 	dataSourceCount,
 	onStructuresLoadingStart,
 	onStructuresLoadingEnd
 }: Props, ref) => {
-	const chainResult = chainResults[selectedChain];
-	if (!chainResult) {
-		return <div>No data for the selected chain.</div>
-	}
 	const parent = createRef<HTMLDivElement>();
 
 	const queryStructure = useRef<VisibleObject>(null!);
@@ -143,7 +141,7 @@ export const MolStarWrapper = forwardRef(({
 
 			window.molstar = plugin;
 
-			loadNewStructures(plugin, "pdb", selectedChain);
+			loadNewStructures(plugin, "pdb", selectedChain, selectedStructures);
 		}
 
 		init();
@@ -160,8 +158,8 @@ export const MolStarWrapper = forwardRef(({
 			return;
 		}
 
-		loadNewStructures(plugin, "pdb", selectedChain);
-	}, [/*chainResult, */selectedChain]); // TODO is not dependant on chainResult because query seq should not change
+		loadNewStructures(plugin, "pdb", selectedChain, selectedStructures);
+	}, [/*chainResult, */selectedStructures, selectedChain]); // TODO is not dependant on chainResult because query seq should not change
 
 	useEffect(() => {
 		async function updatePocketsTransparency() {
@@ -322,6 +320,7 @@ export const MolStarWrapper = forwardRef(({
 		structs: Record<string, Record<string, Record<string, VisibleObject>>>,
 		ligandsExpression: Record<string, Record<string, Record<string, Record<string, Expression>>>>,
 		pocketsExpressions: Record<string, Record<string, Record<string, Record<string, { expr: Expression, supportersCount: number }[]>>>>,
+		options: StructureOption[],
 		showRepresentationsWhenCreated: boolean
 	) {
 		const ls: Record<string, Record<string, Record<string, Record<string, VisibleObject>>>> = {};
@@ -332,6 +331,10 @@ export const MolStarWrapper = forwardRef(({
 			}
 
 			for (const simProt of result.similarProteins) {
+				if (!isSimProtInOptions(dataSourceName, simProt, options)) {
+					continue;
+				}
+
 				if (simProt.bindingSites.length === 0) {
 					if (!(dataSourceName in ps)) {
 						ps[dataSourceName] = {};
@@ -461,7 +464,14 @@ export const MolStarWrapper = forwardRef(({
 		visibleObjects.isVisible = show;
 	}
 
-	function performDynamicSuperposition(plugin: PluginContext, format: BuiltInTrajectoryFormat, chain: string) {
+	function isSimProtInOptions(dataSourceName, simProt: SimilarProtein, options: StructureOption[]) {
+		const inOptions = options.some(o => o.value.dataSourceName === dataSourceName
+			&& o.value.pdbId === simProt.pdbId
+			&& o.value.chain === simProt.chain);
+		return inOptions;
+	}
+
+	function performDynamicSuperposition(plugin: PluginContext, format: BuiltInTrajectoryFormat, chain: string, options: StructureOption[]) {
 		return plugin.dataTransaction(async () => {
 			// Load query protein structure
 			const querySequenceUrl = getQuerySequenceUrl(chainResult);
@@ -530,6 +540,10 @@ export const MolStarWrapper = forwardRef(({
 				}
 
 				for (const simProt of result.similarProteins) {
+					if (!isSimProtInOptions(dataSourceName, simProt, options)) {
+						continue;
+					}
+
 					if (!(dataSourceName in structuresTmp)) {
 						structuresTmp[dataSourceName] = {};
 					}
@@ -551,6 +565,10 @@ export const MolStarWrapper = forwardRef(({
 				}
 
 				for (const simProt of result.similarProteins) {
+					if (!isSimProtInOptions(dataSourceName, simProt, options)) {
+						continue;
+					}
+
 					if (simProt.bindingSites.length === 0) {
 						if (!(dataSourceName in similarProteinPocketsExpression)) {
 							similarProteinPocketsExpression[dataSourceName] = {};
@@ -643,6 +661,10 @@ export const MolStarWrapper = forwardRef(({
 				}
 
 				for (const simProt of result.similarProteins) {
+					if (!isSimProtInOptions(dataSourceName, simProt, options)) {
+						continue;
+					}
+
 					similarProteinsChains.push(simProt.chain);
 				}
 			}
@@ -743,11 +765,12 @@ export const MolStarWrapper = forwardRef(({
 			// Create representations of similar protein structures
 			for (let i = 1; i < (selections?.length ?? 1); i++) {
 				await transform(plugin, xs[i].cell, transforms[i - 1].bTransform);
-				await createStructureRepresentation(plugin, xs[i].cell, createGetChainExpression(similarProteinsChains[i - 1]), false);
+				await createStructureRepresentation(plugin, xs[i].cell, createGetChainExpression(similarProteinsChains[i - 1]), true);
 			}
 
 			// Create representations of similar protein ligands
-			await createPocketsAndLigandsRepresentationForStructs(plugin, structuresTmp, similarProteinLigandsExpression, similarProteinPocketsExpression, false);
+			await createPocketsAndLigandsRepresentationForStructs(
+				plugin, structuresTmp, similarProteinLigandsExpression, similarProteinPocketsExpression, options, false);
 
 			// Reset camera (this should make the structures more visible)
 			plugin.canvas3d?.requestCameraReset();
@@ -755,11 +778,11 @@ export const MolStarWrapper = forwardRef(({
 		});
 	}
 
-	async function loadNewStructures(plugin: PluginUIContext, format: BuiltInTrajectoryFormat, chain: string) {
+	async function loadNewStructures(plugin: PluginUIContext, format: BuiltInTrajectoryFormat, chain: string, options: StructureOption[]) {
 		setStructuresLoaded(false);
 		onStructuresLoadingStart();
 		await plugin.clear();
-		await performDynamicSuperposition(plugin, format, chain);
+		await performDynamicSuperposition(plugin, format, chain, options);
 		onStructuresLoadingEnd();
 		setStructuresLoaded(true);
 	}

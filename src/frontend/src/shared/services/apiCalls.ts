@@ -25,17 +25,13 @@ export async function uploadDataAPI(
 		formData.append(key, value instanceof File ? value : value.toString());
 	});
 
-	console.log("Sending FormData:");
-	for (let pair of formData.entries()) {
-		console.log(pair[0] + ": " + pair[1]);
-	}
 	try {
 		const response = await axios.post<string>(url, formData, {
 			headers: {
 				"Content-Type": "multipart/form-data"
 			}
 		});
-		console.log("GOT data: " + response.data);
+
 		const id = response.data;
 		return { id: id, userFriendlyErrorMessage: "" };
 	}
@@ -70,13 +66,11 @@ export async function getDataSourceExecutorResultStatusAPI(
 	const errorMessage = `Failed to fetch ${dataSourceName}${dataSourceName.toLowerCase().endsWith("s") ? "'" : "'s"} status.`;
 
 	try {
-		console.log("STATUS")
 		const dataStatusResponse = await axios.get<DataStatusResponse>(url, {
 			headers: {
 				"Content-Type": "application/json"
 			}
 		});
-		console.log(dataStatusResponse);
 
 		const status = dataStatusResponse.data.status as DataStatus;
 		return { status: status, userFriendlyErrorMessage: "" };
@@ -134,6 +128,7 @@ export async function getConservationsAPI(
 				"Content-Type": "application/json"
 			}
 		});
+
 		const conservations = response.data;
 		return { conservations, userFriendlyErrorMessage: "" };
 	}
