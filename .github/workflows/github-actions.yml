@@ -10,7 +10,7 @@ on:
 jobs:
   run-integration-tests:
     name: Run Tests
-    runs-on: ubuntu-latest-large
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
