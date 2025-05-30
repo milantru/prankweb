@@ -15,9 +15,9 @@ function Home() {
 
 				<QueryProteinForm />
 
-				<div style={{ clear: "both" }}>
+				{/* <div style={{ clear: "both" }}>
 					<Footer />
-				</div>
+				</div> */}
 			</div>
 		</>
 	);

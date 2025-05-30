@@ -52,7 +52,7 @@ function About() {
                 to predict the 3D structure of the provided protein sequence.
             </p>
 
-            <Footer />
+            {/* <Footer /> */}
         </div>
     );
 }
