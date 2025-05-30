@@ -29,6 +29,7 @@ RUN foldseek databases PDB /app/foldseek_db/pdb /app/foldseek_db/tmp && \
 COPY --chown=user:user \
         ./shared/install-requirements.sh \
         ./shared/tasks_logger.py \
+        ./shared/status_manager.py \
         ./data-source-executors/executor-foldseek/requirements.in \
         ./
 

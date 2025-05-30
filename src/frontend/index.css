@@ -9,3 +9,8 @@ g.rcsbElement rect {
     stroke-opacity: 1;
     fill-opacity: 1;
 }
+
+.box-wrapper {
+  max-width: 500px;
+  width: 100%;
+}

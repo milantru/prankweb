@@ -25,17 +25,13 @@ export async function uploadDataAPI(
 		formData.append(key, value instanceof File ? value : value.toString());
 	});
 
-	console.log("Sending FormData:");
-	for (let pair of formData.entries()) {
-		console.log(pair[0] + ": " + pair[1]);
-	}
 	try {
 		const response = await axios.post<string>(url, formData, {
 			headers: {
 				"Content-Type": "multipart/form-data"
 			}
 		});
-		console.log("GOT data: " + response.data);
+
 		const id = response.data;
 		return { id: id, userFriendlyErrorMessage: "" };
 	}
@@ -43,7 +39,9 @@ export async function uploadDataAPI(
 		const errMsgs = getErrorMessages(error);
 		errMsgs.forEach(errMsg => console.error(errMsg));
 
-		return { id: "", userFriendlyErrorMessage: errorMessage };
+		let message = error.response?.data?.error || errorMessage;
+
+		return { id: "", userFriendlyErrorMessage: message };
 	}
 }
 
@@ -55,7 +53,8 @@ export enum DataStatus {
 
 type DataStatusResponse = {
 	status: number;
-	errorMessages: string;
+	infoMessage: string;
+	errorMessage: string;
 	lastUpdated: Date;
 };
 
@@ -63,23 +62,21 @@ export async function getDataSourceExecutorResultStatusAPI(
 	dataSourceName: string,
 	id: string,
 	useConservation: boolean = false
-): Promise<{ status: DataStatus | null, userFriendlyErrorMessage: string }> {
+): Promise<{ status: DataStatus | null, infoMessage: string, userFriendlyErrorMessage: string }> {
 	const url = dataSourceName === "p2rank" && useConservation
 		? `${apiBaseUrl}/data/ds_${dataSourceName}/${id}/conservation/status.json`
 		: `${apiBaseUrl}/data/ds_${dataSourceName}/${id}/status.json`;
 	const errorMessage = `Failed to fetch ${dataSourceName}${dataSourceName.toLowerCase().endsWith("s") ? "'" : "'s"} status.`;
 
 	try {
-		console.log("STATUS")
 		const dataStatusResponse = await axios.get<DataStatusResponse>(url, {
 			headers: {
 				"Content-Type": "application/json"
 			}
 		});
-		console.log(dataStatusResponse);
 
 		const status = dataStatusResponse.data.status as DataStatus;
-		return { status: status, userFriendlyErrorMessage: "" };
+		return { status: status, infoMessage: dataStatusResponse.data.infoMessage, userFriendlyErrorMessage: "" };
 	}
 	catch (error) {
 		if (error?.status === 404) {
@@ -89,7 +86,7 @@ export async function getDataSourceExecutorResultStatusAPI(
 			errMsgs.forEach(errMsg => console.error(errMsg));
 		}
 
-		return { status: null, userFriendlyErrorMessage: errorMessage };
+		return { status: null, infoMessage: "", userFriendlyErrorMessage: errorMessage };
 	}
 }
 
@@ -134,6 +131,7 @@ export async function getConservationsAPI(
 				"Content-Type": "application/json"
 			}
 		});
+
 		const conservations = response.data;
 		return { conservations, userFriendlyErrorMessage: "" };
 	}
@@ -152,13 +150,33 @@ export async function getAllChainsAPI(id: string): Promise<{ chains: string[], u
 	try {
 		const response = await axios.get(url);
 
-		const chains = response.data["chains"];
+		const chains: string[] = response.data["chains"];
 		return { chains: chains, userFriendlyErrorMessage: "" };
 	} catch (error) {
 		const errMsgs = getErrorMessages(error);
 		errMsgs.forEach(errMsg => console.error(errMsg));
 
 		return { chains: [], userFriendlyErrorMessage: errorMessage };
+	}
+}
+
+export async function getQuerySeqToStrMappingsAPI(
+	id: string
+): Promise<{ seqToStrMappings: Record<string, Record<number, number>>, userFriendlyErrorMessage: string }> {
+	const url = `${apiBaseUrl}/data/inputs/${id}/chains.json`;
+	const errorMessage = "Failed to fetch sequence to structure mappings for query protein.";
+
+	try {
+		const response = await axios.get(url);
+
+		// Mapping for query protein, seqToStrMappings[chain][seqIdx] -> structIdx
+		const seqToStrMappings: Record<string, Record<number, number>> = response.data["seqToStrMapping"];
+		return { seqToStrMappings: seqToStrMappings, userFriendlyErrorMessage: "" };
+	} catch (error) {
+		const errMsgs = getErrorMessages(error);
+		errMsgs.forEach(errMsg => console.error(errMsg));
+
+		return { seqToStrMappings: {}, userFriendlyErrorMessage: errorMessage };
 	}
 }
 

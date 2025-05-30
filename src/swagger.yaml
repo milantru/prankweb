@@ -267,9 +267,13 @@ paths:
                         - 1: Completed
                         - 2: Failed
                     example: 1
-                  errorMessages:
+                  infoMessage:
                     type: string
-                    description: Error message(s) if the computation failed.
+                    description: Info message about the computation status.
+                    example: "" 
+                  errorMessage:
+                    type: string
+                    description: Error message if the computation failed.
                     example: "" 
   /data/{dataSourceName}/{inputId}/{chainId}_chain_result.json:
     get:
@@ -447,10 +451,14 @@ paths:
                         - 1: Completed
                         - 2: Failed
                     example: 1
-                  errorMessages:
+                  infoMessage:
                     type: string
-                    description: Error message(s) if the computation failed.
-                    example: ""
+                    description: Info message about the computation status.
+                    example: "" 
+                  errorMessage:
+                    type: string
+                    description: Error message if the computation failed.
+                    example: "" 
   /data/conservation/{inputId}/input{chainId}.json:
     get:
       summary: Get protein conservation data for a specific chain

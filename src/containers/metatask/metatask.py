@@ -76,6 +76,13 @@ def  _prepare_seq_input(id: str, url: str) -> bool:
     
     logger.info(f'{id} {fasta_file} prepared')
 
+    fasta_file = os.path.join(INPUTS_FOLDER, id, 'sequence_1.fasta')
+
+    with open(fasta_file, 'r') as f:
+        content = f.read()
+
+    seq_len = len(content.split('\n')[1])
+
     logger.info(f'{id} Preparing {chain_json}...')
     if not os.path.exists(chain_json):
         with open(chain_json, 'w') as json_file:
@@ -83,7 +90,7 @@ def  _prepare_seq_input(id: str, url: str) -> bool:
                 { 
                     'chains': ['A'], 
                     'fasta': {'sequence_1.fasta': ['A'] },
-                    'seq_to_str_mapping': {'A': {}} 
+                    'seqToStrMapping': {'A': {str(i): i + 1 for i in range(seq_len)}} # Predicted structure is 1-indexed
                 }, 
                 json_file,
                 indent=4
@@ -140,7 +147,7 @@ def _save_converter_seq_result(id: str, result: dict) -> None:
     file_number = 1
 
     result_chains = result.get('chains', {})
-    result_mapping = result.get('seq_to_str_mapping', {})
+    result_mapping = result.get('seqToStrMapping', {})
 
     for sequence, chain_list in result_chains.items():
 
@@ -166,7 +173,7 @@ def _save_converter_seq_result(id: str, result: dict) -> None:
             { 
                 'chains': chains, 
                 'fasta': chain_to_sequence_mapping,
-                'seq_to_str_mapping': result_mapping
+                'seqToStrMapping': result_mapping
             },
             json_file,
             indent=4

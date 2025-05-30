@@ -338,12 +338,14 @@ def test_builder_similar_protein_builder_and_alignment():
         similar_end=2,
         similar_part="DE"
     )
+    sp_builder.set_seq_to_str_mapping({"1": 0, "2": 1, "3": 2, "4": 3, "5": 4, "6": 5})
     similar_protein = sp_builder.build()
     assert similar_protein.pdbId == "2SRC"
     assert similar_protein.alignmentData.querySeqAlignedPart == "DE"
 
 def test_builder_protein_data_builder_with_similar_protein():
     sp_builder = SimilarProteinBuilder(pdb_id="4K11", sequence="ABCDE", chain="B", pdb_url="http://example.com/4K11")
+    sp_builder.set_seq_to_str_mapping({"1": 0, "2": 1, "3": 2, "4": 3, "5": 4})
     sp_builder.set_alignment_data(0, 5, "ABCDE", "VWXYZABCDE", 5, 10, "ABCDE")
     similar_protein = sp_builder.build()
 
@@ -359,13 +361,17 @@ def test_builder_protein_data_builder_with_similar_protein():
 
 def test_builder_protein_data_builder_with_similar_proteins():
     sp_builder = SimilarProteinBuilder(pdb_id="4K11", sequence="ABCDE", chain="B", pdb_url="http://example.com/4K11")
+    mapping = {"1": 0, "2": 1, "3": 2, "4": 3, "5": 4}
     sp_builder.set_alignment_data(0, 5, "ABCDE", "VWXYZABCDE", 5, 10, "ABCDE")
+    sp_builder.set_seq_to_str_mapping(mapping)
     similar_protein = sp_builder.build()
     sp_builder2 = SimilarProteinBuilder(pdb_id="5XYZ", sequence="ABCDE", chain="C", pdb_url="http://example.com/5XYZ")
     sp_builder2.set_alignment_data(0, 5, "ABCDE", "LMNOPQRSTU", 5, 10, "ABCDE")
+    sp_builder2.set_seq_to_str_mapping(mapping)
     similar_protein2 = sp_builder2.build()
     sp_builder3 = SimilarProteinBuilder(pdb_id="6ABC", sequence="ABCDE", chain="D", pdb_url="http://example.com/6ABC")
     sp_builder3.set_alignment_data(0, 5, "ABCDE", "QRSTUVWX", 5, 10, "ABCDE")
+    sp_builder3.set_seq_to_str_mapping(mapping)
     similar_protein3 = sp_builder3.build()
 
     builder = ProteinDataBuilder(id="2SRC", chain="C", sequence="ABCDE", pdb_url="http://example.com/2SRC")
@@ -392,3 +398,9 @@ def test_builder_no_alignment_data_error():
     sim_prot_builder = SimilarProteinBuilder(pdb_id="2SRC", sequence="ABCDE", chain="A", pdb_url="http://example.com/2SRC")
     with pytest.raises(ValueError):
         sim_prot_builder.build()  # Should raise an error because alignment data is not set
+
+def test_builder_no_seq_to_str_mapping_error():
+    sim_prot_builder = SimilarProteinBuilder(pdb_id="2SRC", sequence="ABCDE", chain="A", pdb_url="http://example.com/2SRC")
+    sim_prot_builder.set_alignment_data(0, 5, "ABCDE", "VWXYZABCDE", 5, 10, "ABCDE")
+    with pytest.raises(ValueError):
+        sim_prot_builder.build()  # Should raise an error because seqToStrMapping is not set
