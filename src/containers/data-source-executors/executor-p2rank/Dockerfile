@@ -26,6 +26,7 @@ ENV PATH="/app/p2rank_2.5:${PATH}"
 COPY --chown=user:user \ 
         ./shared/install-requirements.sh \
         ./shared/tasks_logger.py \
+        ./shared/status_manager.py \
         ./shared/mapping.json \
         ./data-source-executors/executor-p2rank/requirements.in \
         ./

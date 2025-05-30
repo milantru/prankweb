@@ -52,10 +52,12 @@ def read_residues(residues_result_file):
                     mapping_dict = json.load(infile)
                 if residue in mapping_dict:
                     residue = mapping_dict[residue]
+                elif residue == "UNK": # 'UNK' is used for unknown residues
+                    residue = "X"
                 else:
-                    raise ValueError(f"Residue {residue} not found in {MAPPING_FILE}")
+                    raise ValueError(f"Residue {residue} not found in {MAPPING_FILE} and is not marked as unknown (UNK)")
                 
-            if is_amino_acid(residue):
+            if is_amino_acid(residue) or residue == "X":  # 'X' is used for unknown residues
                 if curr_chain is None or curr_chain != chain:
                     seq_index = 0
                     curr_chain = chain
@@ -71,7 +73,7 @@ def read_residues(residues_result_file):
                             )
                         )
 
-                grouped_data[chain]["residues"] += index_to_one(three_to_index(residue))
+                grouped_data[chain]["residues"] += index_to_one(three_to_index(residue)) if residue != "X" else residue
                 seq_index += 1
     return grouped_data
 

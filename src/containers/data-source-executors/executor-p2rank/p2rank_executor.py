@@ -7,31 +7,17 @@ import post_processor
 import glob
 
 from tasks_logger import create_logger
+from status_manager import update_status, StatusType
 
 RESULTS_FOLDER = "results"
 INPUTS_URL = os.getenv('INPUTS_URL')
 CONSERVATION_FILES_URL = os.getenv('CONSERVATION_URL')
 PLANKWEB_BASE_URL = os.getenv('PLANKWEB_BASE_URL')
 
-class StatusType(Enum):
-    STARTED = 0
-    COMPLETED = 1
-    FAILED = 2
-
 logger = create_logger('ds-p2rank')
 
 os.makedirs(RESULTS_FOLDER, exist_ok=True)
 logger.info(f'{id} Results folder prepared: {RESULTS_FOLDER}')
-
-def update_status(status_file_path, id, status, message=""):
-    logger.info(f'{id} Changing status in {status_file_path} to: {status}')
-    try:
-        with open(status_file_path, "w") as f:
-            json.dump({"status": status, "errorMessages": message}, f)
-        logger.info(f'{id} Status changed')
-    except Exception as e:
-        logger.error(f'{id} Status change failed: {str(e)}')
-
 
 def prepare_hom_files(id, eval_folder):
     chains_json = os.path.join(INPUTS_URL, id, "chains.json")
@@ -82,7 +68,7 @@ def run_p2rank(id, params):
     os.makedirs(eval_folder, exist_ok=True)
     logger.info(f'{id} Evaluation folder prepared: {eval_folder}')
     status_file_path = os.path.join(eval_folder, "status.json")
-    update_status(status_file_path, id, StatusType.STARTED.value)
+    update_status(status_file_path, id, StatusType.STARTED, infoMessage="Execution started")
 
     try:
         pdb_url = os.path.join(INPUTS_URL, id, "structure.pdb")
@@ -108,9 +94,9 @@ def run_p2rank(id, params):
             "-visualizations", "0"
         ]
 
-        logger.info(f'{id} Running p2rank subprocess: {" ".join(command)}')
+        logger.info(f'{id} Running P2Rank subprocess: {" ".join(command)}')
         subprocess.run(command, check=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
-        logger.info(f'{id} P2rank subprocess finished')
+        logger.info(f'{id} P2Rank subprocess finished')
 
         query_structure_url = os.path.join(
             PLANKWEB_BASE_URL,
@@ -120,6 +106,8 @@ def run_p2rank(id, params):
             "structure.pdb"
         )
 
+        update_status(status_file_path, id, StatusType.STARTED, infoMessage="Processing P2Rank output")
+
         post_processor.process_p2rank_output(
             id,
             eval_folder,
@@ -127,7 +115,7 @@ def run_p2rank(id, params):
             query_structure_url
         )
 
-        update_status(status_file_path, id, StatusType.COMPLETED.value)
+        update_status(status_file_path, id, StatusType.COMPLETED, infoMessage="Execution completed successfully")
         
         logger.info(f'{id} Cleanup started')
         os.remove(query_structure_file)
@@ -138,14 +126,14 @@ def run_p2rank(id, params):
 
     except requests.RequestException as e:
         logger.error(f'{id} Failed to download PDB file: {str(e)}')
-        update_status(status_file_path, id, StatusType.FAILED.value, f"Failed to download PDB file: {str(e)}")
+        update_status(status_file_path, id, StatusType.FAILED, errorMessage = f"Failed to download PDB file: {str(e)}")
     except subprocess.CalledProcessError as e:
         err_msg = e.stderr.decode() # error message is from subprocess, needs different treatment
         logger.error(f'{id} P2rank crashed: {err_msg}')
-        update_status(status_file_path, id, StatusType.FAILED.value, f"P2rank crashed: {err_msg}")
+        update_status(status_file_path, id, StatusType.FAILED, errorMessage = f"P2rank crashed: {err_msg}")
     except Exception as e:
         logger.error(f'{id} An unexpected error occurred: {str(e)}')
-        update_status(status_file_path, id, StatusType.FAILED.value, f"An unexpected error occurred: {e}")
+        update_status(status_file_path, id, StatusType.FAILED, errorMessage = f"An unexpected error occurred: {e}")
 
     logger.info(f'{id} ds_foldseek finished')
 

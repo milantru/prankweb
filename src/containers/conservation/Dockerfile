@@ -35,6 +35,7 @@ RUN wget https://ftp.expasy.org/databases/uniprot/current_release/knowledgebase/
 COPY --chown=user:user \
         ./shared/install-requirements.sh \
         ./shared/tasks_logger.py \
+        ./shared/status_manager.py \
         ./conservation/requirements.in \
         ./
 

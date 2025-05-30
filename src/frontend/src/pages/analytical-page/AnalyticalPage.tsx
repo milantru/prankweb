@@ -16,6 +16,8 @@ import { Canvas3D } from "molstar/lib/mol-canvas3d/canvas3d";
 import { Bond, StructureElement, StructureProperties } from "molstar/lib/mol-model/structure";
 import { Loci } from "molstar/lib/mol-model/loci";
 import { PluginUIContext } from "molstar/lib/mol-plugin-ui/context";
+import Skeleton from "react-loading-skeleton";
+import "react-loading-skeleton/dist/skeleton.css";
 
 const POLLING_INTERVAL = 1000 * 5; // every 5 seconds
 
@@ -81,7 +83,8 @@ export type UnprocessedResult = {
 };
 
 type DataSourceExecutor = {
-	name: string;
+	name: string; // name of the data source used to fetch results, e.g. "plm" 
+	displayName: string; // used for displaying in UI, e.g. "pLM" instead of "plm"
 	// one result for each chain (here will be stored results from data source executors temporarily until all are fetched)
 	results: UnprocessedResult[];
 };
@@ -108,6 +111,11 @@ export type ProcessedResult = {
 
 type DataSourceExecutorResult = Record<string, ProcessedResult>; // DataSourceExecutorResult[data source name] -> ProcessedResult
 
+type StatusMessage = {
+  message: string;
+  isDone: boolean;
+};
+
 export type ChainResult = {
 	querySequence: string,
 	seqToStrMapping: Record<number, number>; // seqToStrMapping[seqIdx] -> structIdx
@@ -130,14 +138,15 @@ function AnalyticalPage() {
 	const [pollingInterval, setPollingInterval] = useState<number | null>(null);
 	const isPageVisible = useVisibilityChange();
 	const dataSourceExecutors = useRef<DataSourceExecutor[]>([
-		{ name: "plm", results: [] },
-		{ name: "p2rank", results: [] },
-		{ name: "foldseek", results: [] }
+		{ name: "plm", displayName: "pLM", results: [] },
+		{ name: "p2rank", displayName: "P2Rank", results: [] },
+		{ name: "foldseek", displayName: "Foldseek", results: [] }
 	]);
 	const isFetching = useRef<boolean[]>(new Array(dataSourceExecutors.current.length).fill(false));
 	const isPollingFinished = useRef<boolean[]>(new Array(dataSourceExecutors.current.length).fill(false));
 	const [errorMessages, setErrorMessages] = useState<string[]>(new Array(dataSourceExecutors.current.length).fill(""));
 	const [currChainResult, setCurrChainResult] = useState<ChainResult | null>(null);
+	const [statusMessages, setStatusMessages] = useState<StatusMessage[]>(new Array(dataSourceExecutors.current.length).fill({ message: "", isDone: false }));
 	const [selectedChain, setSelectedChain] = useState<string | null>(null); // Will be set when chain results are set
 	const [selectedStructures, setSelectedStructures] = useState<StructureOption[]>([]);
 	const [squashBindingSites, setSquashBindingSites] = useState<boolean>(false);
@@ -256,6 +265,33 @@ function AnalyticalPage() {
 				<ErrorMessageBox classes="mt-2" errorMessages={errorMessages} onClose={clearErrorMessages} />
 			)}
 
+			{!allDataFetched && (
+				<div className="container-fluid pt-2">
+					<div className="box-wrapper mx-auto">
+						<ul className="list-group shadow-sm">
+							{statusMessages.map((msg, idx) =>
+							msg.message ? (
+								<li
+								key={idx}
+								className={`list-group-item d-flex flex-column flex-sm-row align-items-start align-items-sm-center py-1 ${
+									msg.isDone ? "list-group-item-success" : "list-group-item-light"
+								}`}
+								>
+								<div className="d-flex align-items-center">
+									{msg.isDone ? (
+										<></>
+										) : (
+										<span className="custom-spinner mr-3" role="status" />
+										)}
+									<span>{msg.message}</span>
+								</div>
+								</li>
+							) : null
+							)}
+						</ul>
+					</div>
+				</div>
+			)}
 			<div id="visualizations">
 				{/* Sometimes when RcsbSaguro rerendered it kept rerendering over and over again. If you resized the window,
 					it stopped (sometimes it stopped on its own without resizing). When minHeight: "100vh" was added, 
@@ -291,10 +327,11 @@ function AnalyticalPage() {
 								onClick={handleRcsbClick} />
 						</div>
 					) : (
-						<div className="d-flex justify-content-center align-items-center" style={{ height: "100vh" }}>
-							<FadeLoader color="#c3c3c3" />
-						</div>
-					)}
+					<div className="p-4 w-100">
+						<Skeleton height={60} count={1} className="mb-2" />
+						<Skeleton height={400} />
+					</div>
+				)}
 				</div>
 				<div id="visualization-molstar">
 					{currChainResult && selectedChain && selectedChain in bindingSiteSupportCounter ? (<>
@@ -317,10 +354,12 @@ function AnalyticalPage() {
 								onSimilarProteinBindingSiteToggle={handleSimilarProteinBindingSiteToggle} />
 						)}
 					</>) : (
-						<div className="d-flex justify-content-center align-items-center" style={{ height: "100vh" }}>
-							<FadeLoader color="#c3c3c3" />
-						</div>
-					)}
+					<div className="p-4 w-100">
+						<Skeleton height={400} />
+						<Skeleton height={40} className="mt-3" />
+						<Skeleton height={40} className="mt-2" />
+					</div>
+				)}
 				</div>
 			</div>
 		</div>
@@ -391,9 +430,14 @@ function AnalyticalPage() {
 		// Get status
 		const {
 			status,
+			infoMessage,
 			userFriendlyErrorMessage: statusFetchingErrorMessage
 		} = await getDataSourceExecutorResultStatusAPI(dataSourceExecutors.current[dataSourceIndex].name, id, useConservation);
 		if (statusFetchingErrorMessage.length > 0) {
+			if (useConservation && dataSourceExecutors.current[dataSourceIndex].name === "p2rank") {
+				// We are waiting for the conservation
+				updateStatusMessages(dataSourceIndex, dataSourceExecutors.current[dataSourceIndex].displayName + ": Waiting for conservation data");
+			}
 			console.warn(statusFetchingErrorMessage + "\nRetrying...");
 			isFetching.current[dataSourceIndex] = false;
 			return;
@@ -429,13 +473,15 @@ function AnalyticalPage() {
 		// Choose next action depending on status
 		if (status === DataStatus.Processing) {
 			isFetching.current[dataSourceIndex] = false;
+			updateStatusMessages(dataSourceIndex, `${dataSourceExecutors.current[dataSourceIndex].displayName}: ${infoMessage}`, false);
 			return;
 		} else if (status === DataStatus.Failed) {
-			const errMsg = `Failed to fetch data from ${dataSourceExecutors.current[dataSourceIndex].name}, so they won't be displayed.`;
+			const errMsg = `Failed to fetch data from ${dataSourceExecutors.current[dataSourceIndex].displayName}, skipping.`;
 			updateErrorMessages(dataSourceIndex, errMsg);
 		} else if (status === DataStatus.Completed) {
 			const results = await getResults(dataSourceIndex, id, chainsTmp, useConservation);
 			dataSourceExecutors.current[dataSourceIndex].results = results;
+			updateStatusMessages(dataSourceIndex, `${dataSourceExecutors.current[dataSourceIndex].displayName}: ${infoMessage}`, true);
 		} else {
 			throw new Error("Unknown status."); // This should never happen.
 		}
@@ -869,6 +915,14 @@ function AnalyticalPage() {
 		setErrorMessages(prevState =>
 			prevState.map((errMsg, i) => dataSourceIndex === i ? errorMessage : errMsg));
 	};
+
+	function updateStatusMessages(dataSourceIndex: number, statusMessage: string, isDone: boolean = false) {
+		setStatusMessages(prevState =>
+			prevState.map((msg, i) =>
+			dataSourceIndex === i ? { message: statusMessage, isDone } : msg
+			)
+		);
+	}
 
 	function clearErrorMessages() {
 		setErrorMessages(new Array(dataSourceExecutors.current.length).fill(""));
