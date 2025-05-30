@@ -5,7 +5,7 @@ function Navigation() {
         <nav role="navigation" aria-label="main" className="navbar navbar-expand-md navbar-light bg-light">
             <div className="container" id="navigation">
                 <Link className="navbar-brand" to="/">
-                    <img src="assets/images/logo-p2rank.svg" style={{ height: "1.4em" }} alt="Logo" />
+                    <img src="assets/images/logo.svg" style={{ height: "1.4em" }} alt="Logo" />
                 </Link>
                 <button className="navbar-toggler" type="button" data-toggle="collapse" data-target="#mainNavBar"
                     aria-controls="mainNavBar" aria-expanded="false" aria-label="Toggle navigation">
@@ -21,6 +21,9 @@ function Navigation() {
                         </li>
                         <li className="nav-item">
                             <Link className="nav-link" to="/help">Help</Link>
+                        </li>
+                        <li className="nav-item">
+                            <a className="nav-link" href="/openapi/">API Docs</a>
                         </li>
                         <li className="nav-item">
                             <Link className="nav-link"
