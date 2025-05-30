@@ -247,33 +247,29 @@ function AnalyticalPage() {
 			)}
 
 			{!allDataFetched && (
-				<div className="container-fluid py-3">
+				<div className="container-fluid pt-2">
 					<div className="box-wrapper mx-auto">
-					<div className="mb-3 text-center fs-5">Fetching Data Sources</div>
-					<ul className="list-group shadow-sm">
-						{statusMessages.map((msg, idx) =>
-						msg.message ? (
-							<li
-							key={idx}
-							className={`list-group-item d-flex flex-column flex-sm-row align-items-start align-items-sm-center ${
-								msg.isDone ? "list-group-item-success" : "list-group-item-light"
-							}`}
-							>
-							<div className="d-flex align-items-center">
-								{msg.isDone ? (
-								<span className="me-2">✅</span>
-								) : (
-								<span
-									className="spinner-border spinner-border-sm me-2 text-secondary"
-									role="status"
-								/>
-								)}
-								<span className="fw-bold">{msg.message}</span>
-							</div>
-							</li>
-						) : null
-						)}
-					</ul>
+						<ul className="list-group shadow-sm">
+							{statusMessages.map((msg, idx) =>
+							msg.message ? (
+								<li
+								key={idx}
+								className={`list-group-item d-flex flex-column flex-sm-row align-items-start align-items-sm-center py-1 ${
+									msg.isDone ? "list-group-item-success" : "list-group-item-light"
+								}`}
+								>
+								<div className="d-flex align-items-center">
+									{msg.isDone ? (
+										<></>
+										) : (
+										<span className="custom-spinner mr-3" role="status" />
+										)}
+									<span>{msg.message}</span>
+								</div>
+								</li>
+							) : null
+							)}
+						</ul>
 					</div>
 				</div>
 			)}
