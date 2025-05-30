@@ -112,8 +112,8 @@ export type ProcessedResult = {
 type DataSourceExecutorResult = Record<string, ProcessedResult>; // DataSourceExecutorResult[data source name] -> ProcessedResult
 
 type StatusMessage = {
-  message: string;
-  isDone: boolean;
+	message: string;
+	isDone: boolean;
 };
 
 export type ChainResult = {
@@ -270,23 +270,22 @@ function AnalyticalPage() {
 					<div className="box-wrapper mx-auto">
 						<ul className="list-group shadow-sm">
 							{statusMessages.map((msg, idx) =>
-							msg.message ? (
-								<li
-								key={idx}
-								className={`list-group-item d-flex flex-column flex-sm-row align-items-start align-items-sm-center py-1 ${
-									msg.isDone ? "list-group-item-success" : "list-group-item-light"
-								}`}
-								>
-								<div className="d-flex align-items-center">
-									{msg.isDone ? (
-										<></>
-										) : (
-										<span className="custom-spinner mr-3" role="status" />
-										)}
-									<span>{msg.message}</span>
-								</div>
-								</li>
-							) : null
+								msg.message ? (
+									<li
+										key={idx}
+										className={`list-group-item d-flex flex-column flex-sm-row align-items-start align-items-sm-center py-1 ${msg.isDone ? "list-group-item-success" : "list-group-item-light"
+											}`}
+									>
+										<div className="d-flex align-items-center">
+											{msg.isDone ? (
+												<></>
+											) : (
+												<span className="custom-spinner mr-3" role="status" />
+											)}
+											<span>{msg.message}</span>
+										</div>
+									</li>
+								) : null
 							)}
 						</ul>
 					</div>
@@ -307,7 +306,7 @@ function AnalyticalPage() {
 									squashBindingSites={squashBindingSites}
 									startQuerySequenceAtZero={startQuerySequenceAtZero}
 									isDisabled={isMolstarLoadingStructures}
-									onChainSelect={selectedChain => handleChainSelect(currChainResult, selectedChain)}
+									onChainSelect={selectedChain => handleChainSelect(selectedChain)}
 									onBindingSitesSquashClick={() => setSquashBindingSites(prevState => !prevState)}
 									onStartQuerySequenceAtZero={() => setStartQuerySequenceAtZero(prevState => !prevState)}
 									onStructuresSelect={handleStructuresSelect} />
@@ -327,11 +326,11 @@ function AnalyticalPage() {
 								onClick={handleRcsbClick} />
 						</div>
 					) : (
-					<div className="p-4 w-100">
-						<Skeleton height={60} count={1} className="mb-2" />
-						<Skeleton height={400} />
-					</div>
-				)}
+						<div className="p-4 w-100">
+							<Skeleton height={60} count={1} className="mb-2" />
+							<Skeleton height={400} />
+						</div>
+					)}
 				</div>
 				<div id="visualization-molstar">
 					{currChainResult && selectedChain && selectedChain in bindingSiteSupportCounter ? (<>
@@ -354,12 +353,12 @@ function AnalyticalPage() {
 								onSimilarProteinBindingSiteToggle={handleSimilarProteinBindingSiteToggle} />
 						)}
 					</>) : (
-					<div className="p-4 w-100">
-						<Skeleton height={400} />
-						<Skeleton height={40} className="mt-3" />
-						<Skeleton height={40} className="mt-2" />
-					</div>
-				)}
+						<div className="p-4 w-100">
+							<Skeleton height={400} />
+							<Skeleton height={40} className="mt-3" />
+							<Skeleton height={40} className="mt-2" />
+						</div>
+					)}
 				</div>
 			</div>
 		</div>
@@ -919,7 +918,7 @@ function AnalyticalPage() {
 	function updateStatusMessages(dataSourceIndex: number, statusMessage: string, isDone: boolean = false) {
 		setStatusMessages(prevState =>
 			prevState.map((msg, i) =>
-			dataSourceIndex === i ? { message: statusMessage, isDone } : msg
+				dataSourceIndex === i ? { message: statusMessage, isDone } : msg
 			)
 		);
 	}
