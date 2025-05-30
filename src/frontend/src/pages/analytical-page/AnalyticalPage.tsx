@@ -205,8 +205,8 @@ function AnalyticalPage() {
 			// Prepare unaligned data (transform data to more appropriate data structures)
 			const allResults = dataSourceExecutors.flatMap(x => x.results);
 			const chainUnprocessedResults = transform(allResults);
-			for (const dataSourceResults of Object.values(chainUnprocessedResults)) {
-				prepareUnalignedData(dataSourceResults, defaultChain);
+			for (const [index, dataSourceResults] of Object.values(chainUnprocessedResults).entries()) {
+				prepareUnalignedData(dataSourceResults, chains.current[index]); // TODO: Prepare unaligned data only for selected chain?
 			}
 
 			const queryProteinChains = Object.keys(chainUnprocessedResults);
