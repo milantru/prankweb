@@ -341,6 +341,8 @@ function AnalyticalPage() {
 								selectedStructures={selectedStructures}
 								bindingSiteSupportCounter={bindingSiteSupportCounter[selectedChain]}
 								dataSourceCount={dataSourceExecutors.current.length}
+								queryProteinBindingSitesData={queryProteinBindingSitesData}
+								similarProteinBindingSitesData={similarProteinBindingSitesData}
 								onStructuresLoadingStart={() => setIsMolstarLoadingStructures(true)}
 								onStructuresLoadingEnd={() => setIsMolstarLoadingStructures(false)} />
 						</div>
@@ -927,8 +929,8 @@ function AnalyticalPage() {
 		setErrorMessages(new Array(dataSourceExecutors.current.length).fill(""));
 	}
 
-	/** Returns object that holds information which binding sites (and ligands if available) are displayed.  */
-	function toSimilarProteinLigandData(chainResult: ChainResult, selectedStructureOptions: StructureOption[]) {
+	/** Returns object that holds information which binding sites (and ligands if available) of similar proteins are displayed. */
+	function getSimilarProteinLigandData(chainResult: ChainResult, selectedStructureOptions: StructureOption[]) {
 		// res[dataSourceName][pdbCode][chain][bindingSiteId] -> true/false whether is binding site (and ligands if available) displayed
 		const res: Record<string, Record<string, Record<string, Record<string, boolean>>>> = {};
 
@@ -1031,23 +1033,11 @@ function AnalyticalPage() {
 
 		const newChainResult = reAlign(selectedStructureOptions, selectedChain);
 
-		const similarProteinLigandDataTmp = toSimilarProteinLigandData(newChainResult, selectedStructureOptions);
+		const similarProteinLigandDataTmp = getSimilarProteinLigandData(newChainResult, selectedStructureOptions);
 		setSimilarProteinBindingSitesData(similarProteinLigandDataTmp);
-
-		// TODO What about the unselect
-		// User selected some structures, we hide them all, and then display only the selected ones
-		// molstarWrapperRef.current?.hideAllSimilarProteinStructures(selectedStructureOptions);
-		// for (const option of selectedStructureOptions) {
-		// 	molstarWrapperRef.current?.toggleSimilarProteinStructure(
-		// 		option.value.dataSourceName,
-		// 		option.value.pdbId,
-		// 		option.value.chain,
-		// 		true
-		// 	);
-		// }
 	}
 
-	/** Returns object capable of holding information which binding sites (and ligands if available) are displayed.  */
+	/** Returns object that holds information which binding sites (and ligands if available) of query protein are displayed. */
 	function getQueryProteinLigandsData(chainResult: ChainResult, selectedChain: string) {
 		/* queryProteinLigandsData[dataSourceName][selectedChain][bindingSite.id] -> true/false whether binding site 
 		 * (and also ligands if available) is displayed */
@@ -1062,7 +1052,14 @@ function AnalyticalPage() {
 				if (!(selectedChain in queryProteinLigandsData[dataSourceName])) {
 					queryProteinLigandsData[dataSourceName][selectedChain] = {};
 				}
-				queryProteinLigandsData[dataSourceName][selectedChain][bindingSite.id] = false;
+
+				let newValue = false;
+				if (dataSourceName in queryProteinLigandsData
+					&& selectedChain in queryProteinLigandsData[dataSourceName]
+					&& bindingSite.id in queryProteinLigandsData[dataSourceName][selectedChain]) {
+					newValue = queryProteinLigandsData[dataSourceName][selectedChain][bindingSite.id];
+				}
+				queryProteinLigandsData[dataSourceName][selectedChain][bindingSite.id] = newValue;
 			}
 		}
 

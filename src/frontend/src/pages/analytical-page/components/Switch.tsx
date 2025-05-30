@@ -3,11 +3,12 @@ import "./Switch.tsx.css"
 
 type Props = {
     classes?: string;
+    isDisabled: boolean;
     isOnInitially?: boolean;
     onToggle: (state: boolean) => void;
 };
 
-function Switch({ classes = "", isOnInitially = false, onToggle }: Props) {
+function Switch({ classes = "", isDisabled, isOnInitially = false, onToggle }: Props) {
     const [checked, setChecked] = useState(isOnInitially);
 
     const handleChange = () => {
@@ -23,6 +24,7 @@ function Switch({ classes = "", isOnInitially = false, onToggle }: Props) {
                     type="checkbox"
                     className="custom-switch-input"
                     checked={checked}
+                    disabled={isDisabled}
                     onChange={handleChange} />
                 <span className="custom-switch-slider" />
             </label>

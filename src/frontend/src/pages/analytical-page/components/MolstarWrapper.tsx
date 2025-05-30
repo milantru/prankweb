@@ -69,6 +69,10 @@ type Props = {
 	// bindingSiteSupportCounter[residue index in structure (of pocket)] -> number of data sources supporting that the residue index is part of binding site
 	bindingSiteSupportCounter: Record<number, number>;
 	dataSourceCount: number;
+	// queryProteinBindingSitesData[dataSourceName][chain][bindingSiteId] -> true/false to show bindings site (and ligands if available) 
+	queryProteinBindingSitesData: Record<string, Record<string, Record<string, boolean>>>;
+	// similarProteinBindingSitesData[dataSourceName][pdbCode][chain][bindingSiteId] -> true/false to show bindings site (and ligands if available) 
+	similarProteinBindingSitesData: Record<string, Record<string, Record<string, Record<string, boolean>>>>;
 	onStructuresLoadingStart: () => void;
 	onStructuresLoadingEnd: () => void;
 };
@@ -79,6 +83,8 @@ export const MolStarWrapper = forwardRef(({
 	selectedStructures,
 	bindingSiteSupportCounter,
 	dataSourceCount,
+	queryProteinBindingSitesData,
+	similarProteinBindingSitesData,
 	onStructuresLoadingStart,
 	onStructuresLoadingEnd
 }: Props, ref) => {
@@ -214,7 +220,7 @@ export const MolStarWrapper = forwardRef(({
 				<div className="mt-2 ml-auto"
 					title="When the mode is enabled, the opacity of visualized binding sites increases with the number of supporting data sources.">
 					Highlight mode
-					<Switch classes="ml-2" onToggle={isOn => setIsHighlightModeOn(isOn)} />
+					<Switch classes="ml-2" isDisabled={!structuresLoaded} onToggle={isOn => setIsHighlightModeOn(isOn)} />
 				</div>
 			</div>
 
@@ -320,8 +326,7 @@ export const MolStarWrapper = forwardRef(({
 		structs: Record<string, Record<string, Record<string, VisibleObject>>>,
 		ligandsExpression: Record<string, Record<string, Record<string, Record<string, Expression>>>>,
 		pocketsExpressions: Record<string, Record<string, Record<string, Record<string, { expr: Expression, supportersCount: number }[]>>>>,
-		options: StructureOption[],
-		showRepresentationsWhenCreated: boolean
+		options: StructureOption[]
 	) {
 		const ls: Record<string, Record<string, Record<string, Record<string, VisibleObject>>>> = {};
 		const ps: Record<string, Record<string, Record<string, Record<string, VisiblePocketObjects>>>> = {};
@@ -364,8 +369,9 @@ export const MolStarWrapper = forwardRef(({
 					for (let i = 0; i < pocketsExpressionsAndSupporters.length; i++) {
 						const pocketExprAndSupporters = pocketsExpressionsAndSupporters[i];
 						const key = `${dataSourceName}-${simProt.pdbId}-${simProt.chain}-${bindingSite.id}-pocket-${i}`;
+						const show = similarProteinBindingSitesData[dataSourceName][simProt.pdbId][simProt.chain][bindingSite.id];
 
-						const resObj = await createPocketRepresentationForStruct(plugin, struct, key, pocketExprAndSupporters, showRepresentationsWhenCreated);
+						const resObj = await createPocketRepresentationForStruct(plugin, struct, key, pocketExprAndSupporters, show);
 						if (!resObj) {
 							console.warn("Failed to create pocket representation (for 1 residue). Key: ", key);
 							continue;
@@ -387,8 +393,9 @@ export const MolStarWrapper = forwardRef(({
 						// We know pocket also has ligand so we create expr for that too 
 						const key = `${dataSourceName}-${simProt.pdbId}-${simProt.chain}-${bindingSite.id}-ligand`;
 						const ligandsOfOneType = ligandsExpression[dataSourceName][simProt.pdbId][simProt.chain][bindingSite.id];
+						const show = similarProteinBindingSitesData[dataSourceName][simProt.pdbId][simProt.chain][bindingSite.id];
 
-						const l = await createLigandsRepresentationForStruct(plugin, struct, key, ligandsOfOneType, showRepresentationsWhenCreated);
+						const l = await createLigandsRepresentationForStruct(plugin, struct, key, ligandsOfOneType, show);
 						if (l) {
 							if (!(dataSourceName in ls)) {
 								ls[dataSourceName] = {};
@@ -488,7 +495,7 @@ export const MolStarWrapper = forwardRef(({
 					const residuesExpressionsAndSupporters = residues.map(r => ({
 						expr: MS.struct.modifier.wholeResidues({
 							0: MS.struct.generator.atomGroups({
-								'chain-test': MS.core.rel.eq([MS.struct.atomProperty.macromolecular.auth_asym_id(), chain]), // TODO: probably no need for chain test
+								'chain-test': MS.core.rel.eq([MS.struct.atomProperty.macromolecular.auth_asym_id(), chain]),
 								'residue-test': MS.core.rel.eq([MS.struct.atomProperty.macromolecular.label_seq_id(), r])
 							})
 						}),
@@ -724,8 +731,9 @@ export const MolStarWrapper = forwardRef(({
 					for (let i = 0; i < pocketExpressionsAndSupporters.length; i++) {
 						const pocketExprAndSupportersCount = pocketExpressionsAndSupporters[i];
 						const key = `${dataSourceName}-${selectedChain}-${bindingSite.id}-pocket-${i}`;
+						const show = queryProteinBindingSitesData[dataSourceName][selectedChain][bindingSite.id];
 
-						const resObj = await createPocketRepresentationForStruct(plugin, queryStructureTmp, key, pocketExprAndSupportersCount, false);
+						const resObj = await createPocketRepresentationForStruct(plugin, queryStructureTmp, key, pocketExprAndSupportersCount, show);
 						if (!resObj) {
 							console.warn("Failed to create pocket representation (for 1 residue). Key: ", key);
 							continue;
@@ -743,8 +751,9 @@ export const MolStarWrapper = forwardRef(({
 					if (!bindingSite.id.startsWith("pocket_")) {
 						const key = `${dataSourceName}-${selectedChain}-${bindingSite.id}-ligand`;
 						const ligandOfOneTypeExpr = queryProteinLigandsExpression[dataSourceName][selectedChain][bindingSite.id];
+						const show = queryProteinBindingSitesData[dataSourceName][selectedChain][bindingSite.id];
 
-						const l = await createLigandsRepresentationForStruct(plugin, queryStructureTmp, key, ligandOfOneTypeExpr, false);
+						const l = await createLigandsRepresentationForStruct(plugin, queryStructureTmp, key, ligandOfOneTypeExpr, show);
 						if (l) {
 							if (!(dataSourceName in queryProteinLigandsTmp)) {
 								queryProteinLigandsTmp[dataSourceName] = {};
@@ -770,7 +779,7 @@ export const MolStarWrapper = forwardRef(({
 
 			// Create representations of similar protein ligands
 			await createPocketsAndLigandsRepresentationForStructs(
-				plugin, structuresTmp, similarProteinLigandsExpression, similarProteinPocketsExpression, options, false);
+				plugin, structuresTmp, similarProteinLigandsExpression, similarProteinPocketsExpression, options);
 
 			// Reset camera (this should make the structures more visible)
 			plugin.canvas3d?.requestCameraReset();
