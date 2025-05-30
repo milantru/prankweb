@@ -69,7 +69,8 @@ def run_foldseek(id):
             foldseek_result_file,
             id,
             query_structure_file,
-            query_structure_url
+            query_structure_url,
+            status_file_path
         )
 
         update_status(status_file_path, id, StatusType.COMPLETED, infoMessage="Execution completed successfully")

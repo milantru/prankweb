@@ -6,8 +6,11 @@ from Bio.PDB import PDBParser, PDBIO, NeighborSearch
 from Bio.PDB.Polypeptide import three_to_index, index_to_one, is_aa
 from data_format.builder import ProteinDataBuilder, SimilarProteinBuilder, BindingSite, Residue
 from dataclasses import asdict
+from concurrent.futures import ThreadPoolExecutor
+from functools import partial
 
 from tasks_logger import create_logger
+from status_manager import update_status, StatusType
 
 
 #   - OUTPUT FORMAT - columns in result file [MORE](https://github.com/soedinglab/MMseqs2/wiki#custom-alignment-format-with-convertalis)
@@ -108,7 +111,7 @@ def save_results(result_folder: str, file_name: str, builder: ProteinDataBuilder
 
     logger.info(f'{id} Results saved')
 
-def process_similar_protein(result_folder: str, fields: List[str], curr_chain: str, id: str) -> SimilarProteinBuilder:
+def process_similar_protein(result_folder: str, curr_chain: str, id: str, fields: List[str]) -> SimilarProteinBuilder:
     
     sim_protein_pdb_id, sim_protein_chain = fields[1][:4], fields[1].split("_")[1][0]
     if len(id)> 4 and id[-4:] == sim_protein_pdb_id and curr_chain == sim_protein_chain:
@@ -147,66 +150,105 @@ def process_similar_protein(result_folder: str, fields: List[str], curr_chain: s
         return None
     return sim_builder
 
-def process_foldseek_output(result_folder, foldseek_result_file, id, query_structure_file, query_structure_file_url):
+def split_foldseek_result_file(result_folder, filepath):
+    output_files = {}
+    result_file_base = ""
 
-    with open(foldseek_result_file) as f:
-        curr_chain = None
-        builder = None
-
-        chains_json = os.path.join(INPUTS_URL, id, "chains.json")
-        logger.info(f'{id} Downloading chains file from: {chains_json}') 
-        try:
-            response = requests.get(chains_json, stream=True, timeout=(10,20))
-            response.raise_for_status()
-        except requests.RequestException as e:
-            logger.critical(f'{id} Failed to download chains file')
-            return
-        
-        logger.info(f'{id} Chains file downloaded successfully')
-
-        metadata = response.json()
-
-        remaining_chains = metadata["chains"]
-
-        logger.info(f'{id} Starting processing result file: {foldseek_result_file}')
-        for line in f:  
+    with open(filepath, 'r') as infile:
+        for line in infile:
             fields = line.strip().split("\t")
+            if not fields:
+                continue  # skip empty lines, should not happen in Foldseek output...
+
             input_name = fields[0]
-            query_seq = fields[3]
-            chain = input_name.split("_")[1] if "_" in input_name else "A"
+            if result_file_base == "":
+                result_file_base = input_name.split("_")[0]
+            output_filename = os.path.join(result_folder, f"{input_name}_res")
 
-            if chain in remaining_chains:
-                remaining_chains.remove(chain)
+            if input_name not in output_files:
+                output_files[input_name] = open(output_filename, 'a')
 
-            if curr_chain == None:
-                curr_chain = chain
+            output_files[input_name].write(line)
 
+    for f in output_files.values():
+        f.close()
+    
+    logger.info(f"Foldseek result file split into {len(output_files)} files with base name: {result_file_base}")
+    
+    return result_file_base
+
+def process_chain_result(id, chain_result_file_path, result_folder, query_structure_file, query_structure_file_url, batch_size=5):
+    with open(chain_result_file_path, 'r') as file:
+        batch = []
+        builder = None
+        for line in file:
+            fields = line.strip().split("\t")
+            batch.append(fields)
             if builder == None:
+                input_name = fields[0]
+                query_seq = fields[3]
+                chain = input_name.split("_")[1] if "_" in input_name else "A"
                 builder = ProteinDataBuilder(id, chain, query_seq, query_structure_file_url)
-                binding_sites = extract_binding_sites_for_chain(id, query_structure_file, curr_chain)[0]
+                binding_sites = extract_binding_sites_for_chain(id, query_structure_file, chain)[0]
                 for binding_site in binding_sites:
                     builder.add_binding_site(binding_site)
+            if len(batch) >= batch_size:
+                with ThreadPoolExecutor(max_workers=batch_size) as executor:
+                    wrapped_fn = partial(process_similar_protein, result_folder, chain, id)
+                    results = list(executor.map(wrapped_fn, batch))
+                for sim_builder in results:
+                    if sim_builder is not None:
+                        builder.add_similar_protein(sim_builder.build())
+                batch = []
+        
+        if batch:
+            with ThreadPoolExecutor(max_workers=len(batch)) as executor:
+                wrapped_fn = partial(process_similar_protein, result_folder, chain, id)
+                results = list(executor.map(wrapped_fn, batch))
+            for sim_builder in results:
+                if sim_builder is not None:
+                    builder.add_similar_protein(sim_builder.build())
+    if builder is not None:
+        save_results(result_folder, RESULT_FILE.format(chain), builder)
 
-            if curr_chain != chain:
-                save_results(result_folder, RESULT_FILE.format(curr_chain), builder)
-                curr_chain = chain
-                builder = ProteinDataBuilder(id, curr_chain, query_seq, query_structure_file_url)
-                binding_sites = extract_binding_sites_for_chain(id, query_structure_file, curr_chain)[0]
-                for binding_site in binding_sites:
-                    builder.add_binding_site(binding_site)
-            
-            sim_builder = process_similar_protein(result_folder, fields, curr_chain, id)
+def process_foldseek_output(result_folder, foldseek_result_file, id, query_structure_file, query_structure_file_url, status_file_path):
 
-            if sim_builder is not None:
-                builder.add_similar_protein(sim_builder.build())
+    result_file_base = split_foldseek_result_file(result_folder, foldseek_result_file)
 
-        if builder != None:
-            save_results(result_folder, RESULT_FILE.format(curr_chain), builder)
+    chains_json = os.path.join(INPUTS_URL, id, "chains.json")
+    logger.info(f'{id} Downloading chains file from: {chains_json}') 
+    try:
+        response = requests.get(chains_json, stream=True, timeout=(10,20))
+        response.raise_for_status()
+    except requests.RequestException as e:
+        logger.critical(f'{id} Failed to download chains file')
+        raise RuntimeError(f'Failed to download chains file for {id}: {e}')
+    
+    logger.info(f'{id} Chains file downloaded successfully')
+    metadata = response.json()
+    remaining_chains = metadata["chains"]
+    total_chains_count = len(remaining_chains)
+    processed_chains_count = 0
+    
+    logger.info(f'{id} Starting processing result file: {foldseek_result_file}')
+    
+    for chain in remaining_chains:
+        print("REMAINING CHAINS:", remaining_chains)
+        result_file_path = os.path.join(result_folder, f"{result_file_base}_{chain}_res") if total_chains_count > 1 else os.path.join(result_folder, f"{result_file_base}_res")
+        update_status(status_file_path, id, StatusType.STARTED, infoMessage=f"Processing Foldseek output, {total_chains_count - processed_chains_count} chains remaining")
 
-        logger.info(f'{id} Chains with no similar results: {" ".join(remaining_chains)}')
-        for chain in remaining_chains:
+        if os.path.exists(result_file_path):
+            # Process similar proteins
+            logger.info(f'{id} Processing chain {chain} from Foldseek result file: {result_file_path}')
+            process_chain_result(id, result_file_path, result_folder, query_structure_file, query_structure_file_url)
+        else:
+            # No similar proteins found for this chain, extract binding sites only
+            logger.info(f'{id} No similar proteins found for chain {chain}, extracting binding sites only')
             binding_sites, chain_seq, _ = extract_binding_sites_for_chain(id, query_structure_file, chain)
             builder = ProteinDataBuilder(id, chain, chain_seq, query_structure_file_url)
             for binding_site in binding_sites:
                 builder.add_binding_site(binding_site)
             save_results(result_folder, RESULT_FILE.format(chain), builder)
+        processed_chains_count += 1
+    print("REMAINING CHAINS:", remaining_chains)
+    logger.info(f'{id} Finished processing Foldseek output')
