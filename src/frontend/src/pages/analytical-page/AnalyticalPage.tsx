@@ -155,8 +155,8 @@ function AnalyticalPage() {
 	// queryProteinLigandData[dataSourceName][chain][bindingSiteId] -> true/false to show bindings site (and also ligands if available)
 	// similarProteinLigandData[dataSourceName][pdbCode][chain][bindingSiteId] -> true/false to show bindings site (and also ligands if available)
 	// bindingSiteId can be e.g. H_SO4, but it can also be prediction e.g. pocket_1
-	const [queryProteinBindingSitesData, setQueryProteinBindingSitesData] = useState<Record<string, Record<string, Record<string, boolean>>>>(null!);
-	const [similarProteinBindingSitesData, setSimilarProteinBindingSitesData] = useState<Record<string, Record<string, Record<string, Record<string, boolean>>>>>(null!);
+	const [queryProteinBindingSitesData, setQueryProteinBindingSitesData] = useState<Record<string, Record<string, Record<string, boolean>>>>({});
+	const [similarProteinBindingSitesData, setSimilarProteinBindingSitesData] = useState<Record<string, Record<string, Record<string, Record<string, boolean>>>>>({});
 	const [isMolstarLoadingStructures, setIsMolstarLoadingStructures] = useState<boolean>(true);
 	const molstarWrapperRef = useRef<MolStarWrapperHandle>(null!);
 	const rcsbSaguaroRef = useRef<RcsbSaguaroHandle>(null!);
