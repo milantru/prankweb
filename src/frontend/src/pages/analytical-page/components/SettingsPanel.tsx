@@ -13,6 +13,7 @@ type Props = {
     dataSourcesSimilarProteins: Record<string, SimilarProtein[]>; // dataSourcesSimilarProteins[dataSourceName] -> similar proteins
     squashBindingSites: boolean;
     startQuerySequenceAtZero: boolean;
+    dataSourceDisplayNames: Record<string, string>;
     isDisabled: boolean;
     onChainSelect: (selectedChain: string) => void;
     onBindingSitesSquashClick: () => void;
@@ -26,6 +27,7 @@ function SettingsPanel({
     dataSourcesSimilarProteins,
     squashBindingSites,
     startQuerySequenceAtZero,
+    dataSourceDisplayNames,
     isDisabled,
     onChainSelect,
     onBindingSitesSquashClick,
@@ -51,7 +53,7 @@ function SettingsPanel({
         for (const [dataSourceName, similarProteins] of Object.entries(dataSourcesSimilarProteins)) {
             for (const simProt of similarProteins) {
                 const option: StructureOption = {
-                    label: `${simProt.pdbId.toUpperCase()} (chain: ${simProt.chain}, source: ${dataSourceName})`,
+                    label: `${simProt.pdbId.toUpperCase()} (chain: ${simProt.chain}, source: ${dataSourceDisplayNames[dataSourceName]})`,
                     value: {
                         dataSourceName: dataSourceName,
                         pdbId: simProt.pdbId,

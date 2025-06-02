@@ -8,6 +8,7 @@ type Props = {
     queryProteinBindingSitesData: Record<string, Record<string, Record<string, boolean>>>;
     // similarProteinsBindingSitesData[dataSourceName][pdbCode][chain][bindingSiteId] -> true/false to show bindings site (and also ligands if available)
     similarProteinsBindingSitesData: Record<string, Record<string, Record<string, Record<string, boolean>>>>;
+    dataSourceDisplayNames: Record<string, string>;
     isDisabled: boolean;
     onQueryProteinBindingSiteToggle: (dataSourceName: string, chain: string, bindingSiteId: string, newValue: boolean) => void;
     onSimilarProteinBindingSiteToggle: (dataSourceName: string, pdbCode: string, chain: string, bindingSiteId: string, newValue: boolean) => void;
@@ -17,6 +18,7 @@ function TogglerPanels({
     classes = "",
     queryProteinBindingSitesData,
     similarProteinsBindingSitesData,
+    dataSourceDisplayNames,
     isDisabled,
     onQueryProteinBindingSiteToggle,
     onSimilarProteinBindingSiteToggle
@@ -41,6 +43,7 @@ function TogglerPanels({
                     Object.entries(chainRecord).map(([chain, bindingSiteRecord]) =>
                         <TogglerPanel key={`${dataSourceName}-${chain}`}
                             title={{ chain: chain, dataSourceName: dataSourceName }}
+                            dataSourceDisplayNames={dataSourceDisplayNames}
                             color={dataSourceColors[dataSourceName]}
                             bindingSiteRecord={bindingSiteRecord}
                             isDisabled={isDisabled}
@@ -56,6 +59,7 @@ function TogglerPanels({
                             <TogglerPanel key={`${dataSourceName}-${pdbCode}-${chain}`}
                                 title={{ pdbCode: pdbCode, chain: chain, dataSourceName: dataSourceName }}
                                 color={dataSourceColors[dataSourceName]}
+                                dataSourceDisplayNames={dataSourceDisplayNames}
                                 bindingSiteRecord={bindingSiteRecord}
                                 isDisabled={isDisabled}
                                 displayLoadingAnimationWhenDisabled={true}

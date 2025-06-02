@@ -11,6 +11,7 @@ export type RcsbSaguaroHandle = {
 type Props = {
     classes?: string;
     chainResult: ChainResult;
+    dataSourceDisplayNames: Record<string, string>;
     squashBindingSites: boolean;
     startQuerySequenceAtZero: boolean;
     onHighlight: (structureIndex: number) => void;
@@ -20,6 +21,7 @@ type Props = {
 const RcsbSaguaro = forwardRef(({
     classes = "",
     chainResult,
+    dataSourceDisplayNames,
     squashBindingSites,
     startQuerySequenceAtZero,
     onHighlight,
@@ -72,7 +74,7 @@ const RcsbSaguaro = forwardRef(({
                                 display: "inline-block",
                                 border: "1px solid #ccc",
                             }} />
-                        <span>{dataSourceName}</span>
+                        <span>{dataSourceDisplayNames[dataSourceName]}</span>
                     </div>
                 ))}
             </div>
@@ -204,7 +206,8 @@ const RcsbSaguaro = forwardRef(({
             return {};
         }
 
-        const label = `<strong>Confidence:</strong> ${bindingSite.confidence} | <strong>Source:</strong> ${dataSourceName}`;
+        const dataSourceDisplayName = dataSourceDisplayNames[dataSourceName];
+        const label = `<strong>Confidence:</strong> ${bindingSite.confidence} | <strong>Source:</strong> ${dataSourceDisplayName}`;
         if (residues.length === 1) {
             const trackDataItem: RcsbFvTrackDataElementInterface = {
                 begin: residues[0].sequenceIndex + 1 - offset.current,

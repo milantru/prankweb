@@ -12,6 +12,7 @@ type PanelTitle = {
 type Props = {
     title: PanelTitle;
     color: string;
+    dataSourceDisplayNames: Record<string, string>;
     bindingSiteRecord: Record<string, boolean>;
     isDisabled: boolean;
     displayLoadingAnimationWhenDisabled: boolean;
@@ -21,6 +22,7 @@ type Props = {
 function TogglerPanel({
     title,
     color,
+    dataSourceDisplayNames,
     bindingSiteRecord,
     isDisabled,
     displayLoadingAnimationWhenDisabled,
@@ -91,7 +93,7 @@ function TogglerPanel({
                     <span>
                         <span><strong>{`${title.pdbCode?.toUpperCase() ?? "Query protein"}`}</strong></span>
                         <span> (chain <strong>{title.chain}</strong></span>
-                        <span>, source: <em>{title.dataSourceName}</em>)</span>
+                        <span>, source: <em>{dataSourceDisplayNames[title.dataSourceName]}</em>)</span>
                     </span>
 
                     <div className="d-flex align-items-center ml-auto">

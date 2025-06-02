@@ -84,7 +84,7 @@ export type UnprocessedResult = {
 
 type DataSourceExecutor = {
 	name: string; // name of the data source used to fetch results, e.g. "plm" 
-	displayName: string; // used for displaying in UI, e.g. "pLM" instead of "plm"
+	displayName: string; // used for displaying in UI, e.g. "P2Rank" instead of "p2rank"
 	// one result for each chain (here will be stored results from data source executors temporarily until all are fetched)
 	results: UnprocessedResult[];
 };
@@ -142,6 +142,9 @@ function AnalyticalPage() {
 		{ name: "p2rank", displayName: "P2Rank", results: [] },
 		{ name: "foldseek", displayName: "Foldseek", results: [] }
 	]);
+	const dataSourceDisplayNames = useRef<Record<string, string>>(
+		Object.fromEntries(dataSourceExecutors.current.map(ds => [ds.name, ds.displayName]))
+	);
 	const isFetching = useRef<boolean[]>(new Array(dataSourceExecutors.current.length).fill(false));
 	const isPollingFinished = useRef<boolean[]>(new Array(dataSourceExecutors.current.length).fill(false));
 	const [errorMessages, setErrorMessages] = useState<string[]>(new Array(dataSourceExecutors.current.length).fill(""));
@@ -277,6 +280,7 @@ function AnalyticalPage() {
 									dataSourcesSimilarProteins={unalignedSimProts.current}
 									squashBindingSites={squashBindingSites}
 									startQuerySequenceAtZero={startQuerySequenceAtZero}
+									dataSourceDisplayNames={dataSourceDisplayNames.current}
 									isDisabled={isMolstarLoadingStructures}
 									onChainSelect={selectedChain => handleChainSelect(dataSourceExecutors.current, selectedChain)}
 									onBindingSitesSquashClick={() => setSquashBindingSites(prevState => !prevState)}
@@ -292,6 +296,7 @@ function AnalyticalPage() {
 							<RcsbSaguaro ref={rcsbSaguaroRef}
 								classes="w-100 mt-2"
 								chainResult={currChainResult}
+								dataSourceDisplayNames={dataSourceDisplayNames.current}
 								squashBindingSites={squashBindingSites}
 								startQuerySequenceAtZero={startQuerySequenceAtZero}
 								onHighlight={handleRcsbHighlight}
@@ -322,6 +327,7 @@ function AnalyticalPage() {
 							<TogglerPanels classes="px-4"
 								queryProteinBindingSitesData={queryProteinBindingSitesData}
 								similarProteinsBindingSitesData={similarProteinBindingSitesData}
+								dataSourceDisplayNames={dataSourceDisplayNames.current}
 								isDisabled={isMolstarLoadingStructures}
 								onQueryProteinBindingSiteToggle={handleQueryProteinBindingSiteToggle}
 								onSimilarProteinBindingSiteToggle={handleSimilarProteinBindingSiteToggle} />
