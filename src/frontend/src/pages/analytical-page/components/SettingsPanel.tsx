@@ -1,5 +1,5 @@
 import Select, { SelectInstance } from 'react-select';
-import { ChainResult, SimilarProtein } from "../AnalyticalPage";
+import { SimilarProtein } from "../AnalyticalPage";
 import { useEffect, useRef, useState } from 'react';
 
 export type StructureOption = {
