@@ -2,6 +2,7 @@ import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "re
 import { RcsbFv, RcsbFvTrackDataElementInterface, RcsbFvBoardConfigInterface, RcsbFvRowExtendedConfigInterface, RcsbFvTooltipInterface } from "@rcsb/rcsb-saguaro";
 import { BindingSite, ChainResult, Conservation } from "../AnalyticalPage";
 import { getUniqueColorForEachBindingSite, getUniqueColorForEachDataSource, getUniqueColorForEachString } from "../../../shared/helperFunctions/colors";
+import { toBindingSiteLabel } from "../../../shared/helperFunctions/labels";
 
 export type RcsbSaguaroHandle = {
     getRcsbPlugin: () => RcsbFv | null;
@@ -376,7 +377,7 @@ const RcsbSaguaro = forwardRef(({
             } else {
                 result.bindingSites.forEach((bindingSite, idx) => {
                     const id = `${dataSourceName}-${bindingSite.id}-${idx}`;
-                    const title = bindingSite.id;
+                    const title = toBindingSiteLabel(bindingSite.id);
 
                     const bindingSiteRow = createBlockRowForBindingSite(
                         id, title, bindingSite, dataSourceName, defaultTitleFlagColor);
@@ -409,7 +410,7 @@ const RcsbSaguaro = forwardRef(({
                 } else {
                     simProt.bindingSites.forEach((bindingSite, idx) => {
                         const id = `${dataSourceName}-${simProt.pdbId}-${simProt.chain}-${bindingSite.id}-${idx}`;
-                        const title = bindingSite.id.toUpperCase();
+                        const title = toBindingSiteLabel(bindingSite.id);
 
                         const simProtBindingSiteRow = createBlockRowForBindingSite(
                             id, title, bindingSite, dataSourceName, simProtColorTransparent);

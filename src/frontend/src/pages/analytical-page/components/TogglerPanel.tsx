@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ScaleLoader } from "react-spinners";
 import chroma from "chroma-js";
+import { toBindingSiteLabel } from "../../../shared/helperFunctions/labels";
 
 type PanelTitle = {
     pdbCode?: string; // When pdb code isn't specified, query protein is assumed 
@@ -116,7 +117,7 @@ function TogglerPanel({
                                         checked={isDisplayed}
                                         disabled={isDisabled}
                                         onChange={() => handleChange(bindingSiteId, !isDisplayed)} />
-                                    {bindingSiteId}
+                                    {toBindingSiteLabel(bindingSiteId)}
                                 </label>
                             </div>
                         )}
