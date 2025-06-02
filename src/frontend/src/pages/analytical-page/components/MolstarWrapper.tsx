@@ -26,6 +26,7 @@ import { Color } from "molstar/lib/mol-util/color";
 import { StructureOption } from "./SettingsPanel";
 import Switch from "./Switch";
 import { Script } from "molstar/lib/mol-script/script";
+import { useInterval } from "../../../shared/hooks/useInterval";
 
 export type MolStarWrapperHandle = {
 	toggleQueryProteinBindingSite: (dataSourceName: string, chain: string, bindingSiteId: string, show: boolean) => void;
@@ -105,6 +106,8 @@ export const MolStarWrapper = forwardRef(({
 
 	const [isHighlightModeOn, setIsHighlightModeOn] = useState<boolean>(false);
 	const [structuresLoaded, setStructuresLoaded] = useState<boolean>(false);
+	const loadingMessage = useRef<string>("Loading structure(s)...");
+	const [displayedLoadingMessageLength, setDisplayedLoadingMessageLength] = useState<number>(loadingMessage.current.length);
 
 	useImperativeHandle(ref, () => ({
 		toggleQueryProteinBindingSite,
@@ -214,9 +217,28 @@ export const MolStarWrapper = forwardRef(({
 		}
 	}, [isHighlightModeOn, structuresLoaded]);
 
+	useEffect(() => {
+		if (structuresLoaded) { // After loading, always reset length so next time full message will be displayed
+			setDisplayedLoadingMessageLength(loadingMessage.current.length);
+		}
+	}, [structuresLoaded]);
+
+	useInterval(() => {
+		// It is desired to display "Loading structures...", then "Loading structures.", and then "Loading structures.." (and loop it)
+		setDisplayedLoadingMessageLength(prevLen => {
+			if ((prevLen + 1) > loadingMessage.current.length) {
+				return loadingMessage.current.length - 3;
+			}
+			return prevLen + 1;
+		});
+	}, structuresLoaded ? null : 500);
+
 	return (
 		<div className="w-100">
 			<div className="d-flex">
+				<div className="d-flex align-items-center">
+					{structuresLoaded ? "" : loadingMessage.current.substring(0, displayedLoadingMessageLength)}
+				</div>
 				<div className="mt-2 ml-auto"
 					title="When the mode is enabled, the opacity of visualized binding sites increases with the number of supporting data sources.">
 					Highlight mode
