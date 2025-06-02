@@ -77,7 +77,7 @@ function TogglerPanel({
             <div className="pt-2 d-flex flex-row"
                 style={{
                     cursor: "pointer",
-                    backgroundColor: chroma(color).darken(1).alpha(0.125).css(),
+                    backgroundColor: chroma(color).alpha(0.175).css(),
                     boxShadow: !isPanelOpened ? "0 2px 8px rgba(0, 0, 0, 0.15)" : "0 2px 8px rgba(0, 0, 0, 0.25)",
                     padding: "2px 4px 0 4px"
                 }}
