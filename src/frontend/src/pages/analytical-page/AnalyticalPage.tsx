@@ -423,15 +423,24 @@ function AnalyticalPage() {
 		}
 
 		// Init chains (either from params, or from servers chains file which should be already created when status is retrieved)
-		const { chains: chainsTmp, errMsg: allChainsFetchingErrorMessage } = await tryGetChains();
-		if (allChainsFetchingErrorMessage.length > 0) {
-			toastWarning(allChainsFetchingErrorMessage + "\nRetrying...");
+		if (dataSourceIndex === 0) {
+			/* We do not want to spam toasts for each data source in case fetching fails, 
+			 * that's why only for one data source chains are being fetched. */
+			const { chains: chainsTmp, errMsg: allChainsFetchingErrorMessage } = await tryGetChains();
+			if (allChainsFetchingErrorMessage.length > 0) {
+				toastWarning(allChainsFetchingErrorMessage + "\nRetrying...");
+				isFetching.current[dataSourceIndex] = false;
+				return;
+			}
+			chains.current = chainsTmp;
+			const defaultChain = chains.current[0]; // Protein always has at least 1 chain
+			setSelectedChain(defaultChain);
+		}
+		if (chains.current.length === 0) {
+			// Chains not fetched yet... Try again.
 			isFetching.current[dataSourceIndex] = false;
 			return;
 		}
-		chains.current = chainsTmp;
-		const defaultChain = chainsTmp[0]; // Protein always has at least 1 chain
-		setSelectedChain(defaultChain);
 
 		/* Init seq to struct mappings if not init yet (just for query protein now, 
 		 * later, alfter aligning, gaps may occur in master query seq, so to fill each
@@ -458,7 +467,7 @@ function AnalyticalPage() {
 			const errMsg = `Failed to fetch data from ${dataSourceExecutors.current[dataSourceIndex].displayName}, skipping.`;
 			updateErrorMessages(dataSourceIndex, errMsg);
 		} else if (status === DataStatus.Completed) {
-			const results = await getResults(dataSourceIndex, id, chainsTmp, useConservation);
+			const results = await getResults(dataSourceIndex, id, chains.current, useConservation);
 			dataSourceExecutors.current[dataSourceIndex].results = results;
 			updateStatusMessages(dataSourceIndex, `${dataSourceExecutors.current[dataSourceIndex].displayName}: ${infoMessage}`, true);
 		} else {
