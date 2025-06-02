@@ -171,8 +171,7 @@ function AnalyticalPage() {
 	const unalignedResult = useRef<Record<string, UnalignedResult>>({});
 	// unalignedSimProts[dataSourceName] -> UnalignedSimilarProtein for currently selected chain
 	const unalignedSimProts = useRef<Record<string, UnalignedSimilarProtein[]>>({});
-	// conservations[chain] -> conservations
-	const conservations = useRef<Record<string, Conservation[]>>({});
+	const conservations = useRef<Conservation[]>([]); // conservations for currently selected query chain
 
 	useEffect(() => {
 		if (isPollingFinished.current.every(x => x)) {
@@ -197,27 +196,9 @@ function AnalyticalPage() {
 	}, []);
 
 	useEffect(() => {
-		async function fetchConservationAndHandleChainSelect(dataSourceExecutors: DataSourceExecutor[], defaultChain: string) {
-			setPollingInterval(null); // turn off polling entirely (for all data sources)
-
-			// Get conservations (if required)
-			if (useConservation) {
-				const queryProteinChains = chains.current; // Chains should be initialized by now
-				for (let i = 0; i < queryProteinChains.length; i++) {
-					const chain = queryProteinChains[i];
-
-					const {
-						conservations: conservationsTmp,
-						userFriendlyErrorMessage: conservationFetchingErrorMsg
-					} = await getConservationsAPI(id, chain);
-					if (conservationFetchingErrorMsg.length > 0) {
-						toastWarning(conservationFetchingErrorMsg + "\nRetrying...");
-						i--; // Try again
-						continue;
-					}
-					conservations.current[chain] = conservationsTmp;
-				}
-			}
+		function stopPollingAndAlignSequences(dataSourceExecutors: DataSourceExecutor[], defaultChain: string) {
+			// Turn off polling entirely (for all data sources)
+			setPollingInterval(null);
 
 			// Aligning will take place in the following function
 			handleChainSelect(dataSourceExecutors, defaultChain);
@@ -227,7 +208,7 @@ function AnalyticalPage() {
 			// both dataSourceExecutors and chains should be already initialized when allDataFetched is set to true
 			const defaultChain = chains.current[0]; // Protein always has at least 1 chain
 
-			fetchConservationAndHandleChainSelect(dataSourceExecutors.current, defaultChain);
+			stopPollingAndAlignSequences(dataSourceExecutors.current, defaultChain);
 		}
 	}, [allDataFetched]);
 
@@ -875,7 +856,7 @@ function AnalyticalPage() {
 		unalignedSimProts.current = unalignedSimProtsTmp;
 	}
 
-	function reAlign(options: StructureOption[], chain: string) {
+	function alignSequences(options: StructureOption[], chain: string) {
 		setCurrChainResult(null);
 		// Get selected sim prots
 		const selectedSimProts: Record<string, UnalignedSimilarProtein[]> = {};
@@ -898,7 +879,7 @@ function AnalyticalPage() {
 		// Perform aligning
 		const unalignedResultDeepCopy = JSON.parse(JSON.stringify(unalignedResult.current));
 		const selectedSimProtsDeepCopy = JSON.parse(JSON.stringify(selectedSimProts));
-		const conservationsDeepCopy = JSON.parse(JSON.stringify(conservations.current[chain]));
+		const conservationsDeepCopy = JSON.parse(JSON.stringify(conservations.current));
 		const chainResult = alignSequencesAcrossAllDataSources(
 			unalignedResultDeepCopy, selectedSimProtsDeepCopy, conservationsDeepCopy, chain);
 
@@ -1013,11 +994,25 @@ function AnalyticalPage() {
 		molstarWrapperRef.current?.toggleSimilarProteinBindingSite(dataSourceName, pdbCode, chain, bindingSiteId, show);
 	}
 
-	function handleChainSelect(dataSourceExecutors: DataSourceExecutor[], newSelectedChain: string) {
+	async function handleChainSelect(dataSourceExecutors: DataSourceExecutor[], newSelectedChain: string) {
+		// Get conservation (if required)
+		if (useConservation) {
+			const {
+				conservations: conservationsTmp,
+				userFriendlyErrorMessage: conservationFetchingErrorMsg
+			} = await getConservationsAPI(id, newSelectedChain);
+			if (conservationFetchingErrorMsg.length > 0) {
+				toastWarning(conservationFetchingErrorMsg);
+				conservations.current = [];
+			} else {
+				conservations.current = conservationsTmp;
+			}
+		}
+
 		// Prepare unaligned data (transform data to more appropriate data structures)
 		prepareUnalignedDataForQueryChain(dataSourceExecutors, newSelectedChain);
 
-		const newChainResult = reAlign([], newSelectedChain);
+		const newChainResult = alignSequences([], newSelectedChain);
 
 		setSelectedChain(newSelectedChain);
 
@@ -1028,7 +1023,7 @@ function AnalyticalPage() {
 	function handleStructuresSelect(selectedStructureOptions: StructureOption[]) {
 		setSelectedStructures(selectedStructureOptions);
 
-		const newChainResult = reAlign(selectedStructureOptions, selectedChain);
+		const newChainResult = alignSequences(selectedStructureOptions, selectedChain);
 
 		const similarProteinLigandDataTmp = getSimilarProteinLigandData(newChainResult, selectedStructureOptions);
 		setSimilarProteinBindingSitesData(similarProteinLigandDataTmp);
