@@ -137,6 +137,7 @@ function SettingsPanel({
             return;
         }
         setSelectedChain(newSelectedChain);
+        setPrevSelectedStuctures([]);
         onChainSelect(newSelectedChain);
     }
 

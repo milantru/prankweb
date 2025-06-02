@@ -154,10 +154,10 @@ function AnalyticalPage() {
 	const [selectedStructures, setSelectedStructures] = useState<StructureOption[]>([]);
 	const [squashBindingSites, setSquashBindingSites] = useState<boolean>(false);
 	const [startQuerySequenceAtZero, setStartQuerySequenceAtZero] = useState<boolean>(false);
-	// TODO komentovane?
-	// queryProteinLigandData[dataSourceName][chain][bindingSiteId] -> true/false to show bindings site (and also ligands if available)
-	// similarProteinLigandData[dataSourceName][pdbCode][chain][bindingSiteId] -> true/false to show bindings site (and also ligands if available)
-	// bindingSiteId can be e.g. H_SO4, but it can also be prediction e.g. pocket_1
+	/* BindingSiteData hold information which binding sites (and also ligands if availabe) are currently visualised.
+	 * queryProteinBindingSitesData[dataSourceName][chain][bindingSiteId] -> true/false to show bindings site (and also ligands if available)
+	 * similarProteinBindingSitesData[dataSourceName][pdbCode][chain][bindingSiteId] -> true/false to show bindings site (and also ligands if available)
+	 * bindingSiteId can be e.g. H_SO4, but it can also be prediction e.g. pocket_1 */
 	const [queryProteinBindingSitesData, setQueryProteinBindingSitesData] = useState<Record<string, Record<string, Record<string, boolean>>>>({});
 	const [similarProteinBindingSitesData, setSimilarProteinBindingSitesData] = useState<Record<string, Record<string, Record<string, Record<string, boolean>>>>>({});
 	const [isMolstarLoadingStructures, setIsMolstarLoadingStructures] = useState<boolean>(true);
@@ -1024,6 +1024,11 @@ function AnalyticalPage() {
 
 		const queryProteinLigandsDataTmp = getQueryProteinLigandsData(newChainResult, newSelectedChain);
 		setQueryProteinBindingSitesData(queryProteinLigandsDataTmp);
+
+		// Also deselect structures
+		setSelectedStructures([]);
+		const similarProteinLigandDataTmp = getSimilarProteinLigandData(newChainResult, []);
+		setSimilarProteinBindingSitesData(similarProteinLigandDataTmp);
 	}
 
 	function handleStructuresSelect(selectedStructureOptions: StructureOption[]) {
