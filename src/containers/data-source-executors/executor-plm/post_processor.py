@@ -34,7 +34,7 @@ def process_plm_output(id, result_folder, predictions, seq_to_str_mapping, pdb_u
             if binding_site_residue_count > 0:
                 binding_avg = confidence_sum / binding_site_residue_count
                 binding_site = BindingSite(
-                    id=f"pocket_plm",
+                    id="pocket",
                     confidence=binding_avg,
                     residues=binding_site_residues
                 )
