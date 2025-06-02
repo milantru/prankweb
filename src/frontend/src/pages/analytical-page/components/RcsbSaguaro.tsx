@@ -3,6 +3,7 @@ import { RcsbFv, RcsbFvTrackDataElementInterface, RcsbFvBoardConfigInterface, Rc
 import { BindingSite, ChainResult, Conservation } from "../AnalyticalPage";
 import { getUniqueColorForEachBindingSite, getUniqueColorForEachDataSource, getUniqueColorForEachString } from "../../../shared/helperFunctions/colors";
 import { toBindingSiteLabel } from "../../../shared/helperFunctions/labels";
+import chroma from "chroma-js";
 
 export type RcsbSaguaroHandle = {
     getRcsbPlugin: () => RcsbFv | null;
@@ -70,7 +71,7 @@ const RcsbSaguaro = forwardRef(({
                             style={{
                                 width: "40px",
                                 height: "20px",
-                                backgroundColor: dataSourcesColors.current[dataSourceName],
+                                backgroundColor: chroma(dataSourcesColors.current[dataSourceName]).alpha(0.175).css(),
                                 display: "inline-block",
                                 border: "1px solid #ccc",
                             }} />
