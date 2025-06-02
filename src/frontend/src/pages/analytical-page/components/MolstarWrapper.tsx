@@ -389,7 +389,7 @@ export const MolStarWrapper = forwardRef(({
 					}
 					ps[dataSourceName][simProt.pdbId][simProt.chain][bindingSite.id] = { residueObjectsAndSupporters: residueObjects, isVisible: false };
 
-					if (!bindingSite.id.startsWith("pocket_")) {
+					if (!bindingSite.id.startsWith("pocket")) {
 						// We know pocket also has ligand so we create expr for that too 
 						const key = `${dataSourceName}-${simProt.pdbId}-${simProt.chain}-${bindingSite.id}-ligand`;
 						const ligandsOfOneType = ligandsExpression[dataSourceName][simProt.pdbId][simProt.chain][bindingSite.id];
@@ -513,7 +513,7 @@ export const MolStarWrapper = forwardRef(({
 					}
 					queryProteinPocketsExpression[dataSourceName][selectedChain][bindingSite.id].push(...residuesExpressionsAndSupporters);
 
-					if (!bindingSite.id.startsWith("pocket_")) {
+					if (!bindingSite.id.startsWith("pocket")) {
 						// We know pocket also has ligand so we create expr for that too 
 						const ligandLabel = bindingSite.id.substring(bindingSite.id.indexOf("_") + 1); // e.g. "H_SO4" -> "SO4"
 						const ligandsOfOneType = MS.struct.generator.atomGroups({
@@ -624,7 +624,7 @@ export const MolStarWrapper = forwardRef(({
 						}
 						similarProteinPocketsExpression[dataSourceName][simProt.pdbId][simProt.chain][bindingSite.id].push(...residuesExpressionsAndSupporters);
 
-						if (!bindingSite.id.startsWith("pocket_")) {
+						if (!bindingSite.id.startsWith("pocket")) {
 							// We know pocket also has ligand so we create expr for that too 
 							const ligandLabel = bindingSite.id.substring(bindingSite.id.indexOf("_") + 1); // e.g. "H_SO4" -> "SO4"
 							const ligandsOfOneType = MS.struct.generator.atomGroups({
@@ -748,7 +748,7 @@ export const MolStarWrapper = forwardRef(({
 					}
 					queryProteinPocketsTmp[dataSourceName][selectedChain][bindingSite.id] = { residueObjectsAndSupporters: residueObjects, isVisible: false };
 
-					if (!bindingSite.id.startsWith("pocket_")) {
+					if (!bindingSite.id.startsWith("pocket")) {
 						const key = `${dataSourceName}-${selectedChain}-${bindingSite.id}-ligand`;
 						const ligandOfOneTypeExpr = queryProteinLigandsExpression[dataSourceName][selectedChain][bindingSite.id];
 						const show = queryProteinBindingSitesData[dataSourceName][selectedChain][bindingSite.id];
@@ -801,7 +801,7 @@ export const MolStarWrapper = forwardRef(({
 		const pocket = queryProteinPockets.current[dataSourceName][chain][bindingSiteId]
 		setVisibilityOfObjects(pocket, show);
 
-		if (bindingSiteId.startsWith("pocket_")) {
+		if (bindingSiteId.startsWith("pocket")) {
 			return;
 		}
 		// We know ligand exists in the pocket so we show/hide it as well
@@ -814,7 +814,7 @@ export const MolStarWrapper = forwardRef(({
 		const pocket = similarProteinPockets.current[dataSourceName][pdbCode][chain][bindingSiteId];
 		setVisibilityOfObjects(pocket, show);
 
-		if (bindingSiteId.startsWith("pocket_")) {
+		if (bindingSiteId.startsWith("pocket")) {
 			return;
 		}
 		// We know ligand exists in the pocket so we show/hide it as well
