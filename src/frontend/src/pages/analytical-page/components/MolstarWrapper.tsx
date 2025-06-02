@@ -236,7 +236,10 @@ export const MolStarWrapper = forwardRef(({
 	return (
 		<div className="w-100">
 			<div className="d-flex">
-				<div className="d-flex align-items-center">
+				{/* When loading msg animation ("Loading structures.", "Loading structures..", "Loading structures...",...)
+				  * is on and the screen is small, the animation moves "Highlight mode" and Switch with each tick, 
+				  * which doesn't look nice. Max width 200px solves this problem. */}
+				<div className="d-flex align-items-center" style={{ minWidth: "200px" }}>
 					{structuresLoaded ? "" : loadingMessage.current.substring(0, displayedLoadingMessageLength)}
 				</div>
 				<div className="mt-2 ml-auto"

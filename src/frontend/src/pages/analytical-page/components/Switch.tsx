@@ -1,5 +1,5 @@
 import { useState } from "react";
-import "./Switch.tsx.css"
+import "./Switch.tsx.css";
 
 type Props = {
     classes?: string;
