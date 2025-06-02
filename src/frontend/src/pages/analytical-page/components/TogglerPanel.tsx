@@ -1,8 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import { ScaleLoader } from "react-spinners";
+import chroma from "chroma-js";
+
+type PanelTitle = {
+    pdbCode?: string; // When pdb code isn't specified, query protein is assumed 
+    chain: string;
+    dataSourceName: string;
+};
 
 type Props = {
-    title: string;
+    title: PanelTitle;
+    color: string;
     bindingSiteRecord: Record<string, boolean>;
     isDisabled: boolean;
     displayLoadingAnimationWhenDisabled: boolean;
@@ -11,6 +19,7 @@ type Props = {
 
 function TogglerPanel({
     title,
+    color,
     bindingSiteRecord,
     isDisabled,
     displayLoadingAnimationWhenDisabled,
@@ -59,12 +68,18 @@ function TogglerPanel({
     }, [checkAll, justUncheckCheckbox, isDisabled]);
 
     return (
-        <div className={`border rounded mb-2 pt-2 pb-1 px-2 ${isDisabled ? "bg-light text-dark" : ""}`}
-            title={`${isDisabled ? "Bindings sites (or ligands) are loading..." : ""}`}>
-            <div className="d-flex flex-row mb-1"
-                style={{ cursor: "pointer" }}
+        <div className={`border rounded mb-2 ${isDisabled ? "bg-light text-dark" : ""}`}
+            title={`${isDisabled ? "Bindings sites (or ligands) are loading..." : ""}`}
+            style={{ backgroundColor: color }}>
+            <div className="pt-2 d-flex flex-row"
+                style={{
+                    cursor: "pointer",
+                    backgroundColor: chroma(color).darken(1).alpha(0.125).css(),
+                    boxShadow: !isPanelOpened ? "0 2px 8px rgba(0, 0, 0, 0.15)" : "0 2px 8px rgba(0, 0, 0, 0.25)",
+                    padding: "2px 4px 0 4px"
+                }}
                 onClick={() => setIsPanelOpened(prevState => !prevState)}>
-                <div className="d-flex w-100 border-bottom mb-1 mr-auto pl-1 align-items-center">
+                <div className="d-flex w-100 mb-1 mr-auto pl-1 align-items-center">
                     <input type="checkbox"
                         className="mr-2"
                         checked={checkAll}
@@ -72,7 +87,11 @@ function TogglerPanel({
                         onClick={e => e.stopPropagation()} // This onClick prevents toggling the panel when clicking the checkbox
                         onChange={e => setCheckAll(e.target.checked)}
                         title="Check/Uncheck all items in panel" />
-                    {title}
+                    <span>
+                        <span><strong>{`${title.pdbCode?.toUpperCase() ?? "Query protein"}`}</strong></span>
+                        <span> (chain <strong>{title.chain}</strong></span>
+                        <span>, source: <em>{title.dataSourceName}</em>)</span>
+                    </span>
 
                     <div className="d-flex align-items-center ml-auto">
                         {isDisabled && displayLoadingAnimationWhenDisabled &&
@@ -84,7 +103,7 @@ function TogglerPanel({
                 </div>
             </div>
 
-            {isPanelOpened && (<>
+            {isPanelOpened && (<div className="mt-2 px-2">
                 {Object.entries(bindingSiteRecord).length === 0
                     ? <div className="pl-1">No binding sites.</div>
                     : <div className="d-flex flex-row flex-wrap pl-1" style={{ maxHeight: "23vh", overflow: "auto" }}>
@@ -102,7 +121,7 @@ function TogglerPanel({
                             </div>
                         )}
                     </div>}
-            </>)}
+            </div>)}
         </div>
     );
 

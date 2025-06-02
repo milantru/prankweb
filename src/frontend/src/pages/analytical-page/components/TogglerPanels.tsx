@@ -1,4 +1,6 @@
+import { useEffect, useState } from "react";
 import TogglerPanel from "./TogglerPanel";
+import { getUniqueColorForEachDataSource } from "../../../shared/helperFunctions/colors";
 
 type Props = {
     classes?: string;
@@ -19,31 +21,49 @@ function TogglerPanels({
     onQueryProteinBindingSiteToggle,
     onSimilarProteinBindingSiteToggle
 }: Props) {
+    const [dataSourceColors, setDataSourceColors] = useState<Record<string, string> | null>(null);
+
+    useEffect(() => {
+        // Init data source colors
+        const dataSourceNames1 = Object.keys(queryProteinBindingSitesData);
+        const dataSourceNames2 = Object.keys(similarProteinsBindingSitesData);
+        const dataSourceNames = Array.from(new Set([...dataSourceNames1, ...dataSourceNames2])); // Union
+
+        const dataSourceColorsTmp = getUniqueColorForEachDataSource(dataSourceNames);
+        setDataSourceColors(dataSourceColorsTmp);
+    }, []);
+
     return (
         <div className={classes}>
-            {/* Panels for query protein */}
-            {Object.entries(queryProteinBindingSitesData).map(([dataSourceName, chainRecord]) =>
-                Object.entries(chainRecord).map(([chain, bindingSiteRecord]) =>
-                    <TogglerPanel key={`${dataSourceName}-${chain}`}
-                        title={`Query protein (chain ${chain}, source: ${dataSourceName})`}
-                        bindingSiteRecord={bindingSiteRecord}
-                        isDisabled={isDisabled}
-                        displayLoadingAnimationWhenDisabled={true}
-                        onBindingSiteToggle={(bindingSiteId, checked) => onQueryProteinBindingSiteToggle(dataSourceName, chain, bindingSiteId, checked)} />
-                ))}
-
-            {/* Panels for similar proteins */}
-            {Object.entries(similarProteinsBindingSitesData).map(([dataSourceName, structureRecord]) =>
-                Object.entries(structureRecord).map(([pdbCode, chainRecord]) =>
+            {dataSourceColors && (<>
+                {/* Panels for query protein */}
+                {Object.entries(queryProteinBindingSitesData).map(([dataSourceName, chainRecord]) =>
                     Object.entries(chainRecord).map(([chain, bindingSiteRecord]) =>
-                        <TogglerPanel key={`${dataSourceName}-${pdbCode}-${chain}`}
-                            title={`${pdbCode.toUpperCase()} (chain ${chain}, source: ${dataSourceName})`}
+                        <TogglerPanel key={`${dataSourceName}-${chain}`}
+                            title={{ chain: chain, dataSourceName: dataSourceName }}
+                            color={dataSourceColors[dataSourceName]}
                             bindingSiteRecord={bindingSiteRecord}
                             isDisabled={isDisabled}
                             displayLoadingAnimationWhenDisabled={true}
-                            onBindingSiteToggle={(bindingSiteId, checked) => onSimilarProteinBindingSiteToggle(dataSourceName, pdbCode, chain, bindingSiteId, checked)} />
-                    )
-                ))}
+                            onBindingSiteToggle={(bindingSiteId, checked) =>
+                                onQueryProteinBindingSiteToggle(dataSourceName, chain, bindingSiteId, checked)} />
+                    ))}
+
+                {/* Panels for similar proteins */}
+                {Object.entries(similarProteinsBindingSitesData).map(([dataSourceName, structureRecord]) =>
+                    Object.entries(structureRecord).map(([pdbCode, chainRecord]) =>
+                        Object.entries(chainRecord).map(([chain, bindingSiteRecord]) =>
+                            <TogglerPanel key={`${dataSourceName}-${pdbCode}-${chain}`}
+                                title={{ pdbCode: pdbCode, chain: chain, dataSourceName: dataSourceName }}
+                                color={dataSourceColors[dataSourceName]}
+                                bindingSiteRecord={bindingSiteRecord}
+                                isDisabled={isDisabled}
+                                displayLoadingAnimationWhenDisabled={true}
+                                onBindingSiteToggle={(bindingSiteId, checked) =>
+                                    onSimilarProteinBindingSiteToggle(dataSourceName, pdbCode, chain, bindingSiteId, checked)} />
+                        )
+                    ))}
+            </>)}
         </div>
     );
 }
