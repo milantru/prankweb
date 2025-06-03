@@ -46,7 +46,7 @@
                     "chain": { "type": "string" },
                     "sequence": { "type": "string" },
                     "pdbUrl": { "type": "string" },
-                    "tm_score": {"type": "number" },
+                    "tmScore": { "type": "number" },
                     "bindingSites": { 
                         "type": "array",
                         "items": {
