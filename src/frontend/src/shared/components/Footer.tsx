@@ -1,4 +1,5 @@
 function Footer() {
+    // TODO maybe delete, not used anymore
     return (
         <div className="text-center">
             <img src="assets/images/logo-elixir.png" alt="Elixir Logo" />

@@ -199,11 +199,17 @@ function QueryProteinForm() {
             ? (selectedInputBlockData as InputPdbBlockData | InputUserFileBlockData).chains
             : "";
 
-        const useConservation = formState.inputMethod === InputMethods.InputPdbBlock
+        let useConservation = formState.inputMethod === InputMethods.InputPdbBlock
             || formState.inputMethod === InputMethods.InputUniprotBlock
             || formState.inputMethod === InputMethods.InputSequenceBlock
             ? (selectedInputBlockData as InputPdbBlockData | InputUniprotBlockData | InputSequenceBlockData).useConservation
             : false;
+        // In case of custom structure (input user file block), we want to use conservation if model with conservation is used
+        if (formState.inputMethod === InputMethods.InputUserFileBlock) {
+            const userInputModel = (selectedInputBlockData as InputUserFileBlockData).userInputModel;
+            useConservation = userInputModel == UserInputModel.ConservationHmm
+                || userInputModel == UserInputModel.AlphafoldConservationHmm;
+        }
 
         let url = `/analytical-page?id=${id}`;
         if (chains) {

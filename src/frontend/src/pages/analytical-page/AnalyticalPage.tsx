@@ -56,6 +56,7 @@ type UnalignedSimilarProtein = {
 	bindingSites: BindingSite[];
 	seqToStrMapping: Record<number, number>; // seqToStrMapping[seqIdx] -> structIdx
 	alignmentData: AlignmentData;
+	tmScore: number;
 };
 
 type Metadata = {
@@ -96,6 +97,7 @@ export type SimilarProtein = {
 	chain: string;
 	bindingSites: BindingSite[];
 	seqToStrMapping: Record<number, number>; // seqToStrMapping[seqIdx] -> structIdx
+	tmScore: number;
 };
 
 export type ProcessedResult = {
@@ -644,12 +646,8 @@ function AnalyticalPage() {
 		let masterQuerySeq = "";
 		const similarProteins: Record<string, SimilarProtein[]> = {};
 		for (const [dataSourceName, unalignedSimilarProteins] of Object.entries(dataSourcesSimilarProteins)) {
-			similarProteins[dataSourceName] = unalignedSimilarProteins.map<SimilarProtein>(simProt => ({
-				pdbId: simProt.pdbId,
-				pdbUrl: simProt.pdbUrl,
-				chain: simProt.chain,
-				bindingSites: simProt.bindingSites,
-				seqToStrMapping: simProt.seqToStrMapping,
+			similarProteins[dataSourceName] = unalignedSimilarProteins.map<SimilarProtein>(({ alignmentData, ...simProt }) => ({
+				...simProt,
 				sequence: "" // will be set later when aligning
 			}));
 		}
