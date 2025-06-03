@@ -138,7 +138,7 @@ function AnalyticalPage() {
 	const [pollingInterval, setPollingInterval] = useState<number | null>(null);
 	const isPageVisible = useVisibilityChange();
 	const dataSourceExecutors = useRef<DataSourceExecutor[]>([
-		{ name: "plm", displayName: "pLM (ESM-2)", results: [] },
+		{ name: "plm", displayName: "pLM ESM-2", results: [] },
 		{ name: "p2rank", displayName: "P2Rank", results: [] },
 		{ name: "foldseek", displayName: "Foldseek", results: [] }
 	]);
@@ -285,7 +285,8 @@ function AnalyticalPage() {
 									onChainSelect={selectedChain => handleChainSelect(dataSourceExecutors.current, selectedChain)}
 									onBindingSitesSquashClick={() => setSquashBindingSites(prevState => !prevState)}
 									onStartQuerySequenceAtZero={() => setStartQuerySequenceAtZero(prevState => !prevState)}
-									onStructuresSelect={handleStructuresSelect} />
+									onStructuresSelect={handleStructuresSelect}
+									onExport={downloadData} />
 								{isMolstarLoadingStructures &&
 									<ScaleLoader className="position-absolute w-100 h-100 justify-content-center align-items-center"
 										height={"21px"}
@@ -1144,6 +1145,40 @@ function AnalyticalPage() {
 		});
 
 		isMolstarLinkedToRcsb.current = true;
+	}
+
+	async function downloadData() {
+		function getTimestamp() {
+			const now = new Date();
+			const pad = (n: number) => n.toString().padStart(2, "0");
+			const year = now.getFullYear().toString(); 			 // YYYY
+			const month = pad(now.getMonth() + 1);               // mm (0-based, so +1)
+			const day = pad(now.getDate());                      // DD
+			const hours = pad(now.getHours());                   // HH (24h)
+			const minutes = pad(now.getMinutes());               // MM
+			const seconds = pad(now.getSeconds());               // SS
+
+			const timestamp = `${year}-${month}-${day}T${hours}-${minutes}-${seconds}`;
+			return timestamp;
+		}
+
+		if (!currChainResult) {
+			toastWarning("No data to export.");
+			return;
+		}
+
+		const json = JSON.stringify(currChainResult, null, 2); // Pretty print with 2-space indentation
+		const blob = new Blob([json], { type: "application/json" });
+		const url = URL.createObjectURL(blob);
+
+		const link = document.createElement("a");
+		link.href = url;
+		const timestamp = getTimestamp();
+		link.download = `export-chain-${selectedChain}-${timestamp}.json`;
+		document.body.appendChild(link); // Required for Firefox
+		link.click();
+		document.body.removeChild(link);
+		URL.revokeObjectURL(url); // Clean up
 	}
 }
 

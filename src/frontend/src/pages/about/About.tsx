@@ -20,8 +20,9 @@ function About() {
 
             <h2 id="structure-prediction">Structure prediction</h2>
             <p>
-                For sequence input, the application uses the <a href="https://esmatlas.com/resources?action=fold" target="_blank" rel="noopener noreferrer">ESMFold&nbsp;API&nbsp;</a>
-                to predict the 3D structure of the provided protein sequence.
+                For sequence input, the application uses the <a href="https://esmatlas.com/resources?action=fold"
+                    target="_blank" rel="noopener noreferrer">ESMFold&nbsp;API</a> to predict the 3D structure
+                of the provided protein sequence.
             </p>
 
             <h2 id="data-sources">Data sources</h2>
@@ -33,7 +34,7 @@ function About() {
             <p>
                 <a href="https://github.com/facebookresearch/esm" target="_blank" rel="noopener noreferrer">ESM-2</a> is a
                 protein Language Model (pLM) that we use to generate embeddings for each residue.
-                These embeddings are then passed to a classification neural network to determine whether
+                These embeddings are then passed to our custom classification neural network to determine whether
                 a residue is part of a binding site without needing any information about the protein’s 3D structure.
             </p>
 
