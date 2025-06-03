@@ -1,4 +1,3 @@
-import Footer from "../../shared/components/Footer";
 import QueryProteinForm from "./components/QueryProteinForm";
 
 function Home() {
@@ -14,10 +13,6 @@ function Home() {
 				</p>
 
 				<QueryProteinForm />
-
-				{/* <div style={{ clear: "both" }}>
-					<Footer />
-				</div> */}
 			</div>
 		</>
 	);

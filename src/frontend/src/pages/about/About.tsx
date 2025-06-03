@@ -1,5 +1,3 @@
-import Footer from "../../shared/components/Footer";
-
 function About() {
     return (
         <div className="container">
