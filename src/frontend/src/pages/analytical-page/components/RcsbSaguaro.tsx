@@ -208,7 +208,7 @@ const RcsbSaguaro = forwardRef(({
         }
 
         const dataSourceDisplayName = dataSourceDisplayNames[dataSourceName];
-        const label = `<strong>Confidence:</strong> ${bindingSite.confidence} | <strong>Source:</strong> ${dataSourceDisplayName}`;
+        const label = `<strong>Confidence:</strong> ${bindingSite.confidence.toFixed(2)} | <strong>Source:</strong> ${dataSourceDisplayName}`;
         if (residues.length === 1) {
             const trackDataItem: RcsbFvTrackDataElementInterface = {
                 begin: residues[0].sequenceIndex + 1 - offset.current,
@@ -273,7 +273,7 @@ const RcsbSaguaro = forwardRef(({
         const conservationData = conservations.map(conservation => ({
             begin: conservation.index + 1 - offset.current,
             value: conservation.value / max, // normalization
-            label: `<strong>Value:</strong> ${conservation.value}`
+            label: `<strong>Value:</strong> ${conservation.value.toFixed(2)}`
         }));
 
         const conservationRow: RcsbFvRowExtendedConfigInterface = {
