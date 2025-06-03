@@ -20,6 +20,7 @@ type Props = {
     onBindingSitesSquashClick: () => void;
     onStartQuerySequenceAtZero: () => void;
     onStructuresSelect: (selectedStructureOptions: StructureOption[]) => void;
+    onExport: () => void;
 };
 
 function SettingsPanel({
@@ -33,7 +34,8 @@ function SettingsPanel({
     onChainSelect,
     onBindingSitesSquashClick,
     onStartQuerySequenceAtZero,
-    onStructuresSelect
+    onStructuresSelect,
+    onExport
 }: Props) {
     if (chains.length === 0) { // This should never happen, it is expected that at least 1 chain will be always present
         <p>No chains provided.</p>
@@ -107,6 +109,10 @@ function SettingsPanel({
                         Start query sequence at 0 (Experimental)
                     </label>
                 </div>
+
+                <button className="btn btn-outline-secondary ml-auto" onClick={onExport} disabled={isDisabled}>
+                    <i className="bi bi-download"></i>
+                </button>
             </div>
 
             <div id="similar-proteins-select" className="w-100 d-flex border-top mt-2 pt-2 align-items-center">
