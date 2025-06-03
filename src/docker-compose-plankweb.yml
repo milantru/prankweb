@@ -480,7 +480,7 @@ services:
     command:
       - --config.file=/etc/prometheus/prometheus.yml
       - --storage.tsdb.path=/prometheus
-      - --web.external-url=http://gateway:80/service/prometheus/
+      - --web.external-url=${PLANKWEB_URL}/service/prometheus/
 
   vector:
     image: timberio/vector:0.45.0-debian
@@ -539,7 +539,7 @@ services:
     environment:
       GF_SECURITY_ADMIN_USER: ${PLANKWEB_SERVICE_USER}
       GF_SECURITY_ADMIN_PASSWORD: ${PLANKWEB_SERVICE_PASS}
-      GF_SERVER_ROOT_URL: http://gateway:80/service/grafana/
+      GF_SERVER_ROOT_URL: ${PLANKWEB_URL}/service/grafana/
       GF_SERVER_SERVE_FROM_SUB_PATH: true
     volumes:
       - grafana:/var/lib/grafana
