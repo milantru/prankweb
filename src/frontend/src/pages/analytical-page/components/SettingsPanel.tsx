@@ -121,6 +121,14 @@ function SettingsPanel({
                 </div>
                 <Select ref={structuresSelectRef}
                     className="w-100"
+                    styles={{
+                        valueContainer: (provided: any) => ({
+                            ...provided,
+                            maxHeight: "65px",
+                            overflowY: "auto",
+                            flexWrap: "wrap",   // keep tags wrapping
+                        }),
+                    }}
                     isDisabled={isDisabled}
                     isMulti
                     onChange={handleCandidatesSelection}
