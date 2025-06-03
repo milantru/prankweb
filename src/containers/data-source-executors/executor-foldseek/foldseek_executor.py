@@ -46,7 +46,7 @@ def run_foldseek(id):
 
         command = [
             "foldseek", "easy-search", query_structure_file, FOLDSEEK_DB, foldseek_result_file, "tmp", 
-            "--max-seqs", "100",
+            "--max-seqs", "20",
             "--format-output", "query,target,alnlen,qseq,qstart,qend,qaln,alntmscore,tseq,tstart,tend,taln"
         ]
 
