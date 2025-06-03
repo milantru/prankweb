@@ -182,7 +182,7 @@ export const MolStarWrapper = forwardRef(({
 
 			const plugin = window.molstar;
 			if (!plugin) {
-				console.error("Tried to update pockets transparency due to highlight mode toggle, but plugin is missing.");
+				console.error("Tried to update pockets transparency due to Support-Based Highlighting toggle, but plugin is missing.");
 				return;
 			}
 
@@ -237,14 +237,14 @@ export const MolStarWrapper = forwardRef(({
 		<div className="w-100">
 			<div className="d-flex">
 				{/* When loading msg animation ("Loading structures.", "Loading structures..", "Loading structures...",...)
-				  * is on and the screen is small, the animation moves "Highlight mode" and Switch with each tick, 
+				  * is on and the screen is small, the animation moves "Support-Based Highlighting" and Switch with each tick, 
 				  * which doesn't look nice. Max width 200px solves this problem. */}
 				<div className="d-flex align-items-center" style={{ minWidth: "200px" }}>
 					{structuresLoaded ? "" : loadingMessage.current.substring(0, displayedLoadingMessageLength)}
 				</div>
 				<div className="mt-2 ml-auto"
-					title="When the mode is enabled, the opacity of visualized binding sites increases with the number of supporting data sources.">
-					Highlight mode
+					title="When the mode is enabled, the opacity of residues of visualized binding sites increases with the number of supporting data sources.">
+					Support-Based Highlighting {/* Support-Based Highlighting was previously known as Highlight mode */}
 					<Switch classes="ml-2" isDisabled={!structuresLoaded} onToggle={isOn => setIsHighlightModeOn(isOn)} />
 				</div>
 			</div>
