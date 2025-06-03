@@ -360,7 +360,7 @@ def test_builder_protein_data_builder_with_similar_protein():
     assert protein.metadata.timestamp == "2024-01-01T00:00:00"
 
 def test_builder_protein_data_builder_with_similar_proteins():
-    sp_builder = SimilarProteinBuilder(pdb_id="4K11", sequence="ABCDE", chain="B", pdb_url="http://example.com/4K11, tm_score=0.5")
+    sp_builder = SimilarProteinBuilder(pdb_id="4K11", sequence="ABCDE", chain="B", pdb_url="http://example.com/4K11", tm_score=0.5)
     mapping = {"1": 0, "2": 1, "3": 2, "4": 3, "5": 4}
     sp_builder.set_alignment_data(0, 5, "ABCDE", "VWXYZABCDE", 5, 10, "ABCDE")
     sp_builder.set_seq_to_str_mapping(mapping)
