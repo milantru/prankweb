@@ -249,7 +249,7 @@ def _write_json(target_file: str, fasta_file_sequence: str, feature):
         for (i, j), value in zip(enumerate(fasta_file_sequence), feature):
             result.append({
                 "index": i,
-                "value": value
+                "value": float(value)
             })
         json.dump(result, stream, indent=4)
 
