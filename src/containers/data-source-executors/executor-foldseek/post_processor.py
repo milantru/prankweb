@@ -1,12 +1,13 @@
 import json
 import os
 import requests
+import tempfile
 from typing import List, Tuple, Dict
 from Bio.PDB import PDBParser, PDBIO, NeighborSearch
 from Bio.PDB.Polypeptide import three_to_index, index_to_one, is_aa
 from data_format.builder import ProteinDataBuilder, SimilarProteinBuilder, BindingSite, Residue
 from dataclasses import asdict
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from functools import partial
 
 from tasks_logger import create_logger
@@ -118,7 +119,6 @@ def process_similar_protein(result_folder: str, curr_chain: str, id: str, fields
         logger.info(f'{id} Skipping similar protein {sim_protein_pdb_id} for chain {curr_chain} as it is the same as query')
         return None
     
-    pdb_filename = os.path.join(result_folder, f"{sim_protein_pdb_id}.pdb")
     sim_prot_url = PDB_FILE_URL.format(sim_protein_pdb_id)
     sim_prot_tm_score = float(fields[7]) 
 
@@ -133,27 +133,31 @@ def process_similar_protein(result_folder: str, curr_chain: str, id: str, fields
         similar_end=int(fields[10]) - 1,
         similar_part=fields[11]
     )
+
+    pdb_filename = None
+
     try:
-        if not os.path.exists(pdb_filename):
+        with tempfile.NamedTemporaryFile(dir=result_folder, suffix=".pdb", delete=False) as tmp_file:
+            pdb_filename = tmp_file.name
+
             logger.info(f'{id} Downloading similar protein: {sim_protein_pdb_id}')
             response = requests.get(PDB_FILE_URL.format(sim_protein_pdb_id), timeout=(15,30))
             response.raise_for_status()
-            logger.info(f'{id} Similar protein {sim_protein_pdb_id} downloaded successfully')
-            with open(pdb_filename, "wb") as f:
-                f.write(response.content)
+            tmp_file.write(response.content)
             logger.info(f'{id} Similar protein {sim_protein_pdb_id} saved to: {pdb_filename}')
+
         binding_sites, _, mapping = extract_binding_sites_for_chain(id, pdb_filename, sim_protein_chain)
         sim_builder.set_seq_to_str_mapping(mapping)
         for binding_site in binding_sites:
             sim_builder.add_binding_site(binding_site)
-    except:
-        logger.error(f"Failed to download or process PDB file for {sim_protein_pdb_id}.")
-        if os.path.exists(pdb_filename):
-            os.remove(pdb_filename)
+
+    except Exception as e:
+        logger.error(f"Failed to download or process PDB file for {sim_protein_pdb_id}: {e}")
         return None
-    
-    if os.path.exists(pdb_filename):
-        os.remove(pdb_filename)
+
+    finally:
+        if pdb_filename is not None and os.path.exists(pdb_filename):
+            os.remove(pdb_filename)
 
     return sim_builder
 
@@ -184,37 +188,35 @@ def split_foldseek_result_file(result_folder, filepath):
     
     return result_file_base
 
-def process_chain_result(id, chain_result_file_path, result_folder, query_structure_file, query_structure_file_url, batch_size=5):
+def process_chain_result(id, chain_result_file_path, result_folder, query_structure_file, query_structure_file_url, max_workers=10):
+    builder = None
+    futures = []
+
     with open(chain_result_file_path, 'r') as file:
-        batch = []
-        builder = None
         for line in file:
             fields = line.strip().split("\t")
-            batch.append(fields)
-            if builder == None:
+            
+            if builder is None:
                 input_name = fields[0]
                 query_seq = fields[3]
                 chain = input_name.split("_")[1] if "_" in input_name else "A"
                 builder = ProteinDataBuilder(id, chain, query_seq, query_structure_file_url)
+                
                 binding_sites = extract_binding_sites_for_chain(id, query_structure_file, chain)[0]
                 for binding_site in binding_sites:
                     builder.add_binding_site(binding_site)
-            if len(batch) >= batch_size:
-                with ThreadPoolExecutor(max_workers=batch_size) as executor:
-                    wrapped_fn = partial(process_similar_protein, result_folder, chain, id)
-                    results = list(executor.map(wrapped_fn, batch))
-                for sim_builder in results:
-                    if sim_builder is not None:
-                        builder.add_similar_protein(sim_builder.build())
-                batch = []
-        
-        if batch:
-            with ThreadPoolExecutor(max_workers=len(batch)) as executor:
-                wrapped_fn = partial(process_similar_protein, result_folder, chain, id)
-                results = list(executor.map(wrapped_fn, batch))
-            for sim_builder in results:
-                if sim_builder is not None:
-                    builder.add_similar_protein(sim_builder.build())
+
+            futures.append(fields)
+
+    wrapped_fn = partial(process_similar_protein, result_folder, chain, id)
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        submitted = [executor.submit(wrapped_fn, fields) for fields in futures]
+
+        for future in as_completed(submitted):
+            sim_builder = future.result()
+            if sim_builder is not None:
+                builder.add_similar_protein(sim_builder.build())
+
     if builder is not None:
         save_results(result_folder, RESULT_FILE.format(chain), builder)
 
