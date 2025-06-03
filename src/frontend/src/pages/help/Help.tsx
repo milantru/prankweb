@@ -52,8 +52,19 @@ function Help() {
                     in sequence visualization.
                 </p>
                 <p>
+                    User can also choose to <strong>start query sequence at 0</strong> in the sequence visualization.
+                    This will move query protein sequence to start at position 0 and all the visualized similar proteins
+                    along with it. Because of some issues we encountered during the development, we are not sure whether
+                    the sequence visualization is built to visualize sequences from 0 (or in case of similar proteins even
+                    from negative positions), thus we labeled this feature as <strong>Experimental</strong>.
+                </p>
+                <p>
+                    The data currently displayed in the sequence visualization can be <strong>exported</strong> in JSON format
+                    by clicking the download icon.
+                </p>
+                <p>
                     The panel can be also used to <strong>select one or multiple similar protein structures</strong> to be visualized
-                    in the structural visualization.
+                    in the both visualizations. After selecting the proteins, one must confirm the selection by clicking the Confirm button.
                 </p>
             </section>
 
@@ -63,19 +74,50 @@ function Help() {
                     There are several properties that are displayed in the sequence visualization:
                     <ul>
                         <li>Sequence of submitted protein (just the selected chain).</li>
-                        <li>Sequences of proteins similar to the submitted protein (one row displays just one similar chain).</li>
+                        <li>Selected sequences of proteins similar to the submitted protein (one row displays just one similar chain).</li>
                         <li>
-                            Colored rectangles depict areas with predicted pockets and real binding areas (if available).
+                            Colored rectangles under protein X depict areas with predicted pockets and real binding areas (if available) of the X.
                             Real binding sites are residues within 4,2 &#8491; from any ligand atom.
+                            <ul>
+                                <li>Connected rectangles form one bindings site.</li>
+                                <li>
+                                    Bindings sites of the same ligand share the same color,
+                                    e.g. SO4 on the protein X would have the same color as SO4 on the protein Y.
+                                </li>
+                                <li>
+                                    Different rectangles may have varying levels of transparency, depending on the confidence value.
+                                    The more transparent a rectangle is, the lower the confidence in the existence of that binding site.
+                                    For example, binding sites provided by Foldseek are experimentally confirmed rather than predicted,
+                                    so their confidence value is 1 (i.e., no transparency).
+                                </li>
+                            </ul>
                         </li>
-                        <li>If available (and selected), conservation scores are portrayed using a bar chart.</li>
+                        <li>
+                            If available (and selected), conservation scores are portrayed using a bar chart on the bottom side
+                            of the visualization.
+                        </li>
                     </ul>
                 </p>
                 <p>
-                    As one <strong>hovers</strong> over the sequence with mouse, the residues are highlighted in the 3D visualization.
-                    This feature allows to analyze the protein both from the structural and sequential point of view.
-                    By default, the sequence view is zoomed out so that the whole protein is displayed.
-                    You can use your mouse to zoom in, or zoom to the selected residue by <strong>clicking</strong> the responsible area.
+                    The background of rows displaying similar proteins or binding sites is colored according to the data source.
+                    Each data source is assigned a specific color. Which color belongs to which data source can be viewed
+                    in the <strong>legend</strong> under the sequence visualization. Alternatively, when hovered
+                    on sequence residue or binding site, the information about the source is displayed in the tooltip.
+                </p>
+                <p>
+                    <strong>Tooltip</strong> can display not only source where the data came from, but also information such as:
+                    <ul>
+                        <li><em>Position</em> in the viewer where the mouse currently hovers (along with the residue letter).</li>
+                        <li><em>Confidence</em> value of the binding site.</li>
+                        <li>(Conservation) <em>Value</em> of the currently hovered query protein residue.</li>
+                    </ul>
+                </p>
+                <p>
+                    As one <strong>hovers</strong> over the sequence with mouse, apart from the fact that the tooltip is displayed,
+                    the residues are highlighted in the 3D visualization. This feature allows to analyze the protein
+                    both from the structural and sequential point of view. By default, the sequence view is zoomed out
+                    so that the whole protein is displayed. You can use your mouse to zoom in, or zoom
+                    to the selected residue by <strong>clicking</strong> the responsible area.
                 </p>
             </section>
 
@@ -86,15 +128,15 @@ function Help() {
                     <ul>
                         <li>By default, the submitted protein structure is displayed.</li>
                         <li>
-                            For displaying more structures, one must select them from settings panel located
+                            For displaying more structures, one must select them from the settings panel located
                             above the sequence visualization, and confirm the selection.
                         </li>
                         <li>
                             For displaying individual pocket areas or ligands (if available),
-                            the one needs to select the required parts from the panels under the visualisation.
+                            the one needs to select the required parts from the panels under the visualization.
                         </li>
                         <li>
-                            Above the visualisation, the switch (<strong>Support-Based Highlighting</strong>) is present.
+                            Above the visualization, the switch (<strong>Support-Based Highlighting</strong>) is present.
                             Look below for more info about the mode.
                         </li>
                     </ul>
