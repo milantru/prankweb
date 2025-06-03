@@ -38,6 +38,7 @@ class SimilarProtein:
     chain: str
     sequence: str
     pdbUrl: str
+    tmScore: float
     bindingSites: List[BindingSite]
     alignmentData: SimilarSequenceAlignmentData
     seqToStrMapping: Dict[str, int]
@@ -90,9 +91,10 @@ class ProteinBuilderBase(ABC):
         pass
 
 class SimilarProteinBuilder(ProteinBuilderBase):
-    def __init__(self, pdb_id: str, sequence: str, chain: str, pdb_url: str):
+    def __init__(self, pdb_id: str, sequence: str, chain: str, pdb_url: str, tm_score: float):
         super().__init__(sequence, chain, pdb_url)
         self._pdb_id = pdb_id
+        self._tm_score = tm_score
         self._alignment_data = None
         self.seq_to_str_mapping = {}
 
@@ -125,6 +127,7 @@ class SimilarProteinBuilder(ProteinBuilderBase):
             chain=self._chain,
             sequence=self._sequence,
             pdbUrl=self._pdb_url,
+            tmScore=self._tm_score,
             bindingSites=self._binding_sites,
             alignmentData=self._alignment_data,
             seqToStrMapping=self.seq_to_str_mapping

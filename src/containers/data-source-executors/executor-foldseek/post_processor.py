@@ -119,9 +119,10 @@ def process_similar_protein(result_folder: str, curr_chain: str, id: str, fields
         return None
     
     pdb_filename = os.path.join(result_folder, f"{sim_protein_pdb_id}.pdb")
-    sim_prot_url = os.path.join(PLANKWEB_BASE_URL, "data", "ds_foldseek", id, f"{sim_protein_pdb_id}.pdb")
+    sim_prot_url = PDB_FILE_URL.format(sim_protein_pdb_id)
+    sim_prot_tm_score = float(fields[7]) 
 
-    sim_builder = SimilarProteinBuilder(sim_protein_pdb_id, fields[8], sim_protein_chain, sim_prot_url)
+    sim_builder = SimilarProteinBuilder(sim_protein_pdb_id, fields[8], sim_protein_chain, sim_prot_url, sim_prot_tm_score)
 
     sim_builder.set_alignment_data(
         query_start=int(fields[4]) - 1,
@@ -147,7 +148,13 @@ def process_similar_protein(result_folder: str, curr_chain: str, id: str, fields
             sim_builder.add_binding_site(binding_site)
     except:
         logger.error(f"Failed to download or process PDB file for {sim_protein_pdb_id}.")
+        if os.path.exists(pdb_filename):
+            os.remove(pdb_filename)
         return None
+    
+    if os.path.exists(pdb_filename):
+        os.remove(pdb_filename)
+
     return sim_builder
 
 def split_foldseek_result_file(result_folder, filepath):

@@ -45,8 +45,8 @@ def run_foldseek(id):
         foldseek_result_file = os.path.join(eval_folder, f"aln_res_{id}")
 
         command = [
-            "foldseek", "easy-search", query_structure_file, FOLDSEEK_DB,
-            foldseek_result_file, "tmp", "--max-seqs", "5",
+            "foldseek", "easy-search", query_structure_file, FOLDSEEK_DB, foldseek_result_file, "tmp", 
+            "--max-seqs", "100",
             "--format-output", "query,target,alnlen,qseq,qstart,qend,qaln,alntmscore,tseq,tstart,tend,taln"
         ]
 
