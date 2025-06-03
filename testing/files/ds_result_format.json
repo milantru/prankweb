@@ -40,7 +40,7 @@
             "type": ["array", "null" ],
             "items": {
                 "type": "object",
-                "required": [ "pdbId", "chain", "sequence", "pdbUrl", "tm_score", "bindingSites", "alignmentData" ],
+                "required": [ "pdbId", "chain", "sequence", "pdbUrl", "tmScore", "bindingSites", "alignmentData" ],
                 "properties": {
                     "pdbId": { "type": "string" },
                     "chain": { "type": "string" },
