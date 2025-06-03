@@ -52,21 +52,29 @@ function SettingsPanel({
     useEffect(() => {
         structuresSelectRef.current?.clearValue(); // TODO error in console occurs when this is here
 
-        const options: StructureOption[] = [];
+        const options: (StructureOption & { tmScore: number })[] = [];
         for (const [dataSourceName, similarProteins] of Object.entries(dataSourcesSimilarProteins)) {
             for (const simProt of similarProteins) {
-                const option: StructureOption = {
-                    label: `${simProt.pdbId.toUpperCase()} (chain: ${simProt.chain}, source: ${dataSourceDisplayNames[dataSourceName]})`,
+                // Displays only first 3 numbers after floating point, e.g. instead of 0.9987, it displays just 0.998
+                const tmScoreTruncated = Math.floor(simProt.tmScore * 1000) / 1000;
+                const option: StructureOption & { tmScore: number } = {
+                    label: `${simProt.pdbId.toUpperCase()} (chain: ${simProt.chain}, source: ${dataSourceDisplayNames[dataSourceName]}) | TM score: ${tmScoreTruncated}`,
                     value: {
                         dataSourceName: dataSourceName,
                         pdbId: simProt.pdbId,
                         chain: simProt.chain
-                    }
+                    },
+                    tmScore: simProt.tmScore
                 };
                 options.push(option);
             }
         }
-        setStructureOptions(options);
+
+        // Sort to display from highest tmScore
+        options.sort((a, b) => b.tmScore - a.tmScore);
+
+        // Map to remove temporary tmScore property
+        setStructureOptions(options.map<StructureOption>(({ tmScore, ...structureOption }) => structureOption));
     }, [selectedChain]);
 
     return (
