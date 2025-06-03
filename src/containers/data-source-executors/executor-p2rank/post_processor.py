@@ -34,6 +34,18 @@ MAPPING_FILE = "mapping.json"
 
 logger = create_logger('ds-p2rank')
 
+def parse_residue_index(res_id: str) -> int:
+    """
+    Parses a residue index that may include an insertion code as the last character (e.g., '122A' in 1GD1 protein)
+    and returns the integer residue number (e.g., 122).
+    """
+    if res_id[-1].isalpha():
+        numeric_part = res_id[:-1]
+    else:
+        numeric_part = res_id
+
+    return int(numeric_part)
+
 
 def is_amino_acid(code):
     return code.capitalize() in protein_letters_3to1
@@ -69,7 +81,7 @@ def read_residues(residues_result_file):
                     grouped_data[chain]["pockets"][pocket]['indices'].append(
                         Residue(
                             sequenceIndex=seq_index, 
-                            structureIndex=int(structure_index)
+                            structureIndex=parse_residue_index(structure_index)
                             )
                         )
 
