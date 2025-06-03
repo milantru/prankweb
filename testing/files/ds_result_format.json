@@ -40,12 +40,13 @@
             "type": ["array", "null" ],
             "items": {
                 "type": "object",
-                "required": [ "pdbId", "chain", "sequence", "pdbUrl", "bindingSites", "alignmentData" ],
+                "required": [ "pdbId", "chain", "sequence", "pdbUrl", "tm_score", "bindingSites", "alignmentData" ],
                 "properties": {
                     "pdbId": { "type": "string" },
                     "chain": { "type": "string" },
                     "sequence": { "type": "string" },
                     "pdbUrl": { "type": "string" },
+                    "tm_score": {"type": "number" },
                     "bindingSites": { 
                         "type": "array",
                         "items": {
