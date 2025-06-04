@@ -7,7 +7,7 @@ see https://webpack.js.org/loaders/sass-loader/ for example.
 create-react-app should support this natively. */
 import "molstar/lib/mol-plugin-ui/skin/light.scss";
 import { DefaultPluginUISpec } from "molstar/lib/mol-plugin-ui/spec";
-import { ChainResult, ProcessedResult, Residue, SimilarProtein } from "../AnalyticalPage";
+import { ChainResult, ProcessedResult, SimilarProtein } from "../AnalyticalPage";
 import { StateBuilder, StateObjectRef, StateObjectSelector } from "molstar/lib/mol-state";
 import { Asset } from "molstar/lib/mol-util/assets";
 import { MolScriptBuilder as MS } from "molstar/lib/mol-script/language/builder";
@@ -27,6 +27,7 @@ import { StructureOption } from "./SettingsPanel";
 import Switch from "./Switch";
 import { Script } from "molstar/lib/mol-script/script";
 import { useInterval } from "../../../shared/hooks/useInterval";
+import { toastWarning } from "../../../shared/helperFunctions/toasts";
 
 export type MolStarWrapperHandle = {
 	toggleQueryProteinBindingSite: (dataSourceName: string, chain: string, bindingSiteId: string, show: boolean) => void;
@@ -76,6 +77,7 @@ type Props = {
 	similarProteinBindingSitesData: Record<string, Record<string, Record<string, Record<string, boolean>>>>;
 	onStructuresLoadingStart: () => void;
 	onStructuresLoadingEnd: () => void;
+	onAlignAndSuperposeError: () => void;
 };
 
 export const MolStarWrapper = forwardRef(({
@@ -87,7 +89,8 @@ export const MolStarWrapper = forwardRef(({
 	queryProteinBindingSitesData,
 	similarProteinBindingSitesData,
 	onStructuresLoadingStart,
-	onStructuresLoadingEnd
+	onStructuresLoadingEnd,
+	onAlignAndSuperposeError
 }: Props, ref) => {
 	const parent = createRef<HTMLDivElement>();
 
@@ -108,6 +111,8 @@ export const MolStarWrapper = forwardRef(({
 	const [structuresLoaded, setStructuresLoaded] = useState<boolean>(false);
 	const loadingMessage = useRef<string>("Loading structure(s)...");
 	const [displayedLoadingMessageLength, setDisplayedLoadingMessageLength] = useState<number>(loadingMessage.current.length);
+
+	const alignAndSuperposeFailed = useRef<boolean>(false);
 
 	useImperativeHandle(ref, () => ({
 		toggleQueryProteinBindingSite,
@@ -162,12 +167,26 @@ export const MolStarWrapper = forwardRef(({
 	}, []);
 
 	useEffect(() => {
+		async function loadNewStructuresWrapper(plugin: PluginUIContext) {
+			await loadNewStructures(plugin, "pdb", selectedChain, selectedStructures);
+			if (alignAndSuperposeFailed.current) {
+				alignAndSuperposeFailed.current = false;
+				/* Try again... It should not fail this time as alignAndSuperpose will not be called because
+				 * we pass no options (selected structures), only query struct should be visualised. */
+				await loadNewStructures(plugin, "pdb", selectedChain, []);
+				toastWarning("One or more selected proteins could not be aligned or superposed due to an error. \
+						As a result, only the query protein is displayed in the structural visualization. \
+						Please modify your selection and try again.");
+				onAlignAndSuperposeError();
+			}
+		}
+
 		const plugin: PluginUIContext = window.molstar;
 		if (!plugin) {
 			return;
 		}
 
-		loadNewStructures(plugin, "pdb", selectedChain, selectedStructures);
+		loadNewStructuresWrapper(plugin);
 	}, [/*chainResult, */selectedStructures, selectedChain]); // TODO is not dependant on chainResult because query seq should not change
 
 	useEffect(() => {
@@ -724,7 +743,16 @@ export const MolStarWrapper = forwardRef(({
 
 			let transforms: MinimizeRmsd.Result[] | null = null;
 			if (xs.length > 1) { // At least 1 similar protein structure selected (not only query protein is being visualised)
-				transforms = alignAndSuperpose(selections);
+				try {
+					transforms = alignAndSuperpose(selections);
+				} catch {
+					/* Mol* may fail to align and superpose structures (probably due to unknown residues,
+					 * more here: https://www.rcsb.org/ligand/UNK). We have encountered this problem when
+					 * 155C was query protein and selected similar protein was 1COT, 
+					 * more here: https://github.com/milantru/prankweb/issues/78. */
+					alignAndSuperposeFailed.current = true;
+					return;
+				}
 			}
 
 			// Create representation of query protein structure

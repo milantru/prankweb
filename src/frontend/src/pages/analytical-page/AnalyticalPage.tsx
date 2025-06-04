@@ -327,7 +327,8 @@ function AnalyticalPage() {
 								queryProteinBindingSitesData={queryProteinBindingSitesData}
 								similarProteinBindingSitesData={similarProteinBindingSitesData}
 								onStructuresLoadingStart={() => setIsMolstarLoadingStructures(true)}
-								onStructuresLoadingEnd={() => setIsMolstarLoadingStructures(false)} />
+								onStructuresLoadingEnd={() => setIsMolstarLoadingStructures(false)}
+								onAlignAndSuperposeError={handleAlignAndSuperposeError} />
 						</div>
 						{currChainResult && queryProteinBindingSitesData && similarProteinBindingSitesData && (
 							<TogglerPanels classes="px-4"
@@ -1066,6 +1067,12 @@ function AnalyticalPage() {
 		const newChainResult = alignSequences(selectedStructureOptions, selectedChain);
 
 		const similarProteinLigandDataTmp = getSimilarProteinLigandData(newChainResult, selectedStructureOptions);
+		setSimilarProteinBindingSitesData(similarProteinLigandDataTmp);
+	}
+
+	function handleAlignAndSuperposeError() {
+		// Make sure toggle panels for binding sites of similar proteins are not shown
+		const similarProteinLigandDataTmp = getSimilarProteinLigandData(currChainResult, []);
 		setSimilarProteinBindingSitesData(similarProteinLigandDataTmp);
 	}
 

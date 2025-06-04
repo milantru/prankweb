@@ -130,6 +130,15 @@ function Help() {
                         <li>
                             For displaying more structures, one must select them from the settings panel located
                             above the sequence visualization, and confirm the selection.
+                            <ul>
+                                <li>The displayed proteins are aligned and superposed.</li>
+                                <li>
+                                    <strong>ATTENTION!</strong> Aligning and superposing may fail, possibly due to some
+                                    of the selected proteins containing <a href="https://www.rcsb.org/ligand/UNK"
+                                        target="_blank" rel="noopener noreferrer"><em>unknown residues</em></a>. If the process fails,
+                                    warning will appear and only the query protein will be displayed in the structural visualization.
+                                </li>
+                            </ul>
                         </li>
                         <li>
                             For displaying individual pocket areas or ligands (if available),
