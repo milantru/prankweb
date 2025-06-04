@@ -107,7 +107,7 @@ const RcsbSaguaro = forwardRef(({
         const allBindingSites = getAllBindingSites(chainResult);
         /* Data source colors are forbidden here because they are in the background, if some binding site color
          * had the same color as its data source, it would not be visible (maybe just outline). */
-        bindingSitesColors.current = getUniqueColorForEachBindingSite(allBindingSites, forbiddenColors, predictedPocketColor);
+        bindingSitesColors.current = getUniqueColorForEachBindingSite([...new Set(allBindingSites)], forbiddenColors, predictedPocketColor);
 
         // Colors for similar proteins
         const allSimilarProteinIds: string[] = [];
@@ -117,7 +117,7 @@ const RcsbSaguaro = forwardRef(({
             }
             result.similarProteins.forEach(simProt => allSimilarProteinIds.push(simProt.pdbId));
         }
-        similarProteinsColors.current = getUniqueColorForEachString(allSimilarProteinIds, [], [defaultTitleFlagColor]);
+        similarProteinsColors.current = getUniqueColorForEachString([...new Set(allSimilarProteinIds)], [], [defaultTitleFlagColor]);
         setColorsInitialized(true);
     }
 

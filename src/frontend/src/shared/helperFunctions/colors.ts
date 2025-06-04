@@ -1,7 +1,19 @@
 import chroma from "chroma-js";
 import { BindingSite } from "../../pages/analytical-page/AnalyticalPage";
 
-function stringToColor(str: string) {
+/**
+ * Generates a color from a string using a hash function and a color scale.
+ * The color is selected based on the hash value, an offset, and the desired number 
+ * of distinct colors.
+ *
+ * @param str - The input string to hash for color generation.
+ * @param offset - An integer offset to vary the resulting color, useful for shifting
+ *                 the result or avoiding color collisions.
+ * @param requiredColorsCount - The number of distinct colors needed; the function
+ *                               will generate more internally to help reduce overlap.
+ * @returns A color string selected from the chroma.js scale.
+ */
+function stringToColor(str: string, offset: number, requiredColorsCount: number) {
     let hash1 = 0;
     let hash2 = 0;
     for (let i = 0; i < str.length; i++) {
@@ -10,9 +22,10 @@ function stringToColor(str: string) {
     }
     const hash = (hash1 ^ hash2) >>> 0;
 
+    const multiplier = 2; // This is used to create more colors than is required to make it easier to find "free" color
     const color = chroma.scale("Spectral")
         .mode("lab")
-        .colors(100)[Math.abs(hash) % 100];
+        .colors(requiredColorsCount * multiplier)[(Math.abs(hash) + offset) % (requiredColorsCount * multiplier)];
 
     return color;
 }
@@ -20,38 +33,38 @@ function stringToColor(str: string) {
 /**
  * Generates a unique color for each string in the given array.
  *
- * @param {string[]} strings - An array of strings for which unique colors should be generated.
+ * @param {string[]} uniqueStrings - An array of unique strings for which unique colors should be generated.
  * @param {number[]} [opacities=[]] - An optional array of opacities (from [0;1], e.g. [0.4, 0.2, ...])
- *                                    corresponding to each string. If provided, it must have the same length as `strings`.
+ *                                    corresponding to each string. If provided, it must have the same length as `uniqueStrings`.
  * @param {string[]} [forbiddenColors=[]] - An optional list of colors that should be avoided.
  * @param {string[]} [baseColors=[]] - An optional array of base colors (in hex format, e.g. "#0ff1ce"),
- *                                     corresponding to each string. If provided, it must have the same length as `strings`.
+ *                                     corresponding to each string. If provided, it must have the same length as `uniqueStrings`.
  *                                     For any entry, you may use `undefined`, `null`, or an empty string (`""`)
  *                                     to fall back to default color generation for that string.
  * 
  * @returns {Record<string, string>} - An object mapping each string to a unique color in hex format (starting with #).
  * 
- * @throws {Error} - If `opacities` or `baseColors` are provided but do not match the length of `strings`.
+ * @throws {Error} - If `opacities` or `baseColors` are provided but do not match the length of `uniqueStrings`.
  */
 export function getUniqueColorForEachString(
-    strings: string[],
+    uniqueStrings: string[],
     opacities: number[] = [],
     forbiddenColors: string[] = [],
     baseColors: string[] = []
 ) {
-    if (strings.length === 0) {
+    if (uniqueStrings.length === 0) {
         return {};
     }
-    if (opacities.length > 0 && strings.length !== opacities.length) {
+    if (opacities.length > 0 && uniqueStrings.length !== opacities.length) {
         throw Error("If opacities are present, they must have the same length as the strings.");
     }
-    if (baseColors.length > 0 && strings.length !== baseColors.length) {
+    if (baseColors.length > 0 && uniqueStrings.length !== baseColors.length) {
         throw Error("If base colors are present, they must have the same length as the strings.");
     }
     const colors: Record<string, string> = {};  // key is string (value from params), value is color in hex (with #)
 
-    for (let i = 0; i < strings.length; i++) {
-        let str = strings[i];
+    for (let i = 0; i < uniqueStrings.length; i++) {
+        let str = uniqueStrings[i];
         if (str in colors) {
             continue;
         }
@@ -59,21 +72,19 @@ export function getUniqueColorForEachString(
         const opacity = opacities.length > 0 ? opacities[i] : 1;
 
         let color: string;
-        if (baseColors.length === strings.length && baseColors[i]) {
+        if (baseColors.length === uniqueStrings.length && baseColors[i]) {
             let baseColor = baseColors[i];
             color = chroma(baseColor).alpha(opacity).hex();
         } else {
-            let salt = 0;
+            let offset = 0;
             do {
-                let baseColor = stringToColor(str);
+                let baseColor = stringToColor(str, offset, uniqueStrings.length + forbiddenColors.length);
                 color = chroma(baseColor).alpha(opacity).hex();
-
-                str += salt.toString(); // This will fix potential hash collisions
-                salt++;
+                offset += 1;
             } while (Object.values(colors).some(existingColor => existingColor === color) || color in forbiddenColors);
         }
 
-        colors[strings[i]] = color;
+        colors[uniqueStrings[i]] = color;
     }
 
     return colors;
