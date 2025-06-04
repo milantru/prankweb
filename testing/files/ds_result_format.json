@@ -10,10 +10,12 @@
             "type": "array",
             "items": {
                 "type": "object",
-                "required": [ "id", "confidence", "residues" ],
+                "required": [ "id", "confidence", "residues", "rank", "score" ],
                 "properties": {
                     "id": { "type": "string" },
                     "confidence": { "type": "number" },
+                    "rank": { "type": [ "integer", "null" ] },
+                    "score": { "type": ["number", "null"] },
                     "residues": {
                         "type": "array",
                         "items": {

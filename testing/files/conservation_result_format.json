@@ -5,7 +5,7 @@
         "required": [ "index", "value" ],
         "propeties": {
             "index": { "type": "integer" },
-            "value": { "type": "string" }
+            "value": { "type": "number" }
         }
     }
 }
