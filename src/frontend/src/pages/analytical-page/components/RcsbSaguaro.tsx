@@ -26,7 +26,8 @@ const RcsbSaguaro = forwardRef(({
     squashBindingSites,
     startQuerySequenceAtZero,
     onHighlight,
-    onClick }: Props, ref) => {
+    onClick
+}: Props, ref) => {
     // ID of the DOM element where the plugin is placed
     const elementId = "application-rcsb";
     const predictedPocketColor = "#00aa00";
