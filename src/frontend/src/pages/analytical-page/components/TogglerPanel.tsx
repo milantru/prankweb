@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { ScaleLoader } from "react-spinners";
 import chroma from "chroma-js";
 import { toBindingSiteLabel } from "../../../shared/helperFunctions/labels";
+import { BindingSite } from "../AnalyticalPage";
 
 type PanelTitle = {
     pdbCode?: string; // When pdb code isn't specified, query protein is assumed 
@@ -13,7 +14,8 @@ type Props = {
     title: PanelTitle;
     color: string;
     dataSourceDisplayNames: Record<string, string>;
-    bindingSiteRecord: Record<string, boolean>;
+    bindingSiteRecord: Record<string, boolean>; // bindingSiteRecord[bindingSiteId] -> true/false whether is binding site displayed
+    bindingSites: Record<string, BindingSite>; // bindingSites[bindingSiteId] -> binding site
     isDisabled: boolean;
     displayLoadingAnimationWhenDisabled: boolean;
     onBindingSiteToggle: (bindingSiteId: string, checked: boolean) => void;
@@ -24,6 +26,7 @@ function TogglerPanel({
     color,
     dataSourceDisplayNames,
     bindingSiteRecord,
+    bindingSites,
     isDisabled,
     displayLoadingAnimationWhenDisabled,
     onBindingSiteToggle
@@ -109,20 +112,45 @@ function TogglerPanel({
             {isPanelOpened && (<div className="mt-2 px-2">
                 {Object.entries(bindingSiteRecord).length === 0
                     ? <div className="pl-1">No binding sites.</div>
-                    : <div className="d-flex flex-row flex-wrap pl-1" style={{ maxHeight: "23vh", overflow: "auto" }}>
-                        {Object.entries(bindingSiteRecord).map(([bindingSiteId, isDisplayed], i) =>
-                            <div key={`${bindingSiteId}-${i}`}>
-                                <label className="mr-2">
-                                    <input type="checkbox"
-                                        name="checkbox"
-                                        className="mr-1"
-                                        checked={isDisplayed}
-                                        disabled={isDisabled}
-                                        onChange={() => handleChange(bindingSiteId, !isDisplayed)} />
-                                    {toBindingSiteLabel(bindingSiteId)}
-                                </label>
-                            </div>
-                        )}
+                    : <div className="pl-1" style={{ maxHeight: "23vh", overflow: "auto" }}>
+                        <table className="table table-sm">
+                            <thead className="thead-light" style={{ position: "sticky", top: 0, zIndex: 1 }}>
+                                <tr>
+                                    {/* border top is disabled here, otherwise when user was scrolling down
+                                      * and then returned back to the top (trying to go even higher), the line (border top) appeared */}
+                                    <th style={{ borderTop: "none" }}>Name</th>
+                                    <th style={{ borderTop: "none" }}>Rank</th>
+                                    <th style={{ borderTop: "none" }}>Score</th>
+                                    <th style={{ borderTop: "none" }}>Probability</th>
+                                    <th style={{ borderTop: "none" }}># of residues</th>
+                                    <th style={{ borderTop: "none" }}>Avg conservation</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {Object.entries(bindingSiteRecord).map(([bindingSiteId, isDisplayed], i) =>
+                                    bindingSiteId in bindingSites && (
+                                        <tr key={`${bindingSiteId}-${i}`}>
+                                            <td className="align-middle">
+                                                <label className="mb-0 d-flex align-items-center">
+                                                    <input type="checkbox"
+                                                        name="checkbox"
+                                                        className="mr-2"
+                                                        checked={isDisplayed}
+                                                        disabled={isDisabled}
+                                                        onChange={() => handleChange(bindingSiteId, !isDisplayed)} />
+                                                    {toBindingSiteLabel(bindingSiteId)}
+                                                </label>
+                                            </td>
+                                            <td>{bindingSites[bindingSiteId]?.rank ?? "-"}</td>
+                                            <td>{bindingSites[bindingSiteId]?.score?.toFixed(2) ?? "-"}</td>
+                                            <td>{bindingSites[bindingSiteId].confidence.toFixed(2)}</td>
+                                            <td>{bindingSites[bindingSiteId].residues.length}</td>
+                                            <td>{bindingSites[bindingSiteId]?.avgConservation?.toFixed(2) ?? "-"}</td>
+                                        </tr>
+                                    )
+                                )}
+                            </tbody>
+                        </table>
                     </div>}
             </div>)}
         </div>
