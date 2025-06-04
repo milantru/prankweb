@@ -44,7 +44,10 @@ export type Residue = {
 
 export type BindingSite = {
 	id: string;
-	confidence: number;
+	rank?: number;
+	score?: number;
+	avgConservation?: number;
+	confidence: number; // probability
 	residues: Residue[];
 };
 
@@ -326,8 +329,9 @@ function AnalyticalPage() {
 								onStructuresLoadingStart={() => setIsMolstarLoadingStructures(true)}
 								onStructuresLoadingEnd={() => setIsMolstarLoadingStructures(false)} />
 						</div>
-						{queryProteinBindingSitesData && similarProteinBindingSitesData && (
+						{currChainResult && queryProteinBindingSitesData && similarProteinBindingSitesData && (
 							<TogglerPanels classes="px-4"
+								chainResult={currChainResult}
 								queryProteinBindingSitesData={queryProteinBindingSitesData}
 								similarProteinsBindingSitesData={similarProteinBindingSitesData}
 								dataSourceDisplayNames={dataSourceDisplayNames.current}
@@ -561,6 +565,17 @@ function AnalyticalPage() {
 		return newSeqToStrMapping;
 	}
 
+	function getAvgConservationForQueryBindingSite(bindingSite: BindingSite) {
+		const bindingSiteConservations = conservations.current.filter(c =>
+			bindingSite.residues.some(r => r.sequenceIndex === c.index));
+
+		const bindingSiteConservationValues = bindingSiteConservations.map(v => v.value);
+
+		const avg = bindingSiteConservationValues.reduce((a, b) => a + b) / bindingSiteConservationValues.length;
+
+		return avg;
+	}
+
 	function alignQueryAndSimilarSequence(querySequence: string, similarProtein: UnalignedSimilarProtein) {
 		let querySeq = replaceWithAlignedPart(
 			querySequence,
@@ -733,7 +748,7 @@ function AnalyticalPage() {
 		}
 
 		/* "Postprocessing phase": Update all residue indices of each binding site, seq to struct mappings,
-		 * also count how many data sources support certain binding site. */
+		 * also count how many data sources support certain binding site and calculate avg conservations if required. */
 		// bindingSiteSupportCounterTmp[residue index in structure (of pocket)]: number of data sources supporting pocket on the index
 		const bindingSiteSupportCounterTmp: Record<number, number> = {};
 		for (const [dataSourceName, result] of Object.entries(unprocessedResultPerDataSourceExecutor)) {
@@ -742,10 +757,11 @@ function AnalyticalPage() {
 			// Update seq to struct indices mapping (mapping from query protein)
 			seqToStrMappings.current[chain] = getUpdatedSeqToStructMapping(seqToStrMappings.current[chain], mapping);
 
-			// Update residues of binding sites of query protein and count supporters
 			for (const bindingSite of result.bindingSites) {
+				// Update residues of binding site of query protein 
 				updateBindingSiteResiduesIndices(bindingSite, mapping);
 
+				// Count supporters (how many data sources support that the residue is part of binding site)
 				for (const residue of bindingSite.residues) {
 					if (supporterCounted[residue.structureIndex]) {
 						continue;
@@ -756,6 +772,11 @@ function AnalyticalPage() {
 					}
 					bindingSiteSupportCounterTmp[residue.structureIndex] += 1;
 					supporterCounted[residue.structureIndex] = true;
+				}
+
+				// Calculate average conservation value for the binding site
+				if (useConservation) {
+					bindingSite.avgConservation = getAvgConservationForQueryBindingSite(bindingSite);
 				}
 			}
 
