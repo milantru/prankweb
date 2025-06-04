@@ -64,24 +64,9 @@ def run_plm(id):
         update_status(status_file_path, id, StatusType.STARTED, infoMessage="Predicting bindings")
 
         lenghts = [len(s) for s in seq]
-        predictions = predict_bindings(embeddings, lenghts)
-
-        result_data = []
-
-        # convert tensor predictions to lists
-        predictions = [prediction.tolist() for prediction in predictions]
-
-        for i, chains in enumerate(seq_chains):
-            result_data.append({
-                "chains": chains,
-                "binding": predictions[i],
-                "sequence": seq[i],
-            })
-                
+        
         result_file_path = os.path.join(eval_folder, "result.json")
-        logger.info(f'{id} Saving results to: {result_file_path}')
-        with open(result_file_path, "w") as f:
-            json.dump(result_data, f, indent=4)
+        result_data = predict_bindings(embeddings, lenghts, result_file_path, seq_chains, seq)
 
         logger.info(f'{id} PLM prediction finished')
 

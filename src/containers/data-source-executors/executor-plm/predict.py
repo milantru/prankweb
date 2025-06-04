@@ -1,3 +1,4 @@
+import json
 import esm
 import numpy as np
 import torch
@@ -57,7 +58,7 @@ def process_chunk(data, model, alphabet, max_len, device):
     # Crop starting and ending tokens
     return embed[:, 1:-1, :]
 
-def predict_bindings(embeddings, lengths, model_path = "models/model_e10.pth"):
+def predict_bindings(embeddings, lengths, result_file_path, seq_chains, seq, model_path = "models/model_e10.pth"):
     # Predictor model setup
     model = BindingPredictor()
     model.load_model(model_path)
@@ -72,4 +73,18 @@ def predict_bindings(embeddings, lengths, model_path = "models/model_e10.pth"):
         # Multiple sequences, permute and unpad
         cropped = torch.nn.utils.rnn.unpad_sequence(predictions.permute(1,0), lengths)
 
-    return cropped
+    result_data = []
+
+    bindings = [prediction.tolist() for prediction in cropped]
+
+    for i, chains in enumerate(seq_chains):
+        result_data.append({
+            "chains": chains,
+            "binding": bindings[i],
+            "sequence": seq[i],
+        })
+            
+    with open(result_file_path, "w") as f:
+            json.dump(result_data, f, indent=4)
+
+    return result_data
