@@ -17,6 +17,10 @@ class BindingSite:
     """Interval [0,1]; confidence is 1 for experimentally determined binding sites"""
     residues: List[Residue]
     """List of residues in the binding site; """
+    rank: Optional[int] = None
+    """Rank of the binding site; if not set, the binding site is not ranked"""
+    score: Optional[float] = None
+    """Score of the binding site; if not set, the binding site is not scored"""
 
 @dataclass
 class SimilarSequenceAlignmentData:

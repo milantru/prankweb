@@ -15,6 +15,8 @@ from tasks_logger import create_logger
 # ____________________________________________
 
 PREDICTION_POCKET_INDEX = 0
+PREDICTION_RANK_INDEX = 1
+PREDICTION_SCORE_INDEX = 2
 PREDICTION_PROBABILITY_INDEX = 3
 
 # ______________residues.csv__________________
@@ -95,10 +97,13 @@ def update_pocket_probabilities(pocket_prediction_result_file, grouped_data):
         for line in file:
             row = [item.strip() for item in line.strip().split(',')]
             pocket, probability = int(row[PREDICTION_POCKET_INDEX].replace("pocket", "")), float(row[PREDICTION_PROBABILITY_INDEX])
+            rank, score = int(row[PREDICTION_RANK_INDEX]), float(row[PREDICTION_SCORE_INDEX])
 
             for chain in grouped_data:
                 if pocket in grouped_data[chain]["pockets"]:
                     grouped_data[chain]["pockets"][pocket]['probability'] = probability
+                    grouped_data[chain]["pockets"][pocket]['rank'] = rank
+                    grouped_data[chain]["pockets"][pocket]['score'] = score
 
 def process_p2rank_output(id, result_folder, query_file, pdb_url):
     residues_result_file = query_file + "_residues.csv"
@@ -119,6 +124,8 @@ def process_p2rank_output(id, result_folder, query_file, pdb_url):
             binding_site = BindingSite(
                 id=f"pocket_{pocket}", 
                 confidence=data['probability'], 
+                rank=data['rank'],
+                score=data['score'],
                 residues=sorted(data['indices'], key=lambda x: x.sequenceIndex)
             )
             protein_data_builder.add_binding_site(binding_site)
