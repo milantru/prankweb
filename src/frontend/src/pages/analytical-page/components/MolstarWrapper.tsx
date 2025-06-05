@@ -27,6 +27,7 @@ import { StructureOption } from "./SettingsPanel";
 import Switch from "./Switch";
 import { Script } from "molstar/lib/mol-script/script";
 import { useInterval } from "../../../shared/hooks/useInterval";
+import { sleep } from "../../../shared/helperFunctions/sleep";
 import { toastWarning } from "../../../shared/helperFunctions/toasts";
 
 export type MolStarWrapperHandle = {
@@ -34,8 +35,8 @@ export type MolStarWrapperHandle = {
 	toggleSimilarProteinBindingSite: (dataSourceName: string, pdbCode: string, chain: string, bindingSiteId: string, show: boolean) => void;
 	toggleSimilarProteinStructure: (dataSourceName: string, pdbCode: string, chain: string, show: boolean) => void;
 	hideAllSimilarProteinStructures: (except: StructureOption[]) => void;
-	highlight: (structureIndex: number) => void;
-	focus: (structureIndex: number) => void;
+	highlight: (structureIndices: number[], dataSourceName?: string, pdbCode?: string, chain?: string) => void;
+	focus: (structureIndices: number[], dataSourceName?: string, pdbCode?: string, chain?: string) => void;
 	getMolstarPlugin: () => PluginUIContext;
 };
 
@@ -94,7 +95,7 @@ export const MolStarWrapper = forwardRef(({
 }: Props, ref) => {
 	const parent = createRef<HTMLDivElement>();
 
-	const queryStructure = useRef<VisibleObject>(null!);
+	const queryStructure = useRef<VisibleObject | null>(null);
 	// queryProteinPockets[dataSourceName][chain][bindingSiteId]
 	const queryProteinPockets = useRef<Record<string, Record<string, Record<string, VisiblePocketObjects>>>>({});
 	// queryProteinLigands[dataSourceName][chain][bindingSiteId]
@@ -108,6 +109,7 @@ export const MolStarWrapper = forwardRef(({
 	const similarProteinLigands = useRef<Record<string, Record<string, Record<string, Record<string, VisibleObject>>>>>({});
 
 	const [isHighlightModeOn, setIsHighlightModeOn] = useState<boolean>(false);
+	const [isHighlightModeSwitchingDisabled, setIsHighlightModeSwitchingDisabled] = useState<boolean>(false);
 	const [structuresLoaded, setStructuresLoaded] = useState<boolean>(false);
 	const loadingMessage = useRef<string>("Loading structure(s)...");
 	const [displayedLoadingMessageLength, setDisplayedLoadingMessageLength] = useState<number>(loadingMessage.current.length);
@@ -229,6 +231,8 @@ export const MolStarWrapper = forwardRef(({
 				}
 			}
 			await update.commit();
+			// await sleep(250); // TODO uncomment if required
+			setIsHighlightModeSwitchingDisabled(false);
 		}
 
 		if (structuresLoaded) {
@@ -264,7 +268,7 @@ export const MolStarWrapper = forwardRef(({
 				<div className="mt-2 ml-auto"
 					title="When the mode is enabled, the opacity of residues of visualized binding sites increases with the number of supporting data sources.">
 					Support-Based Highlighting {/* Support-Based Highlighting was previously known as Highlight mode */}
-					<Switch classes="ml-2" isDisabled={!structuresLoaded} onToggle={isOn => setIsHighlightModeOn(isOn)} />
+					<Switch classes="ml-2" isDisabled={isHighlightModeSwitchingDisabled || !structuresLoaded} onToggle={handleSwitchToggle} />
 				</div>
 			</div>
 
@@ -311,6 +315,16 @@ export const MolStarWrapper = forwardRef(({
 			: defaultValue;
 
 		return alpha;
+	}
+
+	async function handleSwitchToggle(isOn: boolean) {
+		if (isHighlightModeSwitchingDisabled) {
+			return;
+		}
+		/* Disable Support-Based Highlighting switching until transparency of residues is updated, 
+		 * after that the switching will be enabled again. */
+		setIsHighlightModeSwitchingDisabled(true);
+		setIsHighlightModeOn(isOn);
 	}
 
 	async function createPocketRepresentationForStruct(
@@ -930,56 +944,107 @@ export const MolStarWrapper = forwardRef(({
 
 	/**
 	 * Method which gets selection from specified chainId and residues.
-	 * @param plugin Mol* plugin
+	 * @param struct Mol* Structure object
 	 * @param chainId Chain (letter) to be focused on
 	 * @param positions Residue ids
 	 * @returns StructureSelection of the desired residues
 	 */
-	function getSelectionFromChainAuthId(plugin: PluginUIContext, chainId: string, positions: number[]) {
+	function getSelectionFromChainAuthId(struct: StateObjectSelector, chainId: string, positions: number[]) {
 		const query = MS.struct.generator.atomGroups({
 			'chain-test': MS.core.rel.eq([MS.struct.atomProperty.macromolecular.auth_asym_id(), chainId]),
 			'residue-test': MS.core.set.has([MS.set(...positions), MS.struct.atomProperty.macromolecular.auth_seq_id()]),
 			'group-by': MS.struct.atomProperty.macromolecular.residueKey()
 		});
-		return Script.getStructureSelection(query, plugin.managers.structure.hierarchy.current.structures[0].cell.obj!.data);
+		return Script.getStructureSelection(query, struct.cell.obj!.data);
 	}
 
+	// TODO maybe update docstring?
 	/**
 	 * Method which focuses on the specified residues loci.
 	 * @param structureIndex Residue id in structure viewer
 	 * @returns void
-	 */
-	function highlight(structureIndex: number) {
+	*/
+	function highlight(structureIndices: number[], dataSourceName?: string, pdbCode?: string, chain?: string) {
+		if (dataSourceName && pdbCode && chain) {
+			highlightInSimilarProteinStruct(structureIndices, dataSourceName, pdbCode, chain);
+		} else {
+			highlightInQueryProteinStruct(structureIndices);
+		}
+	}
+
+	function highlightInQueryProteinStruct(structureIndices: number[]) {
 		const plugin = window.molstar;
 		if (!plugin) {
 			console.warn("Tried to highlight item in Mol* viewer, but the plugin is missing.");
 			return;
 		}
 
-		const data = plugin.managers.structure.hierarchy.current.structures[0]?.cell.obj?.data;
-		if (!data) return;
+		if (!queryStructure.current) {
+			return;
+		}
 
-		const sel = getSelectionFromChainAuthId(plugin, selectedChain, [structureIndex]);
+		const sel = getSelectionFromChainAuthId(queryStructure.current.object, selectedChain, structureIndices);
 		const loci = StructureSelection.toLociWithSourceUnits(sel);
 		plugin.managers.interactivity.lociHighlights.highlightOnly({ loci });
 	}
 
+	function highlightInSimilarProteinStruct(structureIndices: number[], dataSourceName: string, pdbCode: string, chain: string) {
+		const plugin = window.molstar;
+		if (!plugin) {
+			console.warn("Tried to highlight item in Mol* viewer, but the plugin is missing.");
+			return;
+		}
+
+		// TODO maybe some check if keys exist? if not console error and return?
+		const simStruct = similarProteinStructures.current[dataSourceName][pdbCode][chain];
+
+		const sel = getSelectionFromChainAuthId(simStruct.object, chain, structureIndices);
+		const loci = StructureSelection.toLociWithSourceUnits(sel);
+		plugin.managers.interactivity.lociHighlights.highlightOnly({ loci });
+	}
+
+	// TODO maybe update docstring?
 	/**
 	 * Method which focuses on the specified loci.
 	 * @param structureIndex Residue id in structure viewer
 	 * @returns void
 	 */
-	function focus(structureIndex: number) {
+	function focus(structureIndices: number[], dataSourceName?: string, pdbCode?: string, chain?: string) {
+		if (dataSourceName && pdbCode && chain) {
+			focusInSimilarProteinStruct(structureIndices, dataSourceName, pdbCode, chain);
+		} else {
+			focusInQueryProteinStruct(structureIndices);
+		}
+	}
+
+	function focusInQueryProteinStruct(structureIndices: number[]) {
 		const plugin = window.molstar;
 		if (!plugin) {
 			console.warn("Tried to focus on item in Mol* viewer, but the plugin is missing.");
 			return;
 		}
 
-		const data = plugin.managers.structure.hierarchy.current.structures[0]?.cell.obj?.data;
-		if (!data) return;
+		if (!queryStructure.current) {
+			return;
+		}
 
-		const sel = getSelectionFromChainAuthId(plugin, selectedChain, [structureIndex]);
+		const sel = getSelectionFromChainAuthId(queryStructure.current.object, selectedChain, structureIndices);
+		const loci = StructureSelection.toLociWithSourceUnits(sel);
+		plugin.managers.interactivity.lociHighlights.highlightOnly({ loci });
+		plugin.managers.camera.focusLoci(loci);
+	}
+
+	function focusInSimilarProteinStruct(structureIndices: number[], dataSourceName: string, pdbCode: string, chain: string) {
+		const plugin = window.molstar;
+		if (!plugin) {
+			console.warn("Tried to focus on item in Mol* viewer, but the plugin is missing.");
+			return;
+		}
+
+		// TODO maybe some check if keys exist?
+		const simStruct = similarProteinStructures.current[dataSourceName][pdbCode][chain];
+
+		const sel = getSelectionFromChainAuthId(simStruct.object, chain, structureIndices);
 		const loci = StructureSelection.toLociWithSourceUnits(sel);
 		plugin.managers.interactivity.lociHighlights.highlightOnly({ loci });
 		plugin.managers.camera.focusLoci(loci);

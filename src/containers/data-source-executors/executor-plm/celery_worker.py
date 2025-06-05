@@ -2,7 +2,7 @@
 
 import os
 from celery import Celery
-import plm_executor
+import executor
 
 celery = Celery(
     os.getenv('CELERY_NAME'),
@@ -11,5 +11,5 @@ celery = Celery(
 
 @celery.task(name='ds_plm')
 def ds_plm(id):
-    plm_executor.run_plm(id)
+    executor.run_plm(id)
     

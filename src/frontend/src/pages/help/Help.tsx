@@ -77,7 +77,7 @@ function Help() {
                         <li>Selected sequences of proteins similar to the submitted protein (one row displays just one similar chain).</li>
                         <li>
                             Colored rectangles under protein X depict areas with predicted pockets and real binding areas (if available) of the X.
-                            Real binding sites are residues within 5 &#8491; from any ligand atom.
+                            Real binding sites are residues within 5&nbsp;&#8491; from any ligand atom.
                             <ul>
                                 <li>Connected rectangles form one bindings site.</li>
                                 <li>

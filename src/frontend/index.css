@@ -18,6 +18,17 @@ g.rcsbElement rect {
 	fill-opacity: 1;
 }
 
+g[class*="rcsbElement_special-composite"] rect {
+	/* In Rcsb saguaro viewer I needed to use composite track because 
+ 	 * I needed to pass some info in label but sequence track alone can't have label.
+	 * However because of the previous rule, styles were not great, e.g. highlight column on hover was not visible
+	 * on the composite/sequence row. That is why this rule here exists... To overwrite the previous one, so please,
+	 * keep this rule after the previous one. */
+	stroke: initial;
+	stroke-opacity: initial;
+	fill-opacity: initial;
+}
+
 .box-wrapper {
 	max-width: 500px;
 	width: 100%;

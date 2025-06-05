@@ -82,9 +82,7 @@ function TogglerPanels({
         }
 
         setQueryProteinBindingSitesData(queryProteinBindingSitesTmp);
-        console.log(queryProteinBindingSitesTmp)
         setSimilarProteinsBindingSites(similarProteinsBindingSitesTmp);
-        console.log(similarProteinsBindingSitesTmp)
     }, [chainResult]);
 
     return (

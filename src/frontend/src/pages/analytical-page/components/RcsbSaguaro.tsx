@@ -9,14 +9,25 @@ export type RcsbSaguaroHandle = {
     getRcsbPlugin: () => RcsbFv | null;
 };
 
+type RcsbPositionData = { // This will be stored (serialized to string) in label of track data
+    position?: number;
+    residue?: string;
+    bindingSiteId?: string;
+    confidence?: number;
+    conservationValue?: number;
+    dataSourceName?: string;
+    pdbCode?: string;
+    chain?: string;
+};
+
 type Props = {
     classes?: string;
     chainResult: ChainResult;
     dataSourceDisplayNames: Record<string, string>;
     squashBindingSites: boolean;
     startQuerySequenceAtZero: boolean;
-    onHighlight: (structureIndex: number) => void;
-    onClick: (structureIndex: number) => void;
+    onHighlight: (structureIndices: number[], dataSourceName?: string, pdbCode?: string, chain?: string) => void;
+    onClick: (structureIndices: number[], dataSourceName?: string, pdbCode?: string, chain?: string) => void;
 };
 
 const RcsbSaguaro = forwardRef(({
@@ -161,11 +172,40 @@ const RcsbSaguaro = forwardRef(({
     function createBoardConfigData(chainResult: ChainResult) {
         const tooltipGenerator: RcsbFvTooltipInterface = {
             showTooltip: (d: RcsbFvTrackDataElementInterface): HTMLElement | undefined => {
-                const tooltipDiv = document.createElement("div");
+                if (d.label && d.label.length === 1) {
+                    /* Sometimes can happen that label from sequence track comes, we skip it,
+                     * we wait for our label with JSON. */
+                    return;
+                }
 
-                tooltipDiv.innerHTML = `
-                    <strong>Position:</strong> ${d.begin}${d.end ? ` - ${d.end}` : ""}${d.label ? ` | ${d.label}` : ""}
-                `;
+                const tooltipDiv = document.createElement("div");
+                let tooltipHtml = "";
+
+                if (!d.label || (d.label && !d.label.includes("position"))) {
+                    tooltipHtml += `<strong>Position:</strong> ${d.begin}${d.end ? ` - ${d.end}` : ""}`;
+                }
+                if (d.label) {
+                    const positionData: RcsbPositionData = JSON.parse(d.label);
+                    if (positionData.position) {
+                        tooltipHtml += `<strong>Position:</strong> ${positionData.position}`;
+                    }
+                    if (positionData.residue) {
+                        tooltipHtml += ` | ${positionData.residue}`;
+                    }
+                    if (squashBindingSites && positionData.bindingSiteId) {
+                        tooltipHtml += ` | <strong>Name:</strong> ${toBindingSiteLabel(positionData.bindingSiteId)}`;
+                    }
+                    if (positionData.confidence) {
+                        tooltipHtml += ` | <strong>Probability:</strong> ${positionData.confidence.toFixed(2)}`;
+                    }
+                    if (positionData.dataSourceName) {
+                        tooltipHtml += ` | <strong>Source:</strong> ${dataSourceDisplayNames[positionData.dataSourceName]}`;
+                    }
+                    if (positionData.conservationValue) {
+                        tooltipHtml += ` | <strong>Value:</strong> ${positionData.conservationValue.toFixed(2)}`;
+                    }
+                }
+                tooltipDiv.innerHTML = tooltipHtml;
 
                 return tooltipDiv;
             }
@@ -177,7 +217,8 @@ const RcsbSaguaro = forwardRef(({
                 max: chainResult.querySequence.length - 1 - offset.current
             },
             includeAxis: true,
-            highlightHoverPosition: true,
+            highlightHoverPosition: false,
+            highlightHoverElement: true, // This must be true in order to get label from trackData in hover handling (label is not there if false)
             highlightHoverCallback: handleHighlight,
             elementClickCallback: (trackData?: RcsbFvTrackDataElementInterface, _?: MouseEvent) => elementClicked(trackData),
             tooltipGenerator: tooltipGenerator
@@ -202,21 +243,33 @@ const RcsbSaguaro = forwardRef(({
         return allBindingSites;
     }
 
-    function toTrackDataItem(bindingSite: BindingSite, color: string, dataSourceName: string): RcsbFvTrackDataElementInterface {
+    function toTrackDataItem(
+        bindingSite: BindingSite,
+        color: string,
+        dataSourceName: string,
+        pdbCode?: string,
+        chain?: string
+    ): RcsbFvTrackDataElementInterface {
         const residues = bindingSite.residues;
         if (residues.length === 0) {
             return {};
         }
 
-        const dataSourceDisplayName = dataSourceDisplayNames[dataSourceName];
-        const label = `<strong>Confidence:</strong> ${bindingSite.confidence.toFixed(2)} | <strong>Source:</strong> ${dataSourceDisplayName}`;
+        const positionData: RcsbPositionData = {
+            bindingSiteId: bindingSite.id,
+            confidence: bindingSite.confidence,
+            dataSourceName: dataSourceName,
+            pdbCode: pdbCode,
+            chain: chain
+        };
+
         if (residues.length === 1) {
             const trackDataItem: RcsbFvTrackDataElementInterface = {
                 begin: residues[0].sequenceIndex + 1 - offset.current,
                 end: residues[0].sequenceIndex + 1 - offset.current,
                 gaps: [],
                 color: color,
-                label: label
+                label: JSON.stringify(positionData)
             };
             return trackDataItem;
         }
@@ -243,26 +296,59 @@ const RcsbSaguaro = forwardRef(({
             end: max + 1 - offset.current,
             gaps: gaps,
             color: color,
-            label: label
+            label: JSON.stringify(positionData)
         };
         return trackDataItem;
     }
 
     function createQuerySequenceRow(querySequence: string, pdbId: string | null = null) {
+        const displayData: RcsbFvTrackDataElementInterface[] = [];
+        for (let i = 1 - offset.current; i < querySequence.length; i++) {
+            const positionData: RcsbPositionData = {
+                position: i,
+                residue: querySequence[i - 1 + offset.current]
+            }
+
+            displayData.push({
+                begin: i,
+                end: i,
+                label: JSON.stringify(positionData)
+            });
+        }
+
+        const trackColor = "#F9F9F9";
+
         const querySequenceRow: RcsbFvRowExtendedConfigInterface = {
             trackId: "query-seq",
             trackHeight: 20,
-            trackColor: "#F9F9F9",
-            displayType: "sequence",
+            trackColor: trackColor,
+            displayType: "composite",
             nonEmptyDisplay: true,
             rowTitle: pdbId ?? "Query sequence",
-            trackData: [
+            titleFlagColor: defaultTitleFlagColor,
+            displayConfig: [
                 {
-                    begin: 1 - offset.current,
-                    label: querySequence
+                    displayType: "sequence",
+                    displayColor: "#000000",
+                    overlap: false,
+                    displayId: "composite-sequence-query-seq",
+                    displayData: [
+                        {
+                            begin: 1 - offset.current,
+                            label: querySequence
+                        }
+                    ]
+                },
+                {
+                    // block must come AFTER sequence, otherwise it might be problem for user co click it (we wouldn't get label)
+                    displayType: "block",
+                    displayColor: "#FFFFFF00",
+                    /* ids of composite blocks must start with "special-composite", 
+                     * otherwise styles won't look nice, for more info read comments in index.css */
+                    displayId: "special-composite-block-query-seq",
+                    displayData: displayData
                 }
-            ],
-            titleFlagColor: defaultTitleFlagColor
+            ]
         };
 
         return querySequenceRow;
@@ -271,11 +357,17 @@ const RcsbSaguaro = forwardRef(({
     function createConservationRow(conservations: Conservation[]) {
         const max = Math.max(...conservations.map(conservation => conservation.value));
 
-        const conservationData = conservations.map(conservation => ({
-            begin: conservation.index + 1 - offset.current,
-            value: conservation.value / max, // normalization
-            label: `<strong>Value:</strong> ${conservation.value.toFixed(2)}`
-        }));
+        const conservationData = conservations.map(conservation => {
+            const positionData: RcsbPositionData = {
+                conservationValue: conservation.value
+            };
+
+            return {
+                begin: conservation.index + 1 - offset.current,
+                value: conservation.value / max, // normalization
+                label: JSON.stringify(positionData)
+            };
+        });
 
         const conservationRow: RcsbFvRowExtendedConfigInterface = {
             trackId: "conservation",
@@ -295,23 +387,58 @@ const RcsbSaguaro = forwardRef(({
         id: string,
         title: string,
         sequence: string,
+        titleFlagColor: string,
         dataSourceName: string,
-        titleFlagColor: string
+        pdbCode?: string,
+        chain?: string,
     ) {
+        const displayData: RcsbFvTrackDataElementInterface[] = [];
+        for (let i = 1 - offset.current; i < sequence.length; i++) {
+            const positionData: RcsbPositionData = {
+                position: i,
+                residue: sequence[i - 1 + offset.current],
+                dataSourceName: dataSourceName,
+                pdbCode: pdbCode,
+                chain: chain
+            }
+
+            displayData.push({
+                begin: i,
+                end: i,
+                label: JSON.stringify(positionData)
+            });
+        }
+
         const similarSequenceRow: RcsbFvRowExtendedConfigInterface = {
             trackId: id,
             trackHeight: 20,
             trackColor: dataSourcesColors.current[dataSourceName],
-            displayType: "sequence",
+            displayType: "composite",
             nonEmptyDisplay: true,
             rowTitle: title,
-            trackData: [
+            titleFlagColor: titleFlagColor,
+            displayConfig: [
                 {
-                    begin: 1 - offset.current,
-                    label: sequence
+                    displayType: "sequence",
+                    displayColor: "#000000",
+                    displayId: `composite-sequence-${id}`,
+                    displayData: [
+                        {
+                            begin: 1 - offset.current,
+                            label: sequence
+                        }
+                    ]
+                },
+                {
+                    // block must come AFTER sequence, otherwise it might be problem for user co click it (we wouldn't get label)
+                    displayType: "block",
+                    displayColor: "#FFFFFF00",
+                    /* ids of composite blocks must start with "special-composite", 
+                     * otherwise styles won't look nice, for more info read comments in index.css */
+                    displayId: `special-composite-block-${id}`,
+                    displayData: displayData
                 }
-            ],
-            titleFlagColor: titleFlagColor
+            ]
         };
 
         return similarSequenceRow;
@@ -322,9 +449,11 @@ const RcsbSaguaro = forwardRef(({
         title: string,
         bindingSite: BindingSite,
         dataSourceName: string,
-        titleFlagColor: string | undefined = undefined,
+        pdbCode?: string,
+        chain?: string,
+        titleFlagColor?: string,
     ) {
-        const trackDataItem = toTrackDataItem(bindingSite, bindingSitesColors.current[bindingSite.id], dataSourceName);
+        const trackDataItem = toTrackDataItem(bindingSite, bindingSitesColors.current[bindingSite.id], dataSourceName, pdbCode, chain);
 
         const blockRowForResidues: RcsbFvRowExtendedConfigInterface = {
             trackId: id,
@@ -344,10 +473,12 @@ const RcsbSaguaro = forwardRef(({
         title: string,
         bindingSites: BindingSite[],
         dataSourceName: string,
-        titleFlagColor: string | undefined = undefined,
+        pdbCode?: string,
+        chain?: string,
+        titleFlagColor?: string,
     ) {
         const trackData = bindingSites.map(bindingSite =>
-            toTrackDataItem(bindingSite, bindingSitesColors.current[bindingSite.id], dataSourceName));
+            toTrackDataItem(bindingSite, bindingSitesColors.current[bindingSite.id], dataSourceName, pdbCode, chain));
 
         const blockRowForBindingSites = {
             trackId: id,
@@ -376,7 +507,7 @@ const RcsbSaguaro = forwardRef(({
                     const title = "Query protein's binding sites";
 
                     const bindingSitesRow = createBlockRowForBindingSites(
-                        id, title, result.bindingSites, dataSourceName, defaultTitleFlagColor)
+                        id, title, result.bindingSites, dataSourceName, undefined, undefined, defaultTitleFlagColor)
                     rowConfigData.push(bindingSitesRow);
                 }
             } else {
@@ -385,7 +516,7 @@ const RcsbSaguaro = forwardRef(({
                     const title = toBindingSiteLabel(bindingSite.id);
 
                     const bindingSiteRow = createBlockRowForBindingSite(
-                        id, title, bindingSite, dataSourceName, defaultTitleFlagColor);
+                        id, title, bindingSite, dataSourceName, undefined, undefined, defaultTitleFlagColor);
                     rowConfigData.push(bindingSiteRow)
                 });
             }
@@ -400,7 +531,7 @@ const RcsbSaguaro = forwardRef(({
                 const simProtColorTransparent = simProtColor + "80"; // Add alpha channel
 
                 const similarSequenceRow = createSimilarSequenceRow(
-                    id, title, simProt.sequence, dataSourceName, simProtColor);
+                    id, title, simProt.sequence, simProtColor, dataSourceName, simProt.pdbId, simProt.chain);
                 rowConfigData.push(similarSequenceRow);
 
                 if (squashBindingSites) {
@@ -409,7 +540,7 @@ const RcsbSaguaro = forwardRef(({
                         const title = `${simProt.pdbId.toUpperCase()}'s binding sites`;
 
                         const bindingSitesRow = createBlockRowForBindingSites(
-                            id, title, simProt.bindingSites, dataSourceName, simProtColorTransparent);
+                            id, title, simProt.bindingSites, dataSourceName, simProt.pdbId, simProt.chain, simProtColorTransparent);
                         rowConfigData.push(bindingSitesRow);
                     }
                 } else {
@@ -418,7 +549,7 @@ const RcsbSaguaro = forwardRef(({
                         const title = toBindingSiteLabel(bindingSite.id);
 
                         const simProtBindingSiteRow = createBlockRowForBindingSite(
-                            id, title, bindingSite, dataSourceName, simProtColorTransparent);
+                            id, title, bindingSite, dataSourceName, simProt.pdbId, simProt.chain, simProtColorTransparent);
                         rowConfigData.push(simProtBindingSiteRow)
                     });
                 }
@@ -511,16 +642,89 @@ const RcsbSaguaro = forwardRef(({
         return range;
     }
 
+    function tryGetRcsbPosition(
+        trackData: RcsbFvTrackDataElementInterface
+    ): { isSuccess: boolean, position: number | null, positionData: RcsbPositionData | null } {
+        if (trackData.label && trackData.label.length === 1) {
+            /* Sometimes might(?) happen that label from sequence track comes, we skip it,
+             * we wait for our label with JSON. I'm not sure whether this can happend here, 
+             * but I will put this if here due to defensive programming. */
+            return { isSuccess: false, position: null, positionData: null };
+        }
+        let position: number | null = null;
+        let positionData: RcsbPositionData | null = null;
+        if (!trackData.label || (trackData.label && !trackData.label.includes("position"))) {
+            position = trackData.rectBegin ?? trackData.begin;
+        } else if (trackData.label) { // Try to get position from label
+            positionData = JSON.parse(trackData.label);
+            position = positionData.position;
+        }
+        if (position === null) {
+            position = trackData.rectBegin ?? trackData.begin;
+        }
+
+        if (position === null || position === undefined) { // This should not happen, but this check was in Prankweb, so better be careful
+            return { isSuccess: false, position: null, positionData: null };
+        }
+
+        // TODO maybe return only position data?
+        return { isSuccess: true, position, positionData };
+    }
+
+    // TODO maybe better docstring
+    /** rcsBposition is the position in the rcsb viewer, 
+     * position - 1 is seq idx after aligning, 
+     * and this function calculates index before aligning */
+    function getSeqIdxBeforeAligning(sequenceWithGaps: string, rcsbPosition: number) {
+        let seqIdxCounter = -1;
+
+        for (let i = 0; i < rcsbPosition && i < sequenceWithGaps.length; i++) {
+            const aminoAcidOrGap = sequenceWithGaps[i];
+            if (aminoAcidOrGap === "-") {
+                continue;
+            }
+            seqIdxCounter++;
+        }
+
+        return seqIdxCounter;
+    }
+
+    function getStructIdx(positionData: RcsbPositionData, position: number) {
+        let structIdx: number = null!;
+
+        if (positionData?.dataSourceName && positionData?.pdbCode && positionData?.chain) {
+            // Similar protein (or binding site on it) is clicked, lets find the protein and use its seq to str mapping
+            const simProts = chainResult.dataSourceExecutorResults[positionData.dataSourceName].similarProteins;
+            const simProt = simProts.find(x => x.pdbId === positionData.pdbCode && x.chain === positionData.chain);
+
+            let seqIdxBeforeAligning = getSeqIdxBeforeAligning(simProt.sequence, position);
+            structIdx = simProt.seqToStrMapping[seqIdxBeforeAligning];
+        } else {
+            // Query protein (or binding site on it) is clicked
+            let seqIdxBeforeAligning = getSeqIdxBeforeAligning(chainResult.querySequence, position);
+            structIdx = chainResult.querySeqToStrMapping[seqIdxBeforeAligning];
+        }
+
+        return structIdx;
+    }
+
     function handleHighlight(trackData: Array<RcsbFvTrackDataElementInterface>) {
-        if (trackData.length === 0) return;
+        if (trackData.length === 0) {
+            return;
+        }
         const lastElement = trackData[0].begin;
 
         // 100ms debounce
         setTimeout(() => {
             if (trackData && trackData.length > 0 && lastElement === trackData[0].begin) {
-                const structIdx = chainResult.seqToStrMapping[lastElement - 1];
+                const { isSuccess, position, positionData } = tryGetRcsbPosition(trackData[0]);
+                if (!isSuccess) {
+                    return;
+                }
+
+                let structIdx = getStructIdx(positionData, position);
                 if (structIdx) {
-                    onHighlight(structIdx);
+                    onHighlight([structIdx], positionData?.dataSourceName, positionData?.pdbCode, positionData?.chain);
                 }
             }
         }, 100);
@@ -535,14 +739,15 @@ const RcsbSaguaro = forwardRef(({
         if (!trackData) {
             return;
         }
-        const lastElement = trackData.rectBegin ?? trackData.begin;
-        if (!lastElement) {
+
+        const { isSuccess, position, positionData } = tryGetRcsbPosition(trackData);
+        if (!isSuccess) {
             return;
         }
 
-        let structIdx = chainResult.seqToStrMapping[lastElement - 1];
+        let structIdx = getStructIdx(positionData, position);
         if (structIdx) {
-            onClick(structIdx);
+            onClick([structIdx], positionData?.dataSourceName, positionData?.pdbCode, positionData?.chain);
         }
     }
 });
