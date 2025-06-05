@@ -2,7 +2,7 @@
 
 import os
 from celery import Celery
-import p2rank_executor
+import executor
 
 celery = Celery(
     os.getenv('CELERY_NAME'),
@@ -11,4 +11,4 @@ celery = Celery(
 
 @celery.task(name='ds_p2rank')
 def ds_p2rank(id, params):
-    p2rank_executor.run_p2rank(id, params)
+    executor.run_p2rank(id, params)
