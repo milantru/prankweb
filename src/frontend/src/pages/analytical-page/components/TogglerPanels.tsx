@@ -40,7 +40,7 @@ function TogglerPanels({
 
         const dataSourceColorsTmp = getUniqueColorForEachDataSource(dataSourceNames);
         setDataSourceColors(dataSourceColorsTmp);
-    }, []);
+    }, [queryProteinBindingSitesData, similarProteinsBindingSitesData]);
 
     useEffect(() => {
         setQueryProteinBindingSitesData(null);
@@ -91,7 +91,8 @@ function TogglerPanels({
                 {/* Panels for query protein */}
                 {Object.entries(queryProteinBindingSitesData).map(([dataSourceName, chainRecord]) =>
                     Object.entries(chainRecord).map(([chain, bindingSiteRecord]) =>
-                        dataSourceName in queryProteinBindingSites
+                        dataSourceName in dataSourceColors
+                        && dataSourceName in queryProteinBindingSites
                         && (
                             <TogglerPanel key={`${dataSourceName}-${chain}`}
                                 title={{ chain: chain, dataSourceName: dataSourceName }}
@@ -111,7 +112,8 @@ function TogglerPanels({
                 {Object.entries(similarProteinsBindingSitesData).map(([dataSourceName, structureRecord]) =>
                     Object.entries(structureRecord).map(([pdbCode, chainRecord]) =>
                         Object.entries(chainRecord).map(([chain, bindingSiteRecord]) =>
-                            dataSourceName in similarProteinsBindingSites
+                            dataSourceName in dataSourceColors
+                            && dataSourceName in similarProteinsBindingSites
                             && pdbCode in similarProteinsBindingSites[dataSourceName]
                             && chain in similarProteinsBindingSites[dataSourceName][pdbCode]
                             && (
