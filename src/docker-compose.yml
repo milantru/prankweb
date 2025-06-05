@@ -173,7 +173,7 @@ services:
       LOGGING_TZ: ${PLANKWEB_TIMEZONE:-Europe/Prague}
     volumes:
       - foldseek:/app/results
-      - ./containers/data-source-executors/executor-foldseek/foldseek_executor.py:/app/foldseek_executor.py
+      - ./containers/data-source-executors/executor-foldseek/executor.py:/app/executor.py
       - ./containers/data-source-executors/executor-foldseek/post_processor.py:/app/post_processor.py
       - ./containers/data-source-executors/data_format/builder.py:/app/data_format/builder.py
     command: |
@@ -210,7 +210,7 @@ services:
       LOGGING_TZ: ${PLANKWEB_TIMEZONE:-Europe/Prague}
     volumes:
       - p2rank:/app/results
-      - ./containers/data-source-executors/executor-p2rank/p2rank_executor.py:/app/p2rank_executor.py
+      - ./containers/data-source-executors/executor-p2rank/executor.py:/app/executor.py
       - ./containers/data-source-executors/executor-p2rank/post_processor.py:/app/post_processor.py
       - ./containers/data-source-executors/data_format/builder.py:/app/data_format/builder.py
     command: |
@@ -246,7 +246,7 @@ services:
       LOGGING_TZ: ${PLANKWEB_TIMEZONE:-Europe/Prague}
     volumes:
       - plm:/app/results
-      - ./containers/data-source-executors/executor-plm/plm_executor.py:/app/plm_executor.py
+      - ./containers/data-source-executors/executor-plm/executor.py:/app/executor.py
       - ./containers/data-source-executors/executor-plm/model.py:/app/model.py
       - ./containers/data-source-executors/executor-plm/predict.py:/app/predict.py
       - ./containers/data-source-executors/executor-plm/post_processor.py:/app/post_processor.py
