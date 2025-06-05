@@ -27,6 +27,7 @@ import { StructureOption } from "./SettingsPanel";
 import Switch from "./Switch";
 import { Script } from "molstar/lib/mol-script/script";
 import { useInterval } from "../../../shared/hooks/useInterval";
+import { sleep } from "../../../shared/helperFunctions/sleep";
 import { toastWarning } from "../../../shared/helperFunctions/toasts";
 
 export type MolStarWrapperHandle = {
@@ -108,6 +109,7 @@ export const MolStarWrapper = forwardRef(({
 	const similarProteinLigands = useRef<Record<string, Record<string, Record<string, Record<string, VisibleObject>>>>>({});
 
 	const [isHighlightModeOn, setIsHighlightModeOn] = useState<boolean>(false);
+	const [isHighlightModeSwitchingDisabled, setIsHighlightModeSwitchingDisabled] = useState<boolean>(false);
 	const [structuresLoaded, setStructuresLoaded] = useState<boolean>(false);
 	const loadingMessage = useRef<string>("Loading structure(s)...");
 	const [displayedLoadingMessageLength, setDisplayedLoadingMessageLength] = useState<number>(loadingMessage.current.length);
@@ -229,6 +231,8 @@ export const MolStarWrapper = forwardRef(({
 				}
 			}
 			await update.commit();
+			// await sleep(250); // TODO uncomment if required
+			setIsHighlightModeSwitchingDisabled(false);
 		}
 
 		if (structuresLoaded) {
@@ -264,7 +268,7 @@ export const MolStarWrapper = forwardRef(({
 				<div className="mt-2 ml-auto"
 					title="When the mode is enabled, the opacity of residues of visualized binding sites increases with the number of supporting data sources.">
 					Support-Based Highlighting {/* Support-Based Highlighting was previously known as Highlight mode */}
-					<Switch classes="ml-2" isDisabled={!structuresLoaded} onToggle={isOn => setIsHighlightModeOn(isOn)} />
+					<Switch classes="ml-2" isDisabled={isHighlightModeSwitchingDisabled || !structuresLoaded} onToggle={handleSwitchToggle} />
 				</div>
 			</div>
 
@@ -311,6 +315,16 @@ export const MolStarWrapper = forwardRef(({
 			: defaultValue;
 
 		return alpha;
+	}
+
+	async function handleSwitchToggle(isOn: boolean) {
+		if (isHighlightModeSwitchingDisabled) {
+			return;
+		}
+		/* Disable Support-Based Highlighting switching until transparency of residues is updated, 
+		 * after that the switching will be enabled again. */
+		setIsHighlightModeSwitchingDisabled(true);
+		setIsHighlightModeOn(isOn);
 	}
 
 	async function createPocketRepresentationForStruct(
