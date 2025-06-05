@@ -123,7 +123,7 @@ type StatusMessage = {
 
 export type ChainResult = {
 	querySequence: string,
-	seqToStrMapping: Record<number, number>; // seqToStrMapping[seqIdx] -> structIdx
+	querySeqToStrMapping: Record<number, number>; // querySeqToStrMapping[seqIdx] -> structIdx
 	dataSourceExecutorResults: DataSourceExecutorResult;
 	conservations: Conservation[];
 };
@@ -170,8 +170,8 @@ function AnalyticalPage() {
 	const rcsbSaguaroRef = useRef<RcsbSaguaroHandle>(null!);
 	const [allDataFetched, setAllDataFetched] = useState<boolean>(false);
 	const chains = useRef<string[]>([]);
-	// After data processing it will be possible to do seqToStrMappings[chain][rcsb position - 1] -> structure index in molstar
-	const seqToStrMappings = useRef<Record<string, Record<number, number>>>(null!); // seqToStrMappings[chain][seqIdx] -> structIdx
+	// querySeqToStrMappings stores mappings for each chain of query protein (unmapped/unaligned/"fresh" from data soruces)
+	const querySeqToStrMappings = useRef<Record<string, Record<number, number>>>(null!); // querySeqToStrMappings[chain][rcsb position - 1 , i.e. seq idx] -> molstar struct idx
 	// bindingSiteSupportCounter[chain][residue index in structure (of pocket)] -> number of data sources supporting that residue is part of binding site
 	const [bindingSiteSupportCounter, setBindingSiteSupportCounter] = useState<Record<string, Record<number, number>>>({});
 	const isMolstarLinkedToRcsb = useRef<boolean>(false);
@@ -450,10 +450,8 @@ function AnalyticalPage() {
 			return;
 		}
 
-		/* Init seq to struct mappings if not init yet (just for query protein now, 
-		 * later, alfter aligning, gaps may occur in master query seq, so to fill each
-		 * position, even gaps, mappings and struct indices from similar proteins will be used). */
-		if (!seqToStrMappings.current) {
+		// Init seq to struct mapping for each chain if not inited yet (this is just for query protein)
+		if (!querySeqToStrMappings.current) {
 			const {
 				seqToStrMappings: seqToStrMappingsTmp,
 				userFriendlyErrorMessage: querySeqToStrMappingsFetchingErrorMessage
@@ -463,7 +461,7 @@ function AnalyticalPage() {
 				isFetching.current[dataSourceIndex] = false;
 				return;
 			}
-			seqToStrMappings.current = seqToStrMappingsTmp;
+			querySeqToStrMappings.current = seqToStrMappingsTmp;
 		}
 
 		// Choose next action depending on status
@@ -538,34 +536,6 @@ function AnalyticalPage() {
 		}
 	}
 
-	/**
-	 * Updates a sequence-to-structure mapping based on a provided index remapping.
-	 *
-	 * This function takes an existing mapping (`mappingToUpdate`) from sequence indices to structure indices,
-	 * and remaps its keys using another mapping (`mappingUsedToUpdate`). The resulting mapping uses the new
-	 * sequence indices (from `mappingUsedToUpdate`) while preserving the original structure indices.
-	 *
-	 * @param mappingToUpdate - A record where keys are original sequence indices and values are structure indices.
-	 * @param mappingUsedToUpdate - A record mapping old sequence indices to new sequence indices.
-	 * @returns A new record mapping the updated sequence indices to the original structure indices.
-	 *
-	 * @example
-	 * getUpdatedSeqToStructMapping({0: 100, 1: 101}, {0: 10, 1: 11})
-	 * // Returns: {10: 100, 11: 101}
-	 */
-	function getUpdatedSeqToStructMapping(mappingToUpdate: Record<number, number>, mappingUsedToUpdate: Record<number, number>) {
-		const newSeqToStrMapping: Record<number, number> = {};
-
-		for (const [seqIdx, structIdx] of Object.entries(mappingToUpdate)) {
-			const newSeqIdx = mappingUsedToUpdate[seqIdx];
-			if (newSeqIdx !== undefined) { // TODO this if should not be needed
-				newSeqToStrMapping[newSeqIdx] = structIdx;
-			}
-		}
-
-		return newSeqToStrMapping;
-	}
-
 	function getAvgConservationForQueryBindingSite(bindingSite: BindingSite) {
 		const bindingSiteConservations = conservations.current.filter(c =>
 			bindingSite.residues.some(r => r.sequenceIndex === c.index));
@@ -619,9 +589,6 @@ function AnalyticalPage() {
 		similarProtein.bindingSites.forEach(bindingSite =>
 			updateBindingSiteResiduesIndices(bindingSite, mapping));
 
-		// Update seq indices in seq to struct mapping
-		similarProtein.seqToStrMapping = getUpdatedSeqToStructMapping(similarProtein.seqToStrMapping, mapping);
-
 		// Update with aligned query and similar seq
 		similarProtein.alignmentData.querySequence = querySeq;
 		similarProtein.alignmentData.similarSequence = similarSeq;
@@ -631,13 +598,14 @@ function AnalyticalPage() {
 		unprocessedResultPerDataSourceExecutor: Record<string, UnalignedResult>,
 		dataSourcesSimilarProteins: Record<string, UnalignedSimilarProtein[]>,
 		conservations: Conservation[],
-		chain: string
+		chain: string,
+		querySeqToStrMapping: Record<number, number>
 	): ChainResult {
 		// unprocessedResultPerDataSourceExecutor[dataSourceName] -> UnprocessedResult
 		const dataSourceExecutorsCount = Object.keys(unprocessedResultPerDataSourceExecutor).length;
 		if (dataSourceExecutorsCount == 0) {
 			// if we dont have any result from any data source executor, then we have nothing to align
-			return { querySequence: "", seqToStrMapping: {}, dataSourceExecutorResults: {}, conservations: [] };
+			return { querySequence: "", querySeqToStrMapping: {}, dataSourceExecutorResults: {}, conservations: [] };
 		}
 		// TODO what if we have data source executor results but no with sim prots? Maybe add if?
 
@@ -755,9 +723,6 @@ function AnalyticalPage() {
 		for (const [dataSourceName, result] of Object.entries(unprocessedResultPerDataSourceExecutor)) {
 			let supporterCounted: Record<number, boolean> = {}; // one data source can support residue just once
 
-			// Update seq to struct indices mapping (mapping from query protein)
-			seqToStrMappings.current[chain] = getUpdatedSeqToStructMapping(seqToStrMappings.current[chain], mapping);
-
 			for (const bindingSite of result.bindingSites) {
 				// Update residues of binding site of query protein 
 				updateBindingSiteResiduesIndices(bindingSite, mapping);
@@ -790,19 +755,11 @@ function AnalyticalPage() {
 				const simProt = unalignedSimilarProteins[simProtIdx];
 				const simProtMapping = similarProteinsMapping[dataSourceName][simProtIdx];
 
-				// Update seq to struct mappings (from similar proteins)
-				simProt.seqToStrMapping = getUpdatedSeqToStructMapping(simProt.seqToStrMapping, simProtMapping);
-				for (const [seqIdx, structIdx] of Object.entries(simProt.seqToStrMapping)) {
-					if (seqIdx in seqToStrMappings.current[chain]) {
-						continue;
-					}
-					seqToStrMappings.current[chain][seqIdx] = structIdx;
-				}
-
-				// Update residues of binding sites and count supporters
 				for (const bindingSite of simProt.bindingSites) {
+					// Update residues of binding sites...
 					updateBindingSiteResiduesIndices(bindingSite, simProtMapping);
 
+					// ...and count supporters
 					for (const residue of bindingSite.residues) {
 						if (supporterCounted[residue.structureIndex]) {
 							continue;
@@ -836,7 +793,7 @@ function AnalyticalPage() {
 
 		return {
 			querySequence: masterQuerySeq,
-			seqToStrMapping: seqToStrMappings.current[chain],
+			querySeqToStrMapping: querySeqToStrMapping,
 			dataSourceExecutorResults: dataSourceExecutorResultsTmp,
 			conservations: conservations
 		};
@@ -916,8 +873,9 @@ function AnalyticalPage() {
 		const unalignedResultDeepCopy = JSON.parse(JSON.stringify(unalignedResult.current));
 		const selectedSimProtsDeepCopy = JSON.parse(JSON.stringify(selectedSimProts));
 		const conservationsDeepCopy = JSON.parse(JSON.stringify(conservations.current));
+		const querySeqToStrMapping = JSON.parse(JSON.stringify(querySeqToStrMappings.current[chain]));
 		const chainResult = alignSequencesAcrossAllDataSources(
-			unalignedResultDeepCopy, selectedSimProtsDeepCopy, conservationsDeepCopy, chain);
+			unalignedResultDeepCopy, selectedSimProtsDeepCopy, conservationsDeepCopy, chain, querySeqToStrMapping);
 
 		setCurrChainResult(chainResult);
 		return chainResult;
@@ -1105,12 +1063,12 @@ function AnalyticalPage() {
 		return queryProteinLigandsData;
 	}
 
-	function handleRcsbHighlight(structureIndex: number) {
-		molstarWrapperRef.current?.highlight(structureIndex);
+	function handleRcsbHighlight(structureIndices: number[], dataSourceName?: string, pdbCode?: string, chain?: string) {
+		molstarWrapperRef.current?.highlight(structureIndices, dataSourceName, pdbCode, chain);
 	}
 
-	function handleRcsbClick(structureIndex: number) {
-		molstarWrapperRef.current?.focus(structureIndex);
+	function handleRcsbClick(structureIndices: number[], dataSourceName?: string, pdbCode?: string, chain?: string) {
+		molstarWrapperRef.current?.focus(structureIndices, dataSourceName, pdbCode, chain);
 	}
 
 	/**
@@ -1159,7 +1117,7 @@ function AnalyticalPage() {
 					}
 				};
 				const toFind = molstarResidue.authSeqNumber;
-				const structureIndices = Object.values(seqToStrMappings.current[selectedChain]);
+				const structureIndices = Object.values(querySeqToStrMappings.current[selectedChain]);
 				const positionInRcsb = structureIndices.indexOf(toFind) + 1;
 				rcsbPlugin.setSelection({
 					elements: {
