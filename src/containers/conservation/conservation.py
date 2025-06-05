@@ -13,7 +13,7 @@ from status_manager import update_status, StatusType
 
 PHMMER_DIR = "./hmmer-3.4/src/"
 ESL_DIR = "./hmmer-3.4/easel/miniapps/"
-DATABASE = "./uniprot_sprot.fasta" # TODO: DOWNLOAD uniref50.fasta AND USE IT
+DATABASE = "./uniprot_sprot.fasta"
 TEMP = "./tmp_conservation_{id}"
 RESULT_FOLDER = "./results/{id}/"
 MAX_SEQS = 100
@@ -21,7 +21,6 @@ INPUTS_URL = os.getenv('INPUTS_URL')
 
 
 logger = create_logger('conservation')
-
 
 
 def compute_conservation(id):
