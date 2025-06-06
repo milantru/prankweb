@@ -75,7 +75,7 @@ function SettingsPanel({
 
         // Map to remove temporary tmScore property
         setStructureOptions(options.map<StructureOption>(({ tmScore, ...structureOption }) => structureOption));
-    }, [selectedChain]);
+    }, [dataSourcesSimilarProteins]);
 
     return (
         <div className={`d-flex flex-column justify-content-start align-items-center border rounded ${classes}`}>
