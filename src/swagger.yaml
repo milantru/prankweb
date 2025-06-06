@@ -242,6 +242,18 @@ paths:
       summary: Get the status of the data source computation
       parameters:
         - in: path
+          name: dataSourceName
+          required: true
+          description: |
+            The name of the data source, one of:
+            - ds_foldseek
+            - ds_p2rank
+            - ds_p2rank/conservation
+            - ds_plm
+          schema:
+            type: string
+            example: "foldseek"
+        - in: path
           name: inputId
           required: true
           description: The generated ID of a protein
