@@ -702,6 +702,9 @@ function AnalyticalPage() {
 							similarProteins[dataSourceName][simProtIdx].sequence += similarProtein.alignmentData.similarSequence[aminoAcidIdx + offset];
 							similarProteinsMapping[dataSourceName][simProtIdx][aminoAcidIdx + offset] = aminoAcidOrGapOfMasterQuerySeqCurrIdx;
 							offsets[dataSourceName][simProtIdx] = offset + 1;
+							if ((aminoAcidIdx + offset) === (similarProtein.alignmentData.similarSequence.length - 1)) {
+								isSimProtRead[dataSourceName][simProtIdx] = true; // Read char was the last one, entire sim prot is read
+							}
 						} else {
 							similarProteins[dataSourceName][simProtIdx].sequence += "-";
 						}
@@ -713,6 +716,9 @@ function AnalyticalPage() {
 						aminoAcidOfQuerySeq = aminoAcidOrGapOfQuerySeq;
 						similarProteins[dataSourceName][simProtIdx].sequence += similarProtein.alignmentData.similarSequence[aminoAcidIdx + offset];
 						similarProteinsMapping[dataSourceName][simProtIdx][aminoAcidIdx + offset] = aminoAcidOrGapOfMasterQuerySeqCurrIdx;
+						if ((aminoAcidIdx + offset) === (similarProtein.alignmentData.similarSequence.length - 1)) {
+							isSimProtRead[dataSourceName][simProtIdx] = true; // Read char was the last one, entire sim prot is read
+						}
 					}
 				}
 			}
@@ -770,8 +776,7 @@ function AnalyticalPage() {
 						similarProteinsMapping[dataSourceName][simProtIdx][lastReadAminoAcidIndex + 1] = aminoAcidOrGapOfMasterQuerySeqCurrIdx;
 						offsets[dataSourceName][simProtIdx] = offset + 1;
 						if ((lastReadAminoAcidIndex + 1) === (similarProtein.alignmentData.similarSequence.length - 1)) {
-							// It was last read char
-							isSimProtRead[dataSourceName][simProtIdx] = true;
+							isSimProtRead[dataSourceName][simProtIdx] = true; // Read char was the last one, entire sim prot is read
 						}
 					} else {
 						similarProteins[dataSourceName][simProtIdx].sequence += "-";
