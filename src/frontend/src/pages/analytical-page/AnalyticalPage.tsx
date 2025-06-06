@@ -87,7 +87,7 @@ export type UnprocessedResult = {
 };
 
 type DataSourceExecutor = {
-	name: string; // name of the data source used to fetch results, e.g. "plm" 
+	name: string; // name of the data source used to fetch results, e.g. "foldseek" 
 	displayName: string; // used for displaying in UI, e.g. "P2Rank" instead of "p2rank"
 	// one result for each chain (here will be stored results from data source executors temporarily until all are fetched)
 	results: UnprocessedResult[];
@@ -143,7 +143,7 @@ function AnalyticalPage() {
 	const [pollingInterval, setPollingInterval] = useState<number | null>(null);
 	const isPageVisible = useVisibilityChange();
 	const dataSourceExecutors = useRef<DataSourceExecutor[]>([
-		{ name: "plm", displayName: "pLM ESM-2", results: [] },
+		{ name: "plank", displayName: "Plank", results: [] },
 		{ name: "p2rank", displayName: "P2Rank", results: [] },
 		{ name: "foldseek", displayName: "Foldseek", results: [] }
 	]);
