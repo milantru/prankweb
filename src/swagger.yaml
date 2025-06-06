@@ -260,7 +260,7 @@ paths:
             - ds_foldseek
             - ds_p2rank
             - ds_p2rank/conservation
-            - ds_plm
+            - ds_plank
           schema:
             type: string
             example: "foldseek"
@@ -308,7 +308,7 @@ paths:
             - ds_foldseek
             - ds_p2rank
             - ds_p2rank/conservation
-            - ds_plm
+            - ds_plank
           schema:
             type: string
             example: "foldseek"

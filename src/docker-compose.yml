@@ -67,7 +67,7 @@ services:
     volumes:
       - foldseek:/usr/local/apache2/htdocs/data/ds_foldseek
       - p2rank:/usr/local/apache2/htdocs/data/ds_p2rank
-      - plm:/usr/local/apache2/htdocs/data/ds_plm
+      - plank:/usr/local/apache2/htdocs/data/ds_plank
       - conservation:/usr/local/apache2/htdocs/data/conservation
       - inputs:/usr/local/apache2/htdocs/data/inputs
       - tmp:/usr/local/apache2/htdocs/tmp
@@ -222,14 +222,14 @@ services:
         --concurrency=4
         --events
 
-  ds-plm:
+  ds-plank:
     build:
       context: ./containers
-      dockerfile: ./data-source-executors/executor-plm/Dockerfile
+      dockerfile: ./data-source-executors/executor-plank/Dockerfile
       args:
         UID: ${PLANKWEB_DEFAULT_UID:-1453}
         GID: ${PLANKWEB_DEFAULT_GID:-1453}
-    container_name: ds-plm
+    container_name: ds-plank
     restart: unless-stopped
     depends_on:
       message-broker:
@@ -245,17 +245,17 @@ services:
       PLANKWEB_BASE_URL: ${PLANKWEB_URL:-http://localhost:9864}
       LOGGING_TZ: ${PLANKWEB_TIMEZONE:-Europe/Prague}
     volumes:
-      - plm:/app/results
-      - ./containers/data-source-executors/executor-plm/executor.py:/app/executor.py
-      - ./containers/data-source-executors/executor-plm/model.py:/app/model.py
-      - ./containers/data-source-executors/executor-plm/predict.py:/app/predict.py
-      - ./containers/data-source-executors/executor-plm/post_processor.py:/app/post_processor.py
+      - plank:/app/results
+      - ./containers/data-source-executors/executor-plank/executor.py:/app/executor.py
+      - ./containers/data-source-executors/executor-plank/model.py:/app/model.py
+      - ./containers/data-source-executors/executor-plank/predict.py:/app/predict.py
+      - ./containers/data-source-executors/executor-plank/post_processor.py:/app/post_processor.py
       - ./containers/data-source-executors/data_format/builder.py:/app/data_format/builder.py
     command: |
       celery
         --app=celery_worker worker
-        --queues=ds_plm
-        --hostname=plm_worker 
+        --queues=ds_plank
+        --hostname=plank_worker 
         --loglevel=warning
         --concurrency=4
         --events
@@ -350,7 +350,7 @@ services:
         condition: service_started
       ds-p2rank:
         condition: service_started
-      ds-plm:
+      ds-plank:
         condition: service_started
     environment:
       CELERY_NAME: plankweb_tasks
@@ -460,7 +460,7 @@ services:
         condition: service_started
       ds-p2rank:
         condition: service_started
-      ds-plm:
+      ds-plank:
         condition: service_started
       metatask:
         condition: service_started
@@ -502,7 +502,7 @@ volumes:
   celery:
   foldseek:
   p2rank:
-  plm:
+  plank:
   inputs:
   conservation:
   grafana:

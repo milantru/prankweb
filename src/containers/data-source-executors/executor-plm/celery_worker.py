@@ -9,7 +9,7 @@ celery = Celery(
     broker=os.getenv('CELERY_BROKER_URL')
 )
 
-@celery.task(name='ds_plm')
-def ds_plm(id):
-    executor.run_plm(id)
+@celery.task(name='ds_plank')
+def ds_plank(id):
+    executor.run_plank(id)
     
