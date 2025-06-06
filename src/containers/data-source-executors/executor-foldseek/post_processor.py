@@ -242,7 +242,7 @@ def process_foldseek_output(result_folder, foldseek_result_file, id, query_struc
     logger.info(f'{id} Starting processing result file: {foldseek_result_file}')
     
     for chain in remaining_chains:
-        print("REMAINING CHAINS:", remaining_chains)
+        logger.info(f'{id} Remaining chains: {remaining_chains}')
         result_file_path = os.path.join(result_folder, f"{result_file_base}_{chain}_res") if total_chains_count > 1 else os.path.join(result_folder, f"{result_file_base}_res")
         update_status(status_file_path, id, StatusType.STARTED, infoMessage=f"Processing Foldseek output, {total_chains_count - processed_chains_count} chains remaining")
 
@@ -259,5 +259,4 @@ def process_foldseek_output(result_folder, foldseek_result_file, id, query_struc
                 builder.add_binding_site(binding_site)
             save_results(result_folder, RESULT_FILE.format(chain), builder)
         processed_chains_count += 1
-    print("REMAINING CHAINS:", remaining_chains)
     logger.info(f'{id} Finished processing Foldseek output')
