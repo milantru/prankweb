@@ -74,7 +74,12 @@ function Help() {
                     There are several properties that are displayed in the sequence visualization:
                     <ul>
                         <li>Sequence of submitted protein (just the selected chain).</li>
-                        <li>Selected sequences of proteins similar to the submitted protein (one row displays just one similar chain).</li>
+                        <li>
+                            Selected sequences of proteins similar to the submitted protein (one row displays just one similar chain).
+                            <ul>
+                                <li>Selected sequences are aligned only with the query protein sequence, not with each other.</li>
+                            </ul>
+                        </li>
                         <li>
                             Colored rectangles under protein X depict areas with predicted pockets and real binding areas (if available) of the X.
                             Real binding sites are residues within 5&nbsp;&#8491; from any ligand atom.
