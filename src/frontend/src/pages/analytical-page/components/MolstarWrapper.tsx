@@ -208,15 +208,22 @@ export const MolStarWrapper = forwardRef(({
 			}
 
 			const update = plugin.build();
+			let transparencyError = false;
 			// Update query structure pockets
 			for (const [dataSourceName, o1] of Object.entries(queryProteinPockets.current)) {
 				for (const [chain, o2] of Object.entries(o1)) {
 					for (const [bindingSiteId, pocket] of Object.entries(o2)) {
 						for (const o of pocket.residueObjectsAndSupporters) {
-							updateTransparency(update, o);
+							try{
+								updateTransparency(update, o);
+							}
+							catch (e) { transparencyError = true; }
 						}
 					}
 				}
+			}
+			if (transparencyError) {
+				toastWarning("Failed to update transparency for some pockets") 
 			}
 			// Update similar structures pockets
 			for (const [dataSourceName, o1] of Object.entries(similarProteinPockets.current)) {
