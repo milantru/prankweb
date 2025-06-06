@@ -122,7 +122,7 @@ paths:
           example: 2src
       responses:
         '200':
-          description: Successful response with the protein ID.
+          description: Successful response with the protein ID or null if the ID is not in the database.
           content:
             application/json:
               schema:
@@ -130,8 +130,14 @@ paths:
                 properties:
                   id:
                     type: string
+                    nullable: true
                     description: The ID associated with the protein.
                     example: "pdb_2src"
+                  error:
+                    type: string
+                    nullable: true
+                    description: "No error, response was successful."
+                    example: null
         '400':
           description: Bad request due to invalid input method or missing protein identifier.
           content:
@@ -139,6 +145,11 @@ paths:
               schema:
                 type: object
                 properties:
+                  id:
+                    type: string
+                    nullable: true
+                    description: "No ID should be provided, response was not successful."
+                    example: null
                   error:
                     type: string
                     description: Error message describing the problem.

@@ -135,16 +135,16 @@ def test_plankweb_get_id(test):
 
    # assert response.status_code == 200, f"{description}: Unexpected status code {response.status_code}"
 
-    if "id" in expected_result:
-        if expected_result["id"] is None:
-            assert isinstance(actual_result, dict)
-            assert actual_result["id"] is None, f"{description}: Mismatch\nExpected: {expected_result}\nGot: {actual_result}"
-        else:
-            assert isinstance(actual_result, dict)
-            assert actual_result["id"].startswith(expected_result["id"]), f"{description}: Mismatch\nExpected: {expected_result}\nGot: {actual_result}"
-    else: # Error
-        assert isinstance(actual_result, dict)
-        assert actual_result["error"].startswith(expected_result["error"]), f"{description}: Mismatch\nExpected: {expected_result}\nGot: {actual_result}"
+    assert isinstance(actual_result, dict)
+
+    # check id field
+    if expected_result["id"] is None:
+        assert actual_result["id"] is None, f"{description}: Mismatch\nExpected: {expected_result}\nGot: {actual_result}"
+    else:
+        assert actual_result["id"].startswith(expected_result["id"]), f"{description}: Mismatch\nExpected: {expected_result}\nGot: {actual_result}"
+    
+    # check error field
+    assert actual_result["error"] == expected_result["error"], f"{description}: Mismatch\nExpected: {expected_result}\nGot: {actual_result}"
 
 #################################################################################################################
 
