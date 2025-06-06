@@ -640,6 +640,10 @@ function AnalyticalPage() {
 		for (const [dataSourceName, similarProteins] of Object.entries(dataSourcesSimilarProteins)) {
 			offsets[dataSourceName] = new Array(similarProteins.length).fill(0);
 		}
+		const isSimProtRead: Record<string, boolean[]> = {};
+		for (const [dataSourceName, similarProteins] of Object.entries(dataSourcesSimilarProteins)) {
+			isSimProtRead[dataSourceName] = new Array(similarProteins.length).fill(false);
+		}
 
 		/* Now we are going to create 2 mappings: A and B.
 		 * A is for general mapping from query sequence to master query sequence which we are going to create (that's
@@ -662,16 +666,25 @@ function AnalyticalPage() {
 			);
 		};
 
-		for (let aminoAcidIdx = 0; aminoAcidIdx < querySeqLength; aminoAcidIdx++) {
+		const getIsGapMode = (aaIdx: number) => {
 			/* We can imagine sequence viewer as a table. We go through all data sources and all similar proteins,
 			 * but we still look on the same index, we can imagine it as if we were going though one column.
 			 * If in that column exists gap, it means we are in gap mode. This means we "output" to master query sequence 
 			 * a gap ("-"). */
-			const isGapMode = Object.entries(dataSourcesSimilarProteins).some(([dataSourceName, similarProteins]) =>
-				similarProteins.some((simProt, simProtIdx) =>
-					simProt.alignmentData.querySequence[aminoAcidIdx + offsets[dataSourceName][simProtIdx]] === '-'));
+			for (const [dataSourceName, similarProteins] of Object.entries(dataSourcesSimilarProteins)) {
+				for (let simProtIdx = 0; simProtIdx < similarProteins.length; simProtIdx++) {
+					const simProt = similarProteins[simProtIdx];
+					if (simProt.alignmentData.querySequence[aaIdx + offsets[dataSourceName][simProtIdx]] === "-") {
+						return true;
+					}
+				}
+			}
+			return false;
+		}
+		for (let aminoAcidIdx = 0; aminoAcidIdx < querySeqLength; aminoAcidIdx++) {
+			const isGapMode = getIsGapMode(aminoAcidIdx);
 
-			let aminoAcidOfQuerySeq: string = null!;
+			let aminoAcidOfQuerySeq: string | null = null;
 			/* Master query sequence is being built iteratively character by character,
 			 * that is why we can use masterQuerySeq.length to point to the newest character.
 			 * This variable holds index of the current character (amino acid or gap) of
@@ -685,12 +698,12 @@ function AnalyticalPage() {
 
 					const aminoAcidOrGapOfQuerySeq = similarProtein.alignmentData.querySequence[aminoAcidIdx + offset];
 					if (isGapMode) {
-						if (aminoAcidOrGapOfQuerySeq === '-') {
+						if (aminoAcidOrGapOfQuerySeq === "-") {
 							similarProteins[dataSourceName][simProtIdx].sequence += similarProtein.alignmentData.similarSequence[aminoAcidIdx + offset];
 							similarProteinsMapping[dataSourceName][simProtIdx][aminoAcidIdx + offset] = aminoAcidOrGapOfMasterQuerySeqCurrIdx;
 							offsets[dataSourceName][simProtIdx] = offset + 1;
 						} else {
-							similarProteins[dataSourceName][simProtIdx].sequence += '-';
+							similarProteins[dataSourceName][simProtIdx].sequence += "-";
 						}
 					} else {
 						/* All of the results have the same query sequence (if we ignore gaps). On the (aminoAcidIdx + offset) index
@@ -705,7 +718,8 @@ function AnalyticalPage() {
 			}
 
 			if (isGapMode) {
-				masterQuerySeq += '-';
+				masterQuerySeq += "-";
+				// Note: Because of aaIdx decrement, loop can't end with gap mode (this info may help someone in the future)
 				aminoAcidIdx--; // Sequences with gaps where shifted, repeat for the same amino acid
 			} else {
 				/* The only way `aminoAcidOfQuerySeq` can be null here is if we don't have any similar sequences at all (in any data source).
@@ -714,6 +728,58 @@ function AnalyticalPage() {
 				 * to build master query sequence. (Yes, it will be identity mapping.) */
 				masterQuerySeq += aminoAcidOfQuerySeq ?? querySeq[aminoAcidIdx];
 			}
+		}
+
+		/* Imagine pairs (pair of query seq and sim prot, both aligned, padded), now imagine we went through all amino acids,
+		 * query prot ends with gaps, there was no gap (so no gap mode), now we ended because we went through all amino acids,
+		 * BUT what if similar protein is longer? Query protein is padded with gaps at the end to match sim prot, but we went
+		 * through all the amino acids so the algorithm has ended. The problem is that the sim prot did not copy "to the output".
+		 * That is why now we finish the process by outputting remaining sim prots parts. */
+		const areAllSimProtsRead = () => {
+			for (const areSimProtsPerDataSourceRead of Object.values(isSimProtRead)) {
+				for (const isSimProtRead of areSimProtsPerDataSourceRead) {
+					if (!isSimProtRead) {
+						return false;
+					}
+				}
+			}
+			return true;
+		};
+		while (Object.entries(dataSourcesSimilarProteins).length > 0 && !areAllSimProtsRead()) {
+			const lastAminoAcidIdx = querySeqLength - 1; // we will want to read new one, that's why later is + 1 used
+			const aminoAcidOrGapOfMasterQuerySeqCurrIdx = masterQuerySeq.length;
+			/* Attention! Mapping from query sequence to master query sequence (mapping A) is not being created here,
+			 * only gaps will be outputted to master query seq now, as all the bindings sites that needs this mapping
+			 * are on the indices of amino acids of query prot. And again, now only gaps will be outputted. 
+			 * So it seems this mapping does not have to be created now for such high indices. */
+			for (const [dataSourceName, unAlignedSimilarProteins] of Object.entries(dataSourcesSimilarProteins)) {
+				for (let simProtIdx = 0; simProtIdx < unAlignedSimilarProteins.length; simProtIdx++) {
+					if (isSimProtRead[dataSourceName][simProtIdx]) {
+						/* This sim prot was all read, but it seems there is at least one which was not read all yet,
+						 * so for the current one we just output "-". */
+						similarProteins[dataSourceName][simProtIdx].sequence += "-";
+						continue;
+					}
+					const similarProtein = unAlignedSimilarProteins[simProtIdx];
+					const offset = offsets[dataSourceName][simProtIdx];
+					const lastReadAminoAcidIndex = lastAminoAcidIdx + offset;
+
+					const aminoAcidOrGapOfQuerySeq = similarProtein.alignmentData.querySequence[lastReadAminoAcidIndex + 1];
+					if (aminoAcidOrGapOfQuerySeq === "-") {
+						similarProteins[dataSourceName][simProtIdx].sequence += similarProtein.alignmentData.similarSequence[lastReadAminoAcidIndex + 1];
+						similarProteinsMapping[dataSourceName][simProtIdx][lastReadAminoAcidIndex + 1] = aminoAcidOrGapOfMasterQuerySeqCurrIdx;
+						offsets[dataSourceName][simProtIdx] = offset + 1;
+						if ((lastReadAminoAcidIndex + 1) === (similarProtein.alignmentData.similarSequence.length - 1)) {
+							// It was last read char
+							isSimProtRead[dataSourceName][simProtIdx] = true;
+						}
+					} else {
+						similarProteins[dataSourceName][simProtIdx].sequence += "-";
+					}
+				}
+			}
+
+			masterQuerySeq += "-";
 		}
 
 		/* "Postprocessing phase": Update all residue indices of each binding site, seq to struct mappings,
@@ -750,7 +816,7 @@ function AnalyticalPage() {
 			if (!unalignedSimilarProteins) {
 				continue;
 			}
-			// Update residues of binding sites of all similar proteins, update seq to struct mappings, and also count supporters
+			// Update residues of binding sites of all similar proteins, and also count supporters
 			for (let simProtIdx = 0; simProtIdx < unalignedSimilarProteins.length; simProtIdx++) {
 				const simProt = unalignedSimilarProteins[simProtIdx];
 				const simProtMapping = similarProteinsMapping[dataSourceName][simProtIdx];

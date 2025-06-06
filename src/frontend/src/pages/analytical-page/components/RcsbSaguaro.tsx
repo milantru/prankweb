@@ -689,7 +689,7 @@ const RcsbSaguaro = forwardRef(({
         return seqIdxCounter;
     }
 
-    function getStructIdx(positionData: RcsbPositionData, position: number) {
+    function getStructIdx(positionData: RcsbPositionData, position: number): number | undefined {
         let structIdx: number = null!;
 
         if (positionData?.dataSourceName && positionData?.pdbCode && positionData?.chain) {
