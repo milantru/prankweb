@@ -677,6 +677,10 @@ const RcsbSaguaro = forwardRef(({
      * and this function calculates index before aligning */
     function getSeqIdxBeforeAligning(sequenceWithGaps: string, rcsbPosition: number) {
         let seqIdxCounter = -1;
+        if (sequenceWithGaps[rcsbPosition - 1] === "-") {
+            // We don't want to focus when clicked on gap
+            return seqIdxCounter;
+        }
 
         for (let i = 0; i < rcsbPosition && i < sequenceWithGaps.length; i++) {
             const aminoAcidOrGap = sequenceWithGaps[i];
