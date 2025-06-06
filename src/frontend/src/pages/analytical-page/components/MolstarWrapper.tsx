@@ -143,7 +143,7 @@ export const MolStarWrapper = forwardRef(({
 							regionState: {
 								top: "hidden",    //sequence
 								left: (window.innerWidth > 1200) ? "collapsed" : "hidden",
-								//tree with some components, hide for small and medium screens
+								// Tree with some components, hide for small and medium screens
 								bottom: "hidden", //shows log information
 								right: "hidden"   //structure tools
 							}
@@ -343,7 +343,7 @@ export const MolStarWrapper = forwardRef(({
 		const alpha = getPocketTransparency(pocketExprAndSupportersCount.supportersCount);
 
 		const pr = await plugin.builders.structure.representation.addRepresentation(p, {
-			type: "cartoon",
+			type: "gaussian-surface",
 			typeParams: { alpha: alpha },
 			color: "uniform",
 			colorParams: { value: Color(Number("0xff0000")) }, // red color

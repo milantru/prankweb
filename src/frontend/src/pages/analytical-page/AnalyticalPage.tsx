@@ -1164,6 +1164,10 @@ function AnalyticalPage() {
 			if (structureElementLoci) {
 				const structureElement = StructureElement.Stats.ofLoci(structureElementLoci);
 				const location = structureElement.firstElementLoc;
+				if (!location.structure) {
+					console.error("Hovered on item in Mol* viewer, but can't highlight it in Rcsb Saguaro viewer.")
+					return;
+				}
 				const molstarResidue = {
 					authName: StructureProperties.atom.auth_comp_id(location),
 					name: StructureProperties.atom.label_comp_id(location),
