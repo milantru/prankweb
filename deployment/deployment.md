@@ -12,16 +12,19 @@
 
 Nasadenie projektu **Plankweb** je založené primárne na správnej príprave prostredia. Samotné zostavenie a spustenie aplikácie potom prebieha pomocou príkazu `docker compose` a spustením serveru **nginx**. Táto príručka obsahuje:
 
-- [Naklonovanie repozitára](#naklonovanie-repozitára)
-- [Manuálne nasadenie](#manuálne-nasadenie)
-  1. [Príprava prostredia Docker](#príprava-prostredia-docker)
-  2. [Tvorba docker volumes](#tvorba-docker-volumes)
-  3. [Tvorba .env súboru](#tvorba-env-súboru)
-  4. [Spustenie aplikácie](#spustenie-aplikácie)
-  5. [Spustenie nginx s HTTPS](#spustenie-nginx-s-https)
-- [(Polo)automatizované nasadenie](#poloautomatizované-nasadenie)
-- [Monitorovanie aplikácie](#monitorovanie-aplikácie)
-  - [Príprava tabuliek a grafov na platforme grafana](#príprava-tabuliek-a-grafov-na-platforme-grafana)
+- [Nasadenie](#nasadenie)
+  - [Odporúčané požiadavky](#odporúčané-požiadavky)
+  - [Úvod](#úvod)
+  - [Naklonovanie repozitára](#naklonovanie-repozitára)
+  - [Manuálne nasadenie](#manuálne-nasadenie)
+    - [Príprava prostredia Docker](#príprava-prostredia-docker)
+    - [Tvorba docker volumes](#tvorba-docker-volumes)
+    - [Tvorba .env súboru](#tvorba-env-súboru)
+    - [Spustenie aplikácie](#spustenie-aplikácie)
+    - [Spustenie nginx s HTTPS](#spustenie-nginx-s-https)
+  - [(Polo)automatizované nasadenie](#poloautomatizované-nasadenie)
+  - [Monitorovanie aplikácie](#monitorovanie-aplikácie)
+    - [Príprava tabuliek a grafov na platforme Grafana](#príprava-tabuliek-a-grafov-na-platforme-grafana)
 
 ## Naklonovanie repozitára
 
@@ -72,7 +75,7 @@ Po úspešnej inštalácii a spustení Dockeru je možné vytvoriť Docker **vol
 - *plankweb_celery*
 - *plankweb_foldseek*
 - *plankweb_p2rank*
-- *plankweb_plm*
+- *plankweb_plank*
 - *plankweb_inputs*
 - *plankweb_conservation*
 - *plankweb_grafana*

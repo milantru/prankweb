@@ -236,7 +236,7 @@ def test_plankweb_ds_results(test):
     with open('files/ds_result_format.json') as ds_format_file:
         ds_result_format = json.load(ds_format_file)
 
-    for ds_results_folder in [ f'ds_foldseek/{id}', f'ds_p2rank/{id}', f'ds_p2rank/{id}/conservation', f'ds_plm/{id}' ]:
+    for ds_results_folder in [ f'ds_foldseek/{id}', f'ds_p2rank/{id}', f'ds_p2rank/{id}/conservation', f'ds_plank/{id}' ]:
     
         status = _wait_for_status(ds_results_folder)
         assert status == 1, f"{description}[{ds_results_folder}]: Unexpected status: {status}"

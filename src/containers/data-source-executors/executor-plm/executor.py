@@ -7,19 +7,19 @@ from status_manager import update_status, StatusType
 
 
 from predict import embed_sequences, predict_bindings
-from post_processor import process_plm_output
+from post_processor import process_plank_output
 
 RESULTS_FOLDER = "results"
 INPUTS_URL = os.getenv('INPUTS_URL')
 PLANKWEB_BASE_URL = os.getenv('PLANKWEB_BASE_URL')
 
-logger = create_logger('ds-plm')
+logger = create_logger('ds-plank')
 
 os.makedirs(RESULTS_FOLDER, exist_ok=True)
 logger.info(f'{id} Results folder prepared: {RESULTS_FOLDER}')
 
-def run_plm(id):
-    logger.info(f'{id} ds_plm started')
+def run_plank(id):
+    logger.info(f'{id} ds_plank started')
 
     eval_folder = os.path.join(RESULTS_FOLDER, f"{id}")
     os.makedirs(eval_folder, exist_ok=True)
@@ -68,7 +68,7 @@ def run_plm(id):
         result_file_path = os.path.join(eval_folder, "result.json")
         result_data = predict_bindings(embeddings, lenghts, result_file_path, seq_chains, seq)
 
-        logger.info(f'{id} PLM prediction finished')
+        logger.info(f'{id} NN prediction finished')
 
         query_structure_url = os.path.join(
             PLANKWEB_BASE_URL,
@@ -78,9 +78,9 @@ def run_plm(id):
             "structure.pdb"
         )
         seq_to_str_mapping = chain_map.get('seqToStrMapping', {})
-        update_status(status_file_path, id, StatusType.STARTED, infoMessage="Processing pLM output")
+        update_status(status_file_path, id, StatusType.STARTED, infoMessage="Processing Plank output")
 
-        process_plm_output(
+        process_plank_output(
             id, 
             eval_folder, 
             result_data, 
@@ -97,5 +97,5 @@ def run_plm(id):
         logger.error(f'{id} An unexpected error occurred: {str(e)}')
         update_status(status_file_path, id, StatusType.FAILED, errorMessage = f"An unexpected error occurred: {e}")
 
-    logger.info(f'{id} ds_plm finished')
+    logger.info(f'{id} ds_plank finished')
 
