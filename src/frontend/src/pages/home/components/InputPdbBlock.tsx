@@ -43,7 +43,8 @@ function InputPdbBlock({ data, setData, setErrorMessage }: Props) {
                     value={data.pdbCode}
                     onChange={e => setData({ ...data, pdbCode: sanitizeCode(e.target.value) })} />
             </div>
-            <div className="form-check">
+            {/* Delete d-none to enable chains selecting if desired in the future. */}
+            <div className="d-none form-check">
                 <input className="form-check-input" type="checkbox" id="pdb-seal-structure"
                     title="Uncheck to allow chain filtering."
                     checked={useOriginalStructure}
