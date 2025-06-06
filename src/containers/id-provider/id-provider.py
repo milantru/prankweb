@@ -80,15 +80,15 @@ def get_or_generate():
 def get_id():
     input_method = request.args.get('input_method')
     input_protein = request.args.get('input_protein')
-    logger.info(f'get-id GET request received: input_method -> {input_method}, input_protein -> {input_protein}')
+    logger.info(f'get-id GET request received: {{input_method: {input_method}, input_protein: {input_protein}}}')
 
     if not input_method:
         logger.info('input_method not specified, status code 400')
-        return jsonify({'error': 'input_method not specified'}), 400
+        return jsonify({'id': None, 'error': 'input_method not specified'}), 400
     
     if not input_protein:
         logger.info('Input protein not specified, status code 400')
-        return jsonify({'error': 'input_protein not specified'}), 400
+        return jsonify({'id': None, 'error': 'input_protein not specified'}), 400
 
     if input_method not in (
         InputMethods.PDB.name, InputMethods.PDB.name.lower(),
@@ -96,7 +96,7 @@ def get_id():
         InputMethods.SEQUENCE.name, InputMethods.SEQUENCE.name.lower()
     ):
         logger.info(f'Unsupported input method ({input_method}), status code 400')
-        return jsonify({'error': f'Input method {input_method} not supported'}), 400
+        return jsonify({'id': None, 'error': f'Input method {input_method} not supported'}), 400
     
     key = f'{InputMethods[input_method.upper()].value}:{input_protein.lower()}'
     logger.info(f'Key for database search created from input: {key}')
@@ -105,10 +105,10 @@ def get_id():
 
     if not id:
         logger.info(f'{key} ID not found, returning None')
-        return jsonify({'id': None})
+        return jsonify({'id': None, 'error': None})
 
     logger.info(f'{key} ID found, returning {id.decode()}')
-    return jsonify({'id': id.decode()})
+    return jsonify({'id': id.decode(), 'error': None})
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
