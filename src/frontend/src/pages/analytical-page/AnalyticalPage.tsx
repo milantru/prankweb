@@ -536,14 +536,17 @@ function AnalyticalPage() {
 		}
 	}
 
-	function getAvgConservationForQueryBindingSite(bindingSite: BindingSite) {
-		const bindingSiteConservations = conservations.current.filter(c =>
+	function getAvgConservationForQueryBindingSite(bindingSite: BindingSite, conservations: Conservation[]) {
+		const bindingSiteConservations = conservations.filter(c =>
 			bindingSite.residues.some(r => r.sequenceIndex === c.index));
 
 		const bindingSiteConservationValues = bindingSiteConservations.map(v => v.value);
 
-		const avg = bindingSiteConservationValues.reduce((a, b) => a + b) / bindingSiteConservationValues.length;
+		if (bindingSiteConservationValues.length === 0) {
+			return 0;
+		}
 
+		const avg = bindingSiteConservationValues.reduce((a, b) => a + b) / bindingSiteConservationValues.length;
 		return avg;
 	}
 
@@ -783,6 +786,10 @@ function AnalyticalPage() {
 			masterQuerySeq += "-";
 		}
 
+		for (const conservation of conservations) {
+			conservation.index = mapping[conservation.index];
+		}
+
 		/* "Postprocessing phase": Update all residue indices of each binding site, seq to struct mappings,
 		 * also count how many data sources support certain binding site and calculate avg conservations if required. */
 		// bindingSiteSupportCounterTmp[residue index in structure (of pocket)]: number of data sources supporting pocket on the index
@@ -809,7 +816,7 @@ function AnalyticalPage() {
 
 				// Calculate average conservation value for the binding site
 				if (useConservation) {
-					bindingSite.avgConservation = getAvgConservationForQueryBindingSite(bindingSite);
+					bindingSite.avgConservation = getAvgConservationForQueryBindingSite(bindingSite, conservations);
 				}
 			}
 
@@ -841,9 +848,7 @@ function AnalyticalPage() {
 				}
 			}
 		}
-		for (const conservation of conservations) {
-			conservation.index = mapping[conservation.index];
-		}
+		
 		setBindingSiteSupportCounter(prevState => ({
 			...prevState,
 			[chain]: bindingSiteSupportCounterTmp
