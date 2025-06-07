@@ -1,11 +1,11 @@
-# Prankweb
-Prankweb je webová aplikácia, ktorej hlavnou funkcionalitou je predikovanie a vizualizácia potenciálnych väzobných miest ligandov na základe štruktúr proteínov. Cieľom projektu je rozšíriť funkcionalitu aplikácie.
+# PlankWeb
 
-Pôvodné projekty:
-* [PrankWeb](https://github.com/cusbg/prankweb)
-* [P2Rank Framework](https://github.com/cusbg/p2rank-framework)
+**PlankWeb**, building upon ideas from the existing [PrankWeb](https://prankweb.cz/), is a modern and user-friendly tool for visualizing protein structures, sequences, and protein-ligand binding sites. We hope it will provide scientists with a quick and convenient way to analyze proteins.
 
-## Dokumenty
+Application was developed as part of our [university software project](https://is.cuni.cz/studium/predmety/index.php?do=predmet&kod=NPRG069).
+
+## Documents (In Slovak)
+
 * [Zámer](docs/zamer.md)
 * [Špecifikácia](https://docs.google.com/document/d/14Hx850b0bldpcYYky8Qy-FPD1uYN_zixqSKjVb0__-s/edit#heading=h.9i35mqlrcaay)
 * [Záznamy stretnutí](meetings/)
