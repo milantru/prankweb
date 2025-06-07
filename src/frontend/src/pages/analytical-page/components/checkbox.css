@@ -1,0 +1,63 @@
+.plankweb-checkbox-wrapper {
+    display: inline-block;
+}
+
+.plankweb-checkbox {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    user-select: none;
+    font-size: 16px;
+    line-height: 1.4;
+}
+
+.plankweb-checkbox-input {
+    display: none;
+}
+
+.plankweb-checkbox-box {
+    width: 24px;
+    height: 24px;
+    background-color: #eee;
+    border: 2px solid #ccc;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.plankweb-checkbox-box .checkmark {
+    width: 16px;
+    height: 16px;
+    stroke: #28a745;
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    fill: none;
+    opacity: 0;
+    transform: scale(0.8);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.plankweb-checkbox-input:checked + .plankweb-checkbox-box {
+    background-color: #e6ffe6;
+    border-color: #28a745;
+}
+
+.plankweb-checkbox-input:checked + .plankweb-checkbox-box .checkmark {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.plankweb-checkbox-input:disabled + .plankweb-checkbox-box {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.plankweb-checkbox-label {
+    vertical-align: middle;
+    display: inline-block;
+}

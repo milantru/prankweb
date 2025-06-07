@@ -1,5 +1,5 @@
 import { useState } from "react";
-import "./Switch.tsx.css";
+import "./checkbox.css";
 
 type Props = {
     classes?: string;
@@ -18,17 +18,25 @@ function Switch({ classes = "", isDisabled, isOnInitially = false, onToggle }: P
     };
 
     return (
-        <div className={`custom-switch-wrapper ${classes}`}>
-            <label className="custom-switch">
+        <div className={`plankweb-checkbox-wrapper ${classes}`}>
+            <label className="plankweb-checkbox">
+                <span className="plankweb-checkbox-label">Support-Based Highlighting</span>
                 <input
                     type="checkbox"
-                    className="custom-switch-input"
+                    className="plankweb-checkbox-input"
                     checked={checked}
                     disabled={isDisabled}
-                    onChange={handleChange} />
-                <span className="custom-switch-slider" />
+                    onChange={handleChange}
+                />
+                <span className="plankweb-checkbox-box">
+                    <svg className="checkmark" viewBox="0 0 24 24">
+                        <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                </span>
             </label>
         </div>
+
+
     );
 }
 

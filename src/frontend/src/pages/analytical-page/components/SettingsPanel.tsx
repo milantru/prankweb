@@ -94,28 +94,49 @@ function SettingsPanel({
                         })) as any} />
                 </div>
 
-                <div className="d-flex align-items-center form-check mb-0 mr-2">
-                    <input type="checkbox"
-                        id="squash-binding-sites"
-                        className="form-check-input"
-                        disabled={isDisabled}
-                        checked={squashBindingSites}
-                        onChange={onBindingSitesSquashClick} />
-                    <label className="form-check-label" htmlFor="squash-binding-sites">
-                        Squash binding sites
-                    </label>
+                <div className="d-flex align-items-center form-check mb-0 mr-2 plankweb-checkbox-wrapper">
+                    <div>
+                        <label className="form-check-label d-flex align-items-center gap-2 plankweb-checkbox">
+                            <input
+                                type="checkbox"
+                                id="squash-binding-sites"
+                                className="plankweb-checkbox-input"
+                                disabled={isDisabled}
+                                checked={squashBindingSites}
+                                onChange={onBindingSitesSquashClick}
+                            />
+                            <span className="plankweb-checkbox-box">
+                                <svg className="checkmark" viewBox="0 0 24 24">
+                                    <polyline points="20 6 9 17 4 12" />
+                                </svg>
+                            </span>
+                            Squash binding sites
+                        </label>
+                    </div>
                 </div>
 
-                <div className="d-flex align-items-center form-check mb-0 mr-2">
-                    <input type="checkbox"
-                        id="start-query-seq-at-zero"
-                        className="form-check-input"
-                        disabled={isDisabled}
-                        checked={startQuerySequenceAtZero}
-                        onChange={onStartQuerySequenceAtZero} />
-                    <label className="form-check-label" htmlFor="start-query-seq-at-zero">
-                        Start query sequence at 0 (Experimental)
-                    </label>
+                <div className="d-flex align-items-center form-check mb-0 mr-2 plankweb-checkbox-wrapper">
+                    <div>
+                        <label className="form-check-label d-flex align-items-center gap-2 plankweb-checkbox" style={{ flexDirection: 'row' }}>
+                            <input
+                                type="checkbox"
+                                id="start-query-seq-at-zero"
+                                className="plankweb-checkbox-input"
+                                disabled={isDisabled}
+                                checked={startQuerySequenceAtZero}
+                                onChange={onStartQuerySequenceAtZero}
+                            />
+                            <span className="plankweb-checkbox-box">
+                                <svg className="checkmark" viewBox="0 0 24 24">
+                                    <polyline points="20 6 9 17 4 12" />
+                                </svg>
+                            </span>
+                            <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1 }}>
+                                <small style={{ fontSize: '0.7rem', color: '#6c757d', marginBottom: 2 }}>Experimental</small>
+                                <span>Start query sequence at 0</span>
+                            </div>
+                        </label>
+                    </div>
                 </div>
 
                 <button className="btn btn-outline-secondary ml-auto"
