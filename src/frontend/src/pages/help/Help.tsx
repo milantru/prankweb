@@ -19,7 +19,7 @@ function Help() {
                     The user can specify what protein to analyze in four ways:
                     <ul>
                         <li>PDB code <em>(Experimental structure)</em></li>
-                        <li>Upload a structure file (.pdb) with selected chains <em>(Custom structure)</em></li>
+                        <li>Upload a structure .pdb file <em>(Custom structure)</em></li>
                         <li>Uniprot ID <em>(AlphaFold structure)</em></li>
                         <li>Text sequence <em>(Sequence)</em></li>
                     </ul>
