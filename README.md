@@ -1,6 +1,12 @@
 # PlankWeb
 
-**PlankWeb**, building upon ideas from the existing [PrankWeb](https://prankweb.cz/), is a modern and user-friendly tool for visualizing protein structures, sequences, and protein-ligand binding sites. We hope it will provide scientists with a quick and convenient way to analyze proteins.
+**PlankWeb**, inspired by the existing [PrankWeb](https://prankweb.cz/), is a modern and user-friendly tool for visualizing protein structures, sequences, and protein-ligand binding sites. It aims to provide scientists with a quick and convenient way to analyze proteins.
+
+The goal of the project was to create a new web application based on the ideas from PrankWeb, which is used for the prediction and visualization of ligand binding sites based on protein structures. The development focused on incorporating multiple data sources and modifying the user interface.
+
+The application is available at: [https://prankweb2.ksi.projekty.ms.mff.cuni.cz/](https://prankweb2.ksi.projekty.ms.mff.cuni.cz/)
+
+
 
 Application was developed as part of our [university software project](https://is.cuni.cz/studium/predmety/index.php?do=predmet&kod=NPRG069).
 
