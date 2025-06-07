@@ -39,7 +39,7 @@ function InputPdbBlock({ data, setData, setErrorMessage }: Props) {
             <div className="mb-3">
                 <label htmlFor="pdb-code" className="form-label">PDB Code</label>
                 <input type="text" className="form-control" id="pdb-code" name="pdbCode" placeholder="2SRC"
-                    title="PrankWeb will use the protein file from PDB."
+                    title="PlankWeb will use the protein file from PDB."
                     value={data.pdbCode}
                     onChange={e => setData({ ...data, pdbCode: sanitizeCode(e.target.value) })} />
             </div>

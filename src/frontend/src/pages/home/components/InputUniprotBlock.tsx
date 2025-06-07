@@ -17,7 +17,7 @@ function InputUniprotBlock({ data, setData, setErrorMessage }: Props) {
             <div className="mb-3">
                 <label htmlFor="uniprot-code" className="form-label">UniProt ID</label>
                 <input type="text" className="form-control" id="uniprot-code" name="uniprotCode"
-                    placeholder="Q5VSL9" title="PrankWeb will use AlphaFold predicted structure."
+                    placeholder="Q5VSL9" title="PlankWeb will use AlphaFold predicted structure."
                     value={data.uniprotCode}
                     onChange={e => setData({ ...data, uniprotCode: sanitizeCode(e.target.value) })} />
             </div>

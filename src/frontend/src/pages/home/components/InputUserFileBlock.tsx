@@ -91,7 +91,7 @@ function InputUserFileBlock({ data, setData, setErrorMessage }: Props) {
         let chains = input;
         let useSpaceAsCommaTmp = useSpaceAsComma;
         if (input.toLowerCase().includes("space")) {
-            // remove space (due to gi, it replaces regardless of capitalization, e.g. "Space", "sPaCe"...)
+            // Remove space (due to gi, it replaces regardless of capitalization, e.g. "Space", "sPaCe"...)
             chains = input.replace(/space/gi, "");
             useSpaceAsCommaTmp = !useSpaceAsComma;
             setUseSpaceAsComma(useSpaceAsCommaTmp);
