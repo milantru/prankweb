@@ -222,20 +222,24 @@ export const MolStarWrapper = forwardRef(({
 					}
 				}
 			}
-			if (transparencyError) {
-				toastWarning("Failed to update transparency for some pockets") 
-			}
+
 			// Update similar structures pockets
 			for (const [dataSourceName, o1] of Object.entries(similarProteinPockets.current)) {
 				for (const [pdbId, o2] of Object.entries(o1)) {
 					for (const [chain, o3] of Object.entries(o2)) {
 						for (const [bindingSiteId, pocket] of Object.entries(o3)) {
 							for (const o of pocket.residueObjectsAndSupporters) {
-								updateTransparency(update, o);
-							}
+								try{
+									updateTransparency(update, o);
+								}
+								catch (e) { transparencyError = true; }
+								}
 						}
 					}
 				}
+			}
+			if (transparencyError) {
+				console.error("Failed to update pockets transparency.");
 			}
 			await update.commit();
 			// await sleep(250); // TODO uncomment if required
@@ -355,7 +359,7 @@ export const MolStarWrapper = forwardRef(({
 			color: "uniform",
 			colorParams: { value: Color(Number("0xff0000")) }, // red color
 			size: "physical",
-			sizeParams: { scale: 1.10 }
+			sizeParams: { scale: 0.5 }
 		});
 		setSubtreeVisibility(plugin.state.data, p.ref, !showRepresentationWhenCreated);
 

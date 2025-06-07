@@ -118,7 +118,11 @@ function SettingsPanel({
                     </label>
                 </div>
 
-                <button className="btn btn-outline-secondary ml-auto" onClick={onExport} disabled={isDisabled}>
+                <button className="btn btn-outline-secondary ml-auto"
+                    title="Export the current view to JSON."
+                    type="button"
+                    onClick={onExport}
+                    disabled={isDisabled}>
                     <i className="bi bi-download"></i>
                 </button>
             </div>
