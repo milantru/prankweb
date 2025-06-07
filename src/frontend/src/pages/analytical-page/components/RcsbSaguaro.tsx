@@ -44,8 +44,7 @@ const RcsbSaguaro = forwardRef(({
     const predictedPocketColor = "#00aa00";
     const defaultTitleFlagColor = "lightgrey"
     /* If query seq is set to start at 0, it means some sequences might 
-    * be in negative numbers on board. */
-    const shouldQuerySeqStartAtZero = false; // TODO delete probably
+     * be in negative numbers on board. */
     const [rcsbFv, setRcsbFv] = useState<RcsbFv>(null);
     const [colorsInitialized, setColorsInitialized] = useState<boolean>(false);
     const dataSourcesColors = useRef<Record<string, string>>(null!); // dataSourcesColors[dataSourceName] -> color in hex, e.g. #0ff1ce
@@ -564,84 +563,6 @@ const RcsbSaguaro = forwardRef(({
         return rowConfigData;
     }
 
-    // TODO maybe delete
-    // Update sequences to use common similar parts (with -)
-    function createSequencesWithSubstitutedCommonSimilarParts(sequences: string[], similar_sequences: string[], start_indices: number[]) {
-        for (let i = 1; i < sequences.length; i++) { // we skip i = 0 because it is a query sequence (no common similar part TODO?)
-            const sequence = sequences[i];
-
-            const firstPart = sequence.substring(0, start_indices[i]);
-            const secondPart = similar_sequences[i];
-            const end_index = start_indices[i] + similar_sequences[i].length;
-            const thirdPart = (sequence.length - 1) >= (end_index + 1)
-                ? sequence.substring(end_index + 1)
-                : "";
-
-            sequences[i] = firstPart + secondPart + thirdPart;
-        }
-
-        return sequences;
-    }
-
-    // TODO maybe delete
-    // Calculate alignment
-    function calculateStartIndicesAfterAligning(start_indices: number[]) {
-        if (start_indices.length == 0) {
-            return start_indices;
-        }
-
-        let max = start_indices[0];
-        let negative_indices = [];
-
-        for (let i = 0; i < start_indices.length; i++) {
-            let idx = start_indices[i];
-            if (idx > max) {
-                max = idx;
-            }
-            negative_indices.push(-idx);
-        }
-
-        /* It is expected that start_indices[0] corresponds to query seq.
-        * If query seq should start at 0, we move it so it starts at 0 and other sequences 
-        * are moved by the same amount/distance as well. Otherwise, if we use only 
-        * non negative nums on board (!shouldQuerySeqStartAtZero case), we move 
-         * every sequence by max (so the sequence with leftmost starting index, starts at 0). */
-        const offset = shouldQuerySeqStartAtZero ? start_indices[0] : max;
-        for (let i = 0; i < start_indices.length; i++) {
-            start_indices[i] = negative_indices[i] + offset;
-        }
-
-        return start_indices;
-    }
-
-    // TODO maybe delete
-    // Calculate board range (from, to)
-    function calculateBoardRange(sequences: string[], start_indices: number[]) {
-        if (sequences.length !== start_indices.length || start_indices.length == 0) {
-            throw new Error("No sequences or their start indices provided, or count of sequences and indices does not match.");
-        }
-        let min = start_indices[0];
-        let max = start_indices[0] + sequences[0].length - 1;
-
-        // we start from i = 1 because 0. iteration is basically done by variables init phase before the for cycle
-        for (let i = 1; i < sequences.length; i++) {
-            if (start_indices[i] < min) {
-                min = start_indices[i];
-            }
-
-            let end_idx = start_indices[i] + sequences[i].length - 1;
-            if (end_idx > max) {
-                max = end_idx;
-            }
-        }
-
-        const range = {
-            "from": min,
-            "to": max
-        };
-        return range;
-    }
-
     function tryGetRcsbPosition(
         trackData: RcsbFvTrackDataElementInterface
     ): { isSuccess: boolean, position: number | null, positionData: RcsbPositionData | null } {
@@ -667,14 +588,25 @@ const RcsbSaguaro = forwardRef(({
             return { isSuccess: false, position: null, positionData: null };
         }
 
-        // TODO maybe return only position data?
         return { isSuccess: true, position, positionData };
     }
 
-    // TODO maybe better docstring
-    /** rcsBposition is the position in the rcsb viewer, 
-     * position - 1 is seq idx after aligning, 
-     * and this function calculates index before aligning */
+    /**
+     * Calculates the original (unaligned) sequence index corresponding to a given position
+     * in an aligned sequence used by the RCSB viewer.
+     * 
+     * The RCSB viewer position (1-based) corresponds to a residue position in the aligned sequence,
+     * which may include gaps ("-"). This function converts that aligned position into the
+     * 0-based index of the residue in the original, unaligned sequence.
+     * 
+     * If the specified position corresponds to a gap in the alignment, or the provided sequence
+     * contains no amino acids, the function returns -1.
+     * 
+     * @param sequenceWithGaps - The aligned sequence containing gaps, where gaps are represented by "-".
+     * @param rcsbPosition - The 1-based position from the RCSB viewer (aligned sequence position).
+     * @returns The 0-based index of the corresponding residue in the unaligned sequence,
+     *          or -1 if the position corresponds to a gap, or if the provided sequence contained no amino acids.
+     */
     function getSeqIdxBeforeAligning(sequenceWithGaps: string, rcsbPosition: number) {
         let seqIdxCounter = -1;
         if (sequenceWithGaps[rcsbPosition - 1] === "-") {

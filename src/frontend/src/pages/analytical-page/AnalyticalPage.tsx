@@ -4,7 +4,7 @@ import { useInterval } from "../../shared/hooks/useInterval";
 import { useVisibilityChange } from "../../shared/hooks/useVisibilityChange";
 import { DataStatus, getAllChainsAPI, getConservationsAPI, getDataSourceExecutorResultAPI, getDataSourceExecutorResultStatusAPI, getQuerySeqToStrMappingsAPI } from "../../shared/services/apiCalls";
 import RcsbSaguaro, { RcsbSaguaroHandle } from "./components/RcsbSaguaro";
-import { FadeLoader, ScaleLoader } from "react-spinners";
+import { ScaleLoader } from "react-spinners";
 import { MolStarWrapper, MolStarWrapperHandle } from "./components/MolstarWrapper";
 import { toastWarning } from "../../shared/helperFunctions/toasts";
 import ErrorMessageBox from "./components/ErrorMessageBox";
@@ -104,7 +104,7 @@ export type SimilarProtein = {
 };
 
 export type ProcessedResult = {
-	pdbUrl: string; // TODO asi nad daj jak aj query seq daj lebo to je asi pre query tak nech pri query seq je
+	pdbUrl: string;
 	bindingSites: BindingSite[]; // e.g. found them experimentally (1 source) or predicted (another source) 
 	/* The original idea was that similar proteins are optional so they could be null,
 	 * but it seems even though the server (Python) sets it to None, package used
@@ -596,7 +596,7 @@ function AnalyticalPage() {
 
 	function alignSequencesAcrossAllDataSources(
 		unprocessedResultPerDataSourceExecutor: Record<string, UnalignedResult>,
-		dataSourcesSimilarProteins: Record<string, UnalignedSimilarProtein[]>,
+		selectedSimilarProteins: Record<string, UnalignedSimilarProtein[]>,
 		conservations: Conservation[],
 		chain: string,
 		querySeqToStrMapping: Record<number, number>
@@ -607,18 +607,14 @@ function AnalyticalPage() {
 			// if we dont have any result from any data source executor, then we have nothing to align
 			return { querySequence: "", querySeqToStrMapping: {}, dataSourceExecutorResults: {}, conservations: [] };
 		}
-		// TODO what if we have data source executor results but no with sim prots? Maybe add if?
 
-		// TODO issue #23 ["foldseek"] a ?? nestaci, binding sity nie su poposuvane...
 		const querySeq = unprocessedResultPerDataSourceExecutor["foldseek"]?.sequence
 			?? Object.values(unprocessedResultPerDataSourceExecutor)[0].sequence;
 		const querySeqLength = querySeq.length; // Length of the query sequence (sequence with no gaps)
 
 		/* "Preprocessing phase": Align query and similar sequences while also updating binding site indices.
 		 * Results without similar sequences are skipped (unchanged). */
-		for (const [dataSourceName, similarProteins] of Object.entries(dataSourcesSimilarProteins)) {
-			// TODO issue #23
-			// const querySeq = unprocessedResult.sequence;
+		for (const [dataSourceName, similarProteins] of Object.entries(selectedSimilarProteins)) {
 			// Creates pairs of query seq and similar seq and aligns them (updates using reference) 
 			for (const simProt of similarProteins) {
 				alignQueryAndSimilarSequence(querySeq, simProt);
@@ -629,7 +625,7 @@ function AnalyticalPage() {
 		 * Master query sequence is query sequence on which every similar sequence and binding site can be aligned with/mapped to. */
 		let masterQuerySeq = "";
 		const similarProteins: Record<string, SimilarProtein[]> = {};
-		for (const [dataSourceName, unalignedSimilarProteins] of Object.entries(dataSourcesSimilarProteins)) {
+		for (const [dataSourceName, unalignedSimilarProteins] of Object.entries(selectedSimilarProteins)) {
 			similarProteins[dataSourceName] = unalignedSimilarProteins.map<SimilarProtein>(({ alignmentData, ...simProt }) => ({
 				...simProt,
 				sequence: "" // will be set later when aligning
@@ -637,11 +633,11 @@ function AnalyticalPage() {
 		}
 
 		const offsets: Record<string, number[]> = {};
-		for (const [dataSourceName, similarProteins] of Object.entries(dataSourcesSimilarProteins)) {
+		for (const [dataSourceName, similarProteins] of Object.entries(selectedSimilarProteins)) {
 			offsets[dataSourceName] = new Array(similarProteins.length).fill(0);
 		}
 		const isSimProtRead: Record<string, boolean[]> = {};
-		for (const [dataSourceName, similarProteins] of Object.entries(dataSourcesSimilarProteins)) {
+		for (const [dataSourceName, similarProteins] of Object.entries(selectedSimilarProteins)) {
 			isSimProtRead[dataSourceName] = new Array(similarProteins.length).fill(false);
 		}
 
@@ -659,7 +655,7 @@ function AnalyticalPage() {
 		const mapping: Record<number, number> = {};
 		// mapping B: similarProteinsMapping[dataSourceName][simProtIdx][idxFrom] -> idxTo
 		const similarProteinsMapping: Record<string, Record<number, number>[]> = {};
-		for (const [dataSourceName, similarProteins] of Object.entries(dataSourcesSimilarProteins)) {
+		for (const [dataSourceName, similarProteins] of Object.entries(selectedSimilarProteins)) {
 			similarProteinsMapping[dataSourceName] = Array.from(
 				{ length: similarProteins.length },
 				(): Record<number, number> => ({})
@@ -671,7 +667,7 @@ function AnalyticalPage() {
 			 * but we still look on the same index, we can imagine it as if we were going though one column.
 			 * If in that column exists gap, it means we are in gap mode. This means we "output" to master query sequence 
 			 * a gap ("-"). */
-			for (const [dataSourceName, similarProteins] of Object.entries(dataSourcesSimilarProteins)) {
+			for (const [dataSourceName, similarProteins] of Object.entries(selectedSimilarProteins)) {
 				for (let simProtIdx = 0; simProtIdx < similarProteins.length; simProtIdx++) {
 					const simProt = similarProteins[simProtIdx];
 					if (simProt.alignmentData.querySequence[aaIdx + offsets[dataSourceName][simProtIdx]] === "-") {
@@ -691,7 +687,7 @@ function AnalyticalPage() {
 			 * master query sequence that will be outputted/added later in code. */
 			const aminoAcidOrGapOfMasterQuerySeqCurrIdx = masterQuerySeq.length;
 			mapping[aminoAcidIdx] = aminoAcidOrGapOfMasterQuerySeqCurrIdx;
-			for (const [dataSourceName, unAlignedSimilarProteins] of Object.entries(dataSourcesSimilarProteins)) {
+			for (const [dataSourceName, unAlignedSimilarProteins] of Object.entries(selectedSimilarProteins)) {
 				for (let simProtIdx = 0; simProtIdx < unAlignedSimilarProteins.length; simProtIdx++) {
 					const similarProtein = unAlignedSimilarProteins[simProtIdx];
 					const offset = offsets[dataSourceName][simProtIdx];
@@ -751,14 +747,14 @@ function AnalyticalPage() {
 			}
 			return true;
 		};
-		while (Object.entries(dataSourcesSimilarProteins).length > 0 && !areAllSimProtsRead()) {
+		while (Object.entries(selectedSimilarProteins).length > 0 && !areAllSimProtsRead()) {
 			const lastAminoAcidIdx = querySeqLength - 1; // we will want to read new one, that's why later is + 1 used
 			const aminoAcidOrGapOfMasterQuerySeqCurrIdx = masterQuerySeq.length;
 			/* Attention! Mapping from query sequence to master query sequence (mapping A) is not being created here,
 			 * only gaps will be outputted to master query seq now, as all the bindings sites that needs this mapping
 			 * are on the indices of amino acids of query prot. And again, now only gaps will be outputted. 
 			 * So it seems this mapping does not have to be created now for such high indices. */
-			for (const [dataSourceName, unAlignedSimilarProteins] of Object.entries(dataSourcesSimilarProteins)) {
+			for (const [dataSourceName, unAlignedSimilarProteins] of Object.entries(selectedSimilarProteins)) {
 				for (let simProtIdx = 0; simProtIdx < unAlignedSimilarProteins.length; simProtIdx++) {
 					if (isSimProtRead[dataSourceName][simProtIdx]) {
 						/* This sim prot was all read, but it seems there is at least one which was not read all yet,
@@ -817,7 +813,7 @@ function AnalyticalPage() {
 				}
 			}
 
-			const unalignedSimilarProteins = dataSourcesSimilarProteins[dataSourceName]
+			const unalignedSimilarProteins = selectedSimilarProteins[dataSourceName]
 			if (!unalignedSimilarProteins) {
 				continue;
 			}
