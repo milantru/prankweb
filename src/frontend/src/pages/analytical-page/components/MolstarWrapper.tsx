@@ -439,6 +439,8 @@ export const MolStarWrapper = forwardRef(({
 				if (!isSimProtInOptions(dataSourceName, simProt, options)) {
 					continue;
 				}
+				
+				setSimilarStructuresRemainingCount(prev => prev - 1);
 
 				if (simProt.bindingSites.length === 0) {
 					if (!(dataSourceName in ps)) {
@@ -896,7 +898,6 @@ export const MolStarWrapper = forwardRef(({
 			for (let i = 1; i < (selections?.length ?? 1); i++) {
 				await transform(plugin, xs[i].cell, transforms[i - 1].bTransform);
 				await createStructureRepresentation(plugin, xs[i].cell, createGetChainExpression(similarProteinsChains[i - 1]), true);
-				setSimilarStructuresRemainingCount(prevCount => prevCount - 1);
 			}
 
 			// Create representations of similar protein ligands
