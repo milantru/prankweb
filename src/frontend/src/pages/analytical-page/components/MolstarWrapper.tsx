@@ -2,9 +2,6 @@ import { useEffect, createRef, forwardRef, useImperativeHandle, useRef, useState
 import { createPluginUI } from "molstar/lib/mol-plugin-ui";
 import { renderReact18 } from "molstar/lib/mol-plugin-ui/react18";
 import { PluginUIContext } from "molstar/lib/mol-plugin-ui/context";
-/*  Might require extra configuration,
-see https://webpack.js.org/loaders/sass-loader/ for example.
-create-react-app should support this natively. */
 import "molstar/lib/mol-plugin-ui/skin/light.scss";
 import { DefaultPluginUISpec } from "molstar/lib/mol-plugin-ui/spec";
 import { ChainResult, ProcessedResult, SimilarProtein } from "../AnalyticalPage";
@@ -27,7 +24,6 @@ import { StructureOption } from "./SettingsPanel";
 import Switch from "./Switch";
 import { Script } from "molstar/lib/mol-script/script";
 import { useInterval } from "../../../shared/hooks/useInterval";
-import { sleep } from "../../../shared/helperFunctions/sleep";
 import { toastWarning } from "../../../shared/helperFunctions/toasts";
 
 export type MolStarWrapperHandle = {
@@ -126,8 +122,8 @@ export const MolStarWrapper = forwardRef(({
 		getMolstarPlugin
 	}));
 
-	// In debug mode of react's strict mode, this code will
-	// be called twice in a row, which might result in unexpected behavior.
+	/* In debug mode of react's strict mode, this code will
+	 * be called twice in a row, which might result in unexpected behavior. */
 	useEffect(() => {
 		async function init() {
 			const plugin = await createPluginUI({
@@ -138,14 +134,14 @@ export const MolStarWrapper = forwardRef(({
 					layout: {
 						initial: {
 							isExpanded: false,
-							showControls: false, // show advanced controls
+							showControls: false, // Show advanced controls
 							controlsDisplay: "reactive",
 							regionState: {
-								top: "hidden",    //sequence
+								top: "hidden",    // Sequence
 								left: (window.innerWidth > 1200) ? "collapsed" : "hidden",
 								// Tree with some components, hide for small and medium screens
-								bottom: "hidden", //shows log information
-								right: "hidden"   //structure tools
+								bottom: "hidden", // Shows log information
+								right: "hidden"   // Structure tools
 							}
 						}
 					},
@@ -189,7 +185,7 @@ export const MolStarWrapper = forwardRef(({
 		}
 
 		loadNewStructuresWrapper(plugin);
-	}, [/*chainResult, */selectedStructures, selectedChain]); // TODO is not dependant on chainResult because query seq should not change
+	}, [selectedStructures, selectedChain]); // It is not dependant on chainResult because query seq should not change
 
 	useEffect(() => {
 		async function updatePocketsTransparency() {
@@ -214,7 +210,7 @@ export const MolStarWrapper = forwardRef(({
 				for (const [chain, o2] of Object.entries(o1)) {
 					for (const [bindingSiteId, pocket] of Object.entries(o2)) {
 						for (const o of pocket.residueObjectsAndSupporters) {
-							try{
+							try {
 								updateTransparency(update, o);
 							}
 							catch (e) { transparencyError = true; }
@@ -229,11 +225,11 @@ export const MolStarWrapper = forwardRef(({
 					for (const [chain, o3] of Object.entries(o2)) {
 						for (const [bindingSiteId, pocket] of Object.entries(o3)) {
 							for (const o of pocket.residueObjectsAndSupporters) {
-								try{
+								try {
 									updateTransparency(update, o);
 								}
 								catch (e) { transparencyError = true; }
-								}
+							}
 						}
 					}
 				}
@@ -242,7 +238,6 @@ export const MolStarWrapper = forwardRef(({
 				console.error("Failed to update pockets transparency.");
 			}
 			await update.commit();
-			// await sleep(250); // TODO uncomment if required
 			setIsHighlightModeSwitchingDisabled(false);
 		}
 
@@ -299,8 +294,8 @@ export const MolStarWrapper = forwardRef(({
 	function getQuerySequenceUrl(chainResult: ChainResult) {
 		const dseResults = Object.values(chainResult.dataSourceExecutorResults) as ProcessedResult[];
 		if (dseResults.length === 0) {
-			/* No query sequence pdb url, this should not happen. */
-			throw new Error("No query sequence url."); // TODO
+			// No query sequence pdb url, this should not happen.
+			throw new Error("No query sequence url.");
 		}
 
 		// For all results should be query seq pdb url the same, we take the one at index 0
@@ -917,7 +912,6 @@ export const MolStarWrapper = forwardRef(({
 			setVisibilityOfObject(ligand, ligand.isVisible);
 		}
 
-		// TODO maybe to other functions as well?
 		// Reset camera (this should make the structures more visible)
 		window.molstar?.canvas3d?.requestCameraReset();
 		window.molstar?.managers.camera.reset()
@@ -969,12 +963,20 @@ export const MolStarWrapper = forwardRef(({
 		return Script.getStructureSelection(query, struct.cell.obj!.data);
 	}
 
-	// TODO maybe update docstring?
 	/**
-	 * Method which focuses on the specified residues loci.
-	 * @param structureIndex Residue id in structure viewer
+	 * Highlights specified residue loci in either the query protein structure 
+	 * or a similar protein structure, depending on provided parameters.
+	 * - If all optional parameters (`dataSourceName`, `pdbCode`, and `chain`) are provided, 
+	 *   the residues are highlighted in a similar protein structure.
+	 * - If any of the optional parameters are missing, the residues are highlighted 
+	 *   in the query (default) protein structure.
+	 * 
+	 * @param structureIndices Array of residue indices to highlight.
+	 * @param dataSourceName (Optional) Data source identifier for a similar protein structure.
+	 * @param pdbCode (Optional) PDB code of the similar protein structure.
+	 * @param chain (Optional) Chain identifier within the similar protein structure.
 	 * @returns void
-	*/
+	 */
 	function highlight(structureIndices: number[], dataSourceName?: string, pdbCode?: string, chain?: string) {
 		if (dataSourceName && pdbCode && chain) {
 			highlightInSimilarProteinStruct(structureIndices, dataSourceName, pdbCode, chain);
@@ -991,7 +993,7 @@ export const MolStarWrapper = forwardRef(({
 		}
 
 		if (!queryStructure.current) {
-			return;
+			return; // In case visualization is not loaded yet
 		}
 
 		const sel = getSelectionFromChainAuthId(queryStructure.current.object, selectedChain, structureIndices);
@@ -1006,7 +1008,11 @@ export const MolStarWrapper = forwardRef(({
 			return;
 		}
 
-		// TODO maybe some check if keys exist? if not console error and return?
+		if (!(dataSourceName in similarProteinStructures.current
+			&& pdbCode in similarProteinStructures.current[dataSourceName]
+			&& chain in similarProteinStructures.current[dataSourceName][pdbCode])) {
+			return; // In case visualization is not loaded yet
+		}
 		const simStruct = similarProteinStructures.current[dataSourceName][pdbCode][chain];
 
 		const sel = getSelectionFromChainAuthId(simStruct.object, chain, structureIndices);
@@ -1014,10 +1020,17 @@ export const MolStarWrapper = forwardRef(({
 		plugin.managers.interactivity.lociHighlights.highlightOnly({ loci });
 	}
 
-	// TODO maybe update docstring?
 	/**
-	 * Method which focuses on the specified loci.
-	 * @param structureIndex Residue id in structure viewer
+	 * Focuses on the specified residue indices within a protein structure.
+	 * 
+	 * If `dataSourceName`, `pdbCode`, and `chain` are provided, the focus will be
+	 * applied to a similar protein structure. Otherwise, it defaults to focusing
+	 * on the query protein structure.
+	 * 
+	 * @param structureIndices - Array of residue indices to focus on.
+	 * @param dataSourceName - (Optional) Name of the data source for the similar protein structure.
+	 * @param pdbCode - (Optional) PDB code of the similar protein structure.
+	 * @param chain - (Optional) Chain identifier within the similar protein structure.
 	 * @returns void
 	 */
 	function focus(structureIndices: number[], dataSourceName?: string, pdbCode?: string, chain?: string) {
@@ -1036,7 +1049,7 @@ export const MolStarWrapper = forwardRef(({
 		}
 
 		if (!queryStructure.current) {
-			return;
+			return; // In case visualization is not loaded yet
 		}
 
 		const sel = getSelectionFromChainAuthId(queryStructure.current.object, selectedChain, structureIndices);
@@ -1052,7 +1065,11 @@ export const MolStarWrapper = forwardRef(({
 			return;
 		}
 
-		// TODO maybe some check if keys exist?
+		if (!(dataSourceName in similarProteinStructures.current
+			&& pdbCode in similarProteinStructures.current[dataSourceName]
+			&& chain in similarProteinStructures.current[dataSourceName][pdbCode])) {
+			return;// In case visualization is not loaded yet
+		}
 		const simStruct = similarProteinStructures.current[dataSourceName][pdbCode][chain];
 
 		const sel = getSelectionFromChainAuthId(simStruct.object, chain, structureIndices);

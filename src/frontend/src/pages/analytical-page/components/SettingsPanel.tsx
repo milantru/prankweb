@@ -50,7 +50,7 @@ function SettingsPanel({
     const [areCandidatesSameAsPrevSelection, setAreCandidatesSameAsPrevSelection] = useState<boolean>(true);
 
     useEffect(() => {
-        structuresSelectRef.current?.clearValue(); // TODO error in console occurs when this is here
+        structuresSelectRef.current?.clearValue();
 
         const options: (StructureOption & { tmScore: number })[] = [];
         for (const [dataSourceName, similarProteins] of Object.entries(dataSourcesSimilarProteins)) {
@@ -138,7 +138,7 @@ function SettingsPanel({
                             ...provided,
                             maxHeight: "65px",
                             overflowY: "auto",
-                            flexWrap: "wrap",   // keep tags wrapping
+                            flexWrap: "wrap",   // Keep tags wrapping
                         }),
                     }}
                     isDisabled={isDisabled}
