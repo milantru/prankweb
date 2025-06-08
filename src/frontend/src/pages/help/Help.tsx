@@ -90,10 +90,10 @@ function Help() {
                                     e.g. SO4 on the protein X would have the same color as SO4 on the protein Y.
                                 </li>
                                 <li>
-                                    Different rectangles may have varying levels of transparency, depending on the confidence value.
-                                    The more transparent a rectangle is, the lower the confidence in the existence of that binding site.
-                                    For example, binding sites provided by Foldseek are experimentally confirmed rather than predicted,
-                                    so their confidence value is 1 (i.e., no transparency).
+                                    Different rectangles may have varying levels of transparency, depending on the probability
+                                    of the binding site existing. The more transparent a rectangle is, the lower the probability
+                                    of the existence of that binding site. For example, binding sites provided by Foldseek
+                                    are experimentally confirmed rather than predicted, so their probability is 1 (i.e., no transparency).
                                 </li>
                             </ul>
                         </li>
@@ -113,7 +113,9 @@ function Help() {
                     <strong>Tooltip</strong> can display not only source where the data came from, but also information such as:
                     <ul>
                         <li><em>Position</em> in the viewer where the mouse currently hovers (along with the residue letter).</li>
-                        <li><em>Confidence</em> value of the binding site.</li>
+                        <li><em>Probability</em> of the binding site existing.</li>
+                        <li><em>Source</em> of the data.</li>
+                        <li><em>Name</em> of the pocket or ligand (displayed only if the "squash" feature is enabled).</li>
                         <li>(Conservation) <em>Value</em> of the currently hovered query protein residue.</li>
                     </ul>
                 </p>
