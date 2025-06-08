@@ -48,15 +48,15 @@ def evaluate(model, file_name, embeddings_dir):
             else:
                 print(f"⚠️ Mismatch: {chain} (Residues: {len(labels)}, Embeddings: {embeddings.shape[0]})")
 
-    test_accuracy = accuracy_score(all_labels, all_preds)
-    test_precision = precision_score(all_labels, all_preds, zero_division=0)
-    test_recall = recall_score(all_labels, all_preds, zero_division=0)
-    test_f1 = f1_score(all_labels, all_preds, zero_division=0)
-    test_mcc = matthews_corrcoef(all_labels, all_preds)
 
-    print(f"Accuracy: {test_accuracy:.4f} | Precision: {test_precision:.4f} | Recall: {test_recall:.4f} | F1: {test_f1:.4f} | MCC: {test_mcc:.4f}")
-    print(f"P2Rank: Accuracy: {accuracy_score(all_labels, p2rank_labels):.4f} | F1: {f1_score(all_labels, p2rank_labels, zero_division=0):.4f}")
-    print(f"P2Rank + Conservation: Accuracy: {accuracy_score(all_labels, cp2rank_labels):.4f} | F1: {f1_score(all_labels, cp2rank_labels, zero_division=0):.4f}")
+    for pred, model in zip([all_preds, p2rank_labels, cp2rank_labels], ["", "P2Rank:", "P2Rank+Cons:"]):
+        test_accuracy = accuracy_score(all_labels, pred)
+        test_precision = precision_score(all_labels, pred, zero_division=0)
+        test_recall = recall_score(all_labels, pred, zero_division=0)
+        test_f1 = f1_score(all_labels, pred, zero_division=0)
+        test_mcc = matthews_corrcoef(all_labels, pred)
+
+        print(f"{model} Accuracy: {test_accuracy:.4f} | Precision: {test_precision:.4f} | Recall: {test_recall:.4f} | F1: {test_f1:.4f} | MCC: {test_mcc:.4f}")
 
 model_path = "models/model_e10.pth"
 test_path = "data/LIGYSIS_predictions.pkl"
