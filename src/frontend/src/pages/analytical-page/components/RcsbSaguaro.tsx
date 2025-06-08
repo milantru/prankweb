@@ -523,6 +523,10 @@ const RcsbSaguaro = forwardRef(({
             if (!result.similarProteins) {
                 continue;
             }
+
+            // Sort similar proteins by TM score
+            result.similarProteins.sort((a, b) => b.tmScore - a.tmScore);
+
             for (const simProt of result.similarProteins) {
                 const id = `${dataSourceName}-${simProt.pdbId}-${simProt.chain}`;
                 const title = `${simProt.pdbId.toUpperCase()} (${simProt.chain})`;

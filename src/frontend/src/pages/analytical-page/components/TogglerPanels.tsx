@@ -64,8 +64,9 @@ function TogglerPanels({
             // Store binding sites of similar proteins
             for (const simProt of result.similarProteins) {
                 if (simProt.bindingSites.length === 0) {
-
+                    continue; // Skip if no binding sites
                 }
+
                 for (const bindingSite of simProt.bindingSites) {
                     if (!(dataSourceName in similarProteinsBindingSitesTmp)) {
                         similarProteinsBindingSitesTmp[dataSourceName] = {};
@@ -76,9 +77,18 @@ function TogglerPanels({
                     if (!(simProt.chain in similarProteinsBindingSitesTmp[dataSourceName][simProt.pdbId])) {
                         similarProteinsBindingSitesTmp[dataSourceName][simProt.pdbId][simProt.chain] = {};
                     }
-                    similarProteinsBindingSitesTmp[dataSourceName][simProt.pdbId][simProt.chain][bindingSite.id] = bindingSite;
+
+                    const chainObj = similarProteinsBindingSitesTmp[dataSourceName][simProt.pdbId][simProt.chain];
+
+                    if (!('__tmScore' in chainObj)) {
+                        chainObj.__tmScore = simProt.tmScore;
+                    }
+
+                    // Store binding site
+                    chainObj[bindingSite.id] = bindingSite;
                 }
             }
+
         }
 
         setQueryProteinBindingSitesData(queryProteinBindingSitesTmp);
@@ -109,28 +119,39 @@ function TogglerPanels({
                 )}
 
                 {/* Panels for similar proteins */}
-                {Object.entries(similarProteinsBindingSitesData).map(([dataSourceName, structureRecord]) =>
-                    Object.entries(structureRecord).map(([pdbCode, chainRecord]) =>
-                        Object.entries(chainRecord).map(([chain, bindingSiteRecord]) =>
-                            dataSourceName in dataSourceColors
-                            && dataSourceName in similarProteinsBindingSites
-                            && pdbCode in similarProteinsBindingSites[dataSourceName]
-                            && chain in similarProteinsBindingSites[dataSourceName][pdbCode]
-                            && (
-                                <TogglerPanel key={`${dataSourceName}-${pdbCode}-${chain}`}
-                                    title={{ pdbCode: pdbCode, chain: chain, dataSourceName: dataSourceName }}
-                                    color={dataSourceColors[dataSourceName]}
-                                    dataSourceDisplayNames={dataSourceDisplayNames}
-                                    bindingSiteRecord={bindingSiteRecord}
-                                    bindingSites={similarProteinsBindingSites[dataSourceName][pdbCode][chain]}
-                                    isDisabled={isDisabled}
-                                    displayLoadingAnimationWhenDisabled={true}
-                                    onBindingSiteToggle={(bindingSiteId, checked) =>
-                                        onSimilarProteinBindingSiteToggle(dataSourceName, pdbCode, chain, bindingSiteId, checked)} />
-                            )
-                        )
-                    )
-                )}
+                {Object.entries(similarProteinsBindingSitesData).map(([dataSourceName, structureRecord]) => {
+                    if (!(dataSourceName in dataSourceColors) || !(dataSourceName in similarProteinsBindingSites)) return null;
+
+                    const chainEntries = [];
+
+                    for (const [pdbCode, chainRecord] of Object.entries(structureRecord)) {
+                        for (const [chain, bindingSiteRecord] of Object.entries(chainRecord)) {
+                            const simChainData = similarProteinsBindingSites[dataSourceName]?.[pdbCode]?.[chain];
+                            if (!simChainData) continue;
+
+                            const tmScore = simChainData.__tmScore ?? 0;
+                            chainEntries.push({ pdbCode, chain, bindingSiteRecord, tmScore });
+                        }
+                    }
+
+                    chainEntries.sort((a, b) => b.tmScore - a.tmScore);
+
+                    return chainEntries.map(({ pdbCode, chain, bindingSiteRecord, tmScore }) => (
+                        <TogglerPanel
+                            key={`${dataSourceName}-${pdbCode}-${chain}`}
+                            title={{ pdbCode, chain, dataSourceName, tmScore }}
+                            color={dataSourceColors[dataSourceName]}
+                            dataSourceDisplayNames={dataSourceDisplayNames}
+                            bindingSiteRecord={bindingSiteRecord}
+                            bindingSites={similarProteinsBindingSites[dataSourceName][pdbCode][chain]}
+                            isDisabled={isDisabled}
+                            displayLoadingAnimationWhenDisabled={true}
+                            onBindingSiteToggle={(bindingSiteId, checked) =>
+                                onSimilarProteinBindingSiteToggle(dataSourceName, pdbCode, chain, bindingSiteId, checked)}
+                        />
+                    ));
+                })}
+
             </>)}
         </div>
     );
