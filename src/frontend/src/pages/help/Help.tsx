@@ -106,11 +106,11 @@ function Help() {
                 <p>
                     The background of rows displaying similar proteins or binding sites is colored according to the data source.
                     Each data source is assigned a specific color. Which color belongs to which data source can be viewed
-                    in the <strong>legend</strong> under the sequence visualization. Alternatively, when hovered
-                    on sequence residue or binding site, the information about the source is displayed in the tooltip.
+                    in the <strong>legend</strong> under the sequence visualization. Alternatively, hovering over a residue
+                    in any similar protein or binding site will display the data source in a tooltip.
                 </p>
                 <p>
-                    <strong>Tooltip</strong> can display not only source where the data came from, but also information such as:
+                    <strong>Tooltip</strong> can display information such as:
                     <ul>
                         <li><em>Position</em> in the viewer where the mouse currently hovers (along with the residue letter).</li>
                         <li><em>Probability</em> of the binding site existing.</li>
@@ -121,7 +121,7 @@ function Help() {
                 </p>
                 <p>
                     As one <strong>hovers</strong> over the sequence with mouse, apart from the fact that the tooltip is displayed,
-                    the residues are highlighted in the 3D visualization. This feature allows to analyze the protein
+                    the residues are highlighted in the structural visualization. This feature allows to analyze the protein
                     both from the structural and sequential point of view. By default, the sequence view is zoomed out
                     so that the whole protein is displayed. You can use your mouse to zoom in, or zoom
                     to the selected residue by <strong>clicking</strong> the responsible area.
@@ -215,13 +215,13 @@ function Help() {
                 <h3>Conservation</h3>
                 <p>
                     Besides selecting what protein to analyze, one can also specify whether evolutionary conservation should be
-                    included in the P2Rank prediction by checking the <em>Use conservation</em> checkbox. Slightly modified
-                    <a href="https://github.com/cusbg/prankweb/blob/main/conservation/hmm_based/conservation_hmm_based.py"> script </a>
-                    is used to calculate per-position information content (IC) values for amino acid residues which is between 0 and ~ 4 ( = log2(20) )
-                    with higher values corresponding to higher conservation.
-                    <a href="https://ftp.expasy.org/databases/uniprot/current_release/knowledgebase/complete/uniprot_sprot.fasta.gz">
-                        &nbsp; UniProtKB/Swiss-Prot </a>
-                    protein sequence database is used as the single target sequence database.
+                    included in the P2Rank prediction by checking the <em>Use conservation</em> checkbox or selecting <em>model
+                        with conservation</em> in case of Custom structure input method. Slightly modified <a
+                            href="https://github.com/cusbg/prankweb/blob/main/conservation/hmm_based/conservation_hmm_based.py">script</a> is
+                    used to calculate per-position information content (IC) values for amino acid residues which is between
+                    0 and ~&nbsp;4 (&nbsp;=&nbsp;log2(20)&nbsp;) with higher values corresponding to higher conservation. <a
+                        href="https://ftp.expasy.org/databases/uniprot/current_release/knowledgebase/complete/uniprot_sprot.fasta.gz">
+                        UniProtKB/Swiss-Prot</a> protein sequence database is used as the single target sequence database.
                 </p>
             </section>
 
