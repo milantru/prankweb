@@ -117,8 +117,7 @@ function TogglerPanel({
                         animate={{ height: "auto", opacity: 1 }}
                         exit={{ height: 0, opacity: 0 }}
                         transition={{ duration: 0.4, ease: "easeInOut" }}
-                        style={{ overflow: "hidden" }}
-                    >
+                        style={{ overflow: "hidden" }}>
                         <div className="mt-2 px-2">
                             {Object.entries(bindingSiteRecord).length === 0
                                 ? <div className="pl-1">No binding sites.</div>
@@ -164,7 +163,6 @@ function TogglerPanel({
                     </motion.div>
                 )}
             </AnimatePresence>
-
         </div>
     );
 
