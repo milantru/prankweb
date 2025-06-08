@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List, Optional, overload
+from typing import List, Optional, overload, Dict
 from datetime import datetime
 from abc import ABC, abstractmethod
 
@@ -17,6 +17,10 @@ class BindingSite:
     """Interval [0,1]; confidence is 1 for experimentally determined binding sites"""
     residues: List[Residue]
     """List of residues in the binding site; """
+    rank: Optional[int] = None
+    """Rank of the binding site; if not set, the binding site is not ranked"""
+    score: Optional[float] = None
+    """Score of the binding site; if not set, the binding site is not scored"""
 
 @dataclass
 class SimilarSequenceAlignmentData:
@@ -38,8 +42,10 @@ class SimilarProtein:
     chain: str
     sequence: str
     pdbUrl: str
+    tmScore: float
     bindingSites: List[BindingSite]
     alignmentData: SimilarSequenceAlignmentData
+    seqToStrMapping: Dict[str, int]
 
 @dataclass
 class Metadata:
@@ -89,10 +95,12 @@ class ProteinBuilderBase(ABC):
         pass
 
 class SimilarProteinBuilder(ProteinBuilderBase):
-    def __init__(self, pdb_id: str, sequence: str, chain: str, pdb_url: str):
+    def __init__(self, pdb_id: str, sequence: str, chain: str, pdb_url: str, tm_score: float):
         super().__init__(sequence, chain, pdb_url)
         self._pdb_id = pdb_id
+        self._tm_score = tm_score
         self._alignment_data = None
+        self.seq_to_str_mapping = {}
 
     def set_alignment_data(self, query_start: int, query_end: int, query_part: str, 
                            similar_seq: str, similar_start: int, similar_end: int, similar_part: str):
@@ -106,18 +114,27 @@ class SimilarProteinBuilder(ProteinBuilderBase):
             similarSeqAlignedPart=similar_part
         )
         return self
+    
+    def set_seq_to_str_mapping(self, mapping: dict):
+        self.seq_to_str_mapping = mapping
+        return self
 
     def build(self) -> SimilarProtein:
         if not self._alignment_data:
             raise ValueError("Alignment data must be set before building SimilarProtein")
+        
+        if not self.seq_to_str_mapping:
+            raise ValueError("Sequence to structure index mapping must be set before building SimilarProtein")
         
         return SimilarProtein(
             pdbId=self._pdb_id,
             chain=self._chain,
             sequence=self._sequence,
             pdbUrl=self._pdb_url,
+            tmScore=self._tm_score,
             bindingSites=self._binding_sites,
-            alignmentData=self._alignment_data
+            alignmentData=self._alignment_data,
+            seqToStrMapping=self.seq_to_str_mapping
         )
 
 class ProteinDataBuilder(ProteinBuilderBase):

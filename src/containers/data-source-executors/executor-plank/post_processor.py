@@ -3,7 +3,7 @@ import json
 from dataclasses import asdict
 from data_format.builder import ProteinDataBuilder, BindingSite, Residue
 
-def process_plm_output(id, result_folder, predictions, seq_to_str_mapping, pdb_url):
+def process_plank_output(id, result_folder, predictions, seq_to_str_mapping, pdb_url):
     for prediction in predictions:
         chains = prediction['chains']
         sequence = prediction['sequence']
@@ -34,13 +34,13 @@ def process_plm_output(id, result_folder, predictions, seq_to_str_mapping, pdb_u
             if binding_site_residue_count > 0:
                 binding_avg = confidence_sum / binding_site_residue_count
                 binding_site = BindingSite(
-                    id=f"pocket_plm",
+                    id="pocket",
                     confidence=binding_avg,
                     residues=binding_site_residues
                 )
                 protein_data_builder.add_binding_site(binding_site)
 
-            protein_data_builder.add_metadata(data_source="plm")
+            protein_data_builder.add_metadata(data_source="plank")
 
             protein_data = protein_data_builder.build()
 

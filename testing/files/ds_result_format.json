@@ -10,10 +10,12 @@
             "type": "array",
             "items": {
                 "type": "object",
-                "required": [ "id", "confidence", "residues" ],
+                "required": [ "id", "confidence", "residues", "rank", "score" ],
                 "properties": {
                     "id": { "type": "string" },
                     "confidence": { "type": "number" },
+                    "rank": { "type": [ "integer", "null" ] },
+                    "score": { "type": ["number", "null"] },
                     "residues": {
                         "type": "array",
                         "items": {
@@ -40,12 +42,13 @@
             "type": ["array", "null" ],
             "items": {
                 "type": "object",
-                "required": [ "pdbId", "chain", "sequence", "pdbUrl", "bindingSites", "alignmentData" ],
+                "required": [ "pdbId", "chain", "sequence", "pdbUrl", "tmScore", "bindingSites", "alignmentData" ],
                 "properties": {
                     "pdbId": { "type": "string" },
                     "chain": { "type": "string" },
                     "sequence": { "type": "string" },
                     "pdbUrl": { "type": "string" },
+                    "tmScore": { "type": "number" },
                     "bindingSites": { 
                         "type": "array",
                         "items": {

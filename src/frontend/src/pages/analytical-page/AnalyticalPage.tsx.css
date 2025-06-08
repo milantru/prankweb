@@ -30,3 +30,23 @@
         padding-right: 5px;
     }
 }
+
+.custom-spinner {
+    width: 1rem;
+    height: 1rem;
+    border: 0.15em solid #ccc;
+    border-top: 0.15em solid #818182;
+    border-radius: 50%;
+    animation: spin 1.3s linear infinite;
+    display: inline-block;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}

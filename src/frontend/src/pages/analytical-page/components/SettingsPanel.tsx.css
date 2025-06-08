@@ -1,0 +1,25 @@
+#similar-proteins-select {
+    flex-direction: row;
+}
+
+#similar-proteins-select button {
+    width: 25%;
+    margin-left: 8px;
+}
+
+/* Responsive styles for screens smaller than 485px */
+@media (max-width: 484px) {
+    #similar-proteins-select {
+        flex-direction: column;
+    }
+
+    #similar-proteins-select>* {
+        margin-top: 4px;
+        width: 100%;
+    }
+
+    #similar-proteins-select button {
+        width: 100%;
+        margin-left: 0;
+    }
+}

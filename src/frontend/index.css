@@ -1,11 +1,35 @@
 .Toastify__progress-bar--warning {
-    /* This overwrites progress bar color of react-toastify warning toast. */
-    background-color: #c3c3c3;
+	/* This overwrites progress bar color of react-toastify warning toast. */
+	background-color: #c3c3c3;
+}
+
+.Toastify__toast-container {
+	/* When Mol* fails to align and superpose structures (probably due to unknown residues,
+   * more here: https://www.rcsb.org/ligand/UNK), the toast appears. But the display at the bottom right
+   * of the Mol* (showing information such as binding site ids, residue indices etc.) is displayed, 
+   * it overlaps/hides the toast. This rule exist to make sure the toast is "higher, so it won't be overlaped. */
+	z-index: 999999999999 !important;
 }
 
 g.rcsbElement rect {
-    /* This rule overwrites colors for binding sites so they are visible even with bright color or low opacity. */
-    stroke: grey;
-    stroke-opacity: 1;
-    fill-opacity: 1;
+	/* This rule overwrites colors for binding sites so they are visible even with bright color or low opacity. */
+	stroke: grey;
+	stroke-opacity: 1;
+	fill-opacity: 1;
+}
+
+g[class*="rcsbElement_special-composite"] rect {
+	/* In Rcsb saguaro viewer I needed to use composite track because 
+ 	 * I needed to pass some info in label but sequence track alone can't have label.
+	 * However because of the previous rule, styles were not great, e.g. highlight column on hover was not visible
+	 * on the composite/sequence row. That is why this rule here exists... To overwrite the previous one, so please,
+	 * keep this rule after the previous one. */
+	stroke: initial;
+	stroke-opacity: initial;
+	fill-opacity: initial;
+}
+
+.box-wrapper {
+	max-width: 500px;
+	width: 100%;
 }

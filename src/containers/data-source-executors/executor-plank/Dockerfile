@@ -14,8 +14,9 @@ WORKDIR /app
 COPY --chown=user:user \
         ./shared/install-requirements.sh \
         ./shared/tasks_logger.py \
+        ./shared/status_manager.py \
         ./shared/mapping.json \
-        ./data-source-executors/executor-plm/requirements.in \
+        ./data-source-executors/executor-plank/requirements.in \
         ./
 
 RUN chmod +x install-requirements.sh \
@@ -25,7 +26,7 @@ RUN chmod +x install-requirements.sh \
 COPY --chown=user:user ./data-source-executors/data_format/ data_format/
 RUN pip install -e data_format/
 
-COPY --chown=user:user ./data-source-executors/executor-plm/. .
+COPY --chown=user:user ./data-source-executors/executor-plank/. .
 RUN chmod u+x celery_worker.py \
     && chown user:user /app
 

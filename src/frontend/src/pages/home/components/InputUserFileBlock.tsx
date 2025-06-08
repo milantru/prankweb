@@ -31,7 +31,8 @@ function InputUserFileBlock({ data, setData, setErrorMessage }: Props) {
                 </label>
                 <input className="form-control" type="file" id="user-file" onChange={handleFileChange} />
             </div>
-            <div className="mb-3">
+            {/* Delete d-none to enable chains selecting if desired in the future. */}
+            <div className="d-none mb-3">
                 <label htmlFor="user-file-chains" className="form-label">Restrict to chains</label>
                 <input type="text"
                     className="form-control"
@@ -87,11 +88,11 @@ function InputUserFileBlock({ data, setData, setErrorMessage }: Props) {
     }
 
     function sanitizeChainsWrapper(input: string): string {
-        console.log(input);
         let chains = input;
         let useSpaceAsCommaTmp = useSpaceAsComma;
         if (input.toLowerCase().includes("space")) {
-            chains = input.replace(/space/gi, ""); // remove space (due to gi, it replaces regardless of capitalization, e.g. "Space", "sPaCe"...)
+            // Remove space (due to gi, it replaces regardless of capitalization, e.g. "Space", "sPaCe"...)
+            chains = input.replace(/space/gi, "");
             useSpaceAsCommaTmp = !useSpaceAsComma;
             setUseSpaceAsComma(useSpaceAsCommaTmp);
         }

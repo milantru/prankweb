@@ -135,16 +135,16 @@ def test_plankweb_get_id(test):
 
    # assert response.status_code == 200, f"{description}: Unexpected status code {response.status_code}"
 
-    if "id" in expected_result:
-        if expected_result["id"] is None:
-            assert isinstance(actual_result, dict)
-            assert actual_result["id"] is None, f"{description}: Mismatch\nExpected: {expected_result}\nGot: {actual_result}"
-        else:
-            assert isinstance(actual_result, dict)
-            assert actual_result["id"].startswith(expected_result["id"]), f"{description}: Mismatch\nExpected: {expected_result}\nGot: {actual_result}"
-    else: # Error
-        assert isinstance(actual_result, dict)
-        assert actual_result["error"].startswith(expected_result["error"]), f"{description}: Mismatch\nExpected: {expected_result}\nGot: {actual_result}"
+    assert isinstance(actual_result, dict)
+
+    # check id field
+    if expected_result["id"] is None:
+        assert actual_result["id"] is None, f"{description}: Mismatch\nExpected: {expected_result}\nGot: {actual_result}"
+    else:
+        assert actual_result["id"].startswith(expected_result["id"]), f"{description}: Mismatch\nExpected: {expected_result}\nGot: {actual_result}"
+    
+    # check error field
+    assert actual_result["error"] == expected_result["error"], f"{description}: Mismatch\nExpected: {expected_result}\nGot: {actual_result}"
 
 #################################################################################################################
 
@@ -236,7 +236,7 @@ def test_plankweb_ds_results(test):
     with open('files/ds_result_format.json') as ds_format_file:
         ds_result_format = json.load(ds_format_file)
 
-    for ds_results_folder in [ f'ds_foldseek/{id}', f'ds_p2rank/{id}', f'ds_p2rank/{id}/conservation', f'ds_plm/{id}' ]:
+    for ds_results_folder in [ f'ds_foldseek/{id}', f'ds_p2rank/{id}', f'ds_p2rank/{id}/conservation', f'ds_plank/{id}' ]:
     
         status = _wait_for_status(ds_results_folder)
         assert status == 1, f"{description}[{ds_results_folder}]: Unexpected status: {status}"
@@ -327,7 +327,7 @@ def test_builder_add_binding_site_manual_args():
     assert protein.bindingSites[0].confidence == 0.85
 
 def test_builder_similar_protein_builder_and_alignment():
-    sp_builder = SimilarProteinBuilder(pdb_id="2SRC", sequence="ABCDE", chain="A", pdb_url="http://example.com/2SRC")
+    sp_builder = SimilarProteinBuilder(pdb_id="2SRC", sequence="ABCDE", chain="A", pdb_url="http://example.com/2SRC", tm_score=0.5)
     sp_builder.add_binding_site(binding_site)
     sp_builder.set_alignment_data(
         query_start=3,
@@ -338,12 +338,14 @@ def test_builder_similar_protein_builder_and_alignment():
         similar_end=2,
         similar_part="DE"
     )
+    sp_builder.set_seq_to_str_mapping({"1": 0, "2": 1, "3": 2, "4": 3, "5": 4, "6": 5})
     similar_protein = sp_builder.build()
     assert similar_protein.pdbId == "2SRC"
     assert similar_protein.alignmentData.querySeqAlignedPart == "DE"
 
 def test_builder_protein_data_builder_with_similar_protein():
-    sp_builder = SimilarProteinBuilder(pdb_id="4K11", sequence="ABCDE", chain="B", pdb_url="http://example.com/4K11")
+    sp_builder = SimilarProteinBuilder(pdb_id="4K11", sequence="ABCDE", chain="B", pdb_url="http://example.com/4K11", tm_score=0.5)
+    sp_builder.set_seq_to_str_mapping({"1": 0, "2": 1, "3": 2, "4": 3, "5": 4})
     sp_builder.set_alignment_data(0, 5, "ABCDE", "VWXYZABCDE", 5, 10, "ABCDE")
     similar_protein = sp_builder.build()
 
@@ -358,14 +360,18 @@ def test_builder_protein_data_builder_with_similar_protein():
     assert protein.metadata.timestamp == "2024-01-01T00:00:00"
 
 def test_builder_protein_data_builder_with_similar_proteins():
-    sp_builder = SimilarProteinBuilder(pdb_id="4K11", sequence="ABCDE", chain="B", pdb_url="http://example.com/4K11")
+    sp_builder = SimilarProteinBuilder(pdb_id="4K11", sequence="ABCDE", chain="B", pdb_url="http://example.com/4K11", tm_score=0.5)
+    mapping = {"1": 0, "2": 1, "3": 2, "4": 3, "5": 4}
     sp_builder.set_alignment_data(0, 5, "ABCDE", "VWXYZABCDE", 5, 10, "ABCDE")
+    sp_builder.set_seq_to_str_mapping(mapping)
     similar_protein = sp_builder.build()
-    sp_builder2 = SimilarProteinBuilder(pdb_id="5XYZ", sequence="ABCDE", chain="C", pdb_url="http://example.com/5XYZ")
+    sp_builder2 = SimilarProteinBuilder(pdb_id="5XYZ", sequence="ABCDE", chain="C", pdb_url="http://example.com/5XYZ", tm_score=0.5)
     sp_builder2.set_alignment_data(0, 5, "ABCDE", "LMNOPQRSTU", 5, 10, "ABCDE")
+    sp_builder2.set_seq_to_str_mapping(mapping)
     similar_protein2 = sp_builder2.build()
-    sp_builder3 = SimilarProteinBuilder(pdb_id="6ABC", sequence="ABCDE", chain="D", pdb_url="http://example.com/6ABC")
+    sp_builder3 = SimilarProteinBuilder(pdb_id="6ABC", sequence="ABCDE", chain="D", pdb_url="http://example.com/6ABC", tm_score=0.5)
     sp_builder3.set_alignment_data(0, 5, "ABCDE", "QRSTUVWX", 5, 10, "ABCDE")
+    sp_builder3.set_seq_to_str_mapping(mapping)
     similar_protein3 = sp_builder3.build()
 
     builder = ProteinDataBuilder(id="2SRC", chain="C", sequence="ABCDE", pdb_url="http://example.com/2SRC")
@@ -389,6 +395,12 @@ def test_builder_no_metadata_error():
         builder.build()  # Should raise an error because metadata is not set
 
 def test_builder_no_alignment_data_error():
-    sim_prot_builder = SimilarProteinBuilder(pdb_id="2SRC", sequence="ABCDE", chain="A", pdb_url="http://example.com/2SRC")
+    sim_prot_builder = SimilarProteinBuilder(pdb_id="2SRC", sequence="ABCDE", chain="A", pdb_url="http://example.com/2SRC", tm_score=0.5)
     with pytest.raises(ValueError):
         sim_prot_builder.build()  # Should raise an error because alignment data is not set
+
+def test_builder_no_seq_to_str_mapping_error():
+    sim_prot_builder = SimilarProteinBuilder(pdb_id="2SRC", sequence="ABCDE", chain="A", pdb_url="http://example.com/2SRC", tm_score=0.5)
+    sim_prot_builder.set_alignment_data(0, 5, "ABCDE", "VWXYZABCDE", 5, 10, "ABCDE")
+    with pytest.raises(ValueError):
+        sim_prot_builder.build()  # Should raise an error because seqToStrMapping is not set

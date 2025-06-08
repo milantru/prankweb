@@ -17,6 +17,7 @@ node_modules
 *.csv
 *.parquet
 *.npy
+*.pth
 *.pkl
 
 # C extensions

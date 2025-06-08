@@ -3,40 +3,29 @@ import json
 import requests
 from enum import Enum
 from tasks_logger import create_logger
+from status_manager import update_status, StatusType
+
+
 from predict import embed_sequences, predict_bindings
-from post_processor import process_plm_output
+from post_processor import process_plank_output
 
 RESULTS_FOLDER = "results"
 INPUTS_URL = os.getenv('INPUTS_URL')
 PLANKWEB_BASE_URL = os.getenv('PLANKWEB_BASE_URL')
 
-class StatusType(Enum):
-    STARTED = 0
-    COMPLETED = 1
-    FAILED = 2
-
-logger = create_logger('ds-plm')
+logger = create_logger('ds-plank')
 
 os.makedirs(RESULTS_FOLDER, exist_ok=True)
 logger.info(f'{id} Results folder prepared: {RESULTS_FOLDER}')
 
-def update_status(status_file_path, id, status, message=""):
-    logger.info(f'{id} Changing status in {status_file_path} to: {status}')
-    try:
-        with open(status_file_path, "w") as f:
-            json.dump({"status": status, "errorMessages": message}, f)
-        logger.info(f'{id} Status changed')
-    except Exception as e:
-        logger.error(f'{id} Status change failed: {str(e)}')
-
-def run_plm(id):
-    logger.info(f'{id} ds_plm started')
+def run_plank(id):
+    logger.info(f'{id} ds_plank started')
 
     eval_folder = os.path.join(RESULTS_FOLDER, f"{id}")
     os.makedirs(eval_folder, exist_ok=True)
     logger.info(f'{id} Evaluation folder created: {eval_folder}')
     status_file_path = os.path.join(eval_folder, "status.json")
-    update_status(status_file_path, id, StatusType.STARTED.value)
+    update_status(status_file_path, id, StatusType.STARTED, infoMessage="Execution started")
 
     try:
         chain_map_file = os.path.join(INPUTS_URL, id, 'chains.json')
@@ -66,32 +55,20 @@ def run_plm(id):
             seq_chains.append(chains)
         
         logger.info(f'{id} Parsed all FASTA files')
+        update_status(status_file_path, id, StatusType.STARTED, infoMessage="Embedding sequences")
+
 
         embeddings = embed_sequences(seq)
 
         logger.info(f'{id} Successfully embedded sequences')
+        update_status(status_file_path, id, StatusType.STARTED, infoMessage="Predicting bindings")
 
         lenghts = [len(s) for s in seq]
-        predictions = predict_bindings(embeddings, lenghts)
-
-        result_data = []
-
-        # convert tensor predictions to lists
-        predictions = [prediction.tolist() for prediction in predictions]
-
-        for i, chains in enumerate(seq_chains):
-            result_data.append({
-                "chains": chains,
-                "binding": predictions[i],
-                "sequence": seq[i],
-            })
-                
+        
         result_file_path = os.path.join(eval_folder, "result.json")
-        logger.info(f'{id} Saving results to: {result_file_path}')
-        with open(result_file_path, "w") as f:
-            json.dump(result_data, f, indent=4)
+        result_data = predict_bindings(embeddings, lenghts, result_file_path, seq_chains, seq)
 
-        logger.info(f'{id} PLM prediction finished')
+        logger.info(f'{id} NN prediction finished')
 
         query_structure_url = os.path.join(
             PLANKWEB_BASE_URL,
@@ -100,9 +77,10 @@ def run_plm(id):
             f"{id}",
             "structure.pdb"
         )
-        seq_to_str_mapping = chain_map.get('seq_to_str_mapping', {})
+        seq_to_str_mapping = chain_map.get('seqToStrMapping', {})
+        update_status(status_file_path, id, StatusType.STARTED, infoMessage="Processing Plank output")
 
-        process_plm_output(
+        process_plank_output(
             id, 
             eval_folder, 
             result_data, 
@@ -110,11 +88,14 @@ def run_plm(id):
             query_structure_url
             )
 
-        update_status(status_file_path, id, StatusType.COMPLETED.value)
+        update_status(status_file_path, id, StatusType.COMPLETED, infoMessage="Execution completed successfully")
         
+    except requests.RequestException as e:
+        logger.error(f'{id} Failed to download PDB file: {str(e)}')
+        update_status(status_file_path, id, StatusType.FAILED, errorMessage = f"Failed to download Fasta file: {str(e)}")
     except Exception as e:
-        logger.error(f'{id} An unexpected error occurred ({type(e).__name__}): {str(e)}')
-        update_status(status_file_path, id, StatusType.FAILED.value, f"An unexpected error occurred: {str(e)}")
+        logger.error(f'{id} An unexpected error occurred: {str(e)}')
+        update_status(status_file_path, id, StatusType.FAILED, errorMessage = f"An unexpected error occurred: {e}")
 
-    logger.info(f'{id} ds_plm finished')
+    logger.info(f'{id} ds_plank finished')
 

@@ -22,7 +22,7 @@ celery.conf.update({
     'task_routes': {
         'ds_foldseek': 'ds_foldseek',
         'ds_p2rank': 'ds_p2rank',
-        'ds_plm': 'ds_plm',
+        'ds_plank': 'ds_plank',
         'conservation': 'conservation',
         'converter_seq_to_str': 'converter',
         'converter_str_to_seq': 'converter'
@@ -76,6 +76,13 @@ def  _prepare_seq_input(id: str, url: str) -> bool:
     
     logger.info(f'{id} {fasta_file} prepared')
 
+    fasta_file = os.path.join(INPUTS_FOLDER, id, 'sequence_1.fasta')
+
+    with open(fasta_file, 'r') as f:
+        content = f.read()
+
+    seq_len = len(content.split('\n')[1])
+
     logger.info(f'{id} Preparing {chain_json}...')
     if not os.path.exists(chain_json):
         with open(chain_json, 'w') as json_file:
@@ -83,7 +90,7 @@ def  _prepare_seq_input(id: str, url: str) -> bool:
                 { 
                     'chains': ['A'], 
                     'fasta': {'sequence_1.fasta': ['A'] },
-                    'seq_to_str_mapping': {'A': {}} 
+                    'seqToStrMapping': {'A': {str(i): i + 1 for i in range(seq_len)}} # Predicted structure is 1-indexed
                 }, 
                 json_file,
                 indent=4
@@ -140,7 +147,7 @@ def _save_converter_seq_result(id: str, result: dict) -> None:
     file_number = 1
 
     result_chains = result.get('chains', {})
-    result_mapping = result.get('seq_to_str_mapping', {})
+    result_mapping = result.get('seqToStrMapping', {})
 
     for sequence, chain_list in result_chains.items():
 
@@ -166,7 +173,7 @@ def _save_converter_seq_result(id: str, result: dict) -> None:
             { 
                 'chains': chains, 
                 'fasta': chain_to_sequence_mapping,
-                'seq_to_str_mapping': result_mapping
+                'seqToStrMapping': result_mapping
             },
             json_file,
             indent=4
@@ -248,9 +255,9 @@ def _run_p2rank(id: str, id_existed: bool, input_model: str, use_conservation: b
     )
 
 
-def _run_plm(id: str, id_existed: bool) -> None:
+def _run_plank(id: str, id_existed: bool) -> None:
     _run_task(
-        task_name='ds_plm',
+        task_name='ds_plank',
         id=id,
         id_existed=id_existed,
     )
@@ -280,7 +287,7 @@ def metatask_seq(input_data: dict) -> None:
         logger.critical(f'{id} Input sequence could not be prepared, all tasks are skipped')
         return
 
-    _run_plm(id, id_existed)
+    _run_plank(id, id_existed)
 
     conservation = _run_conservation(id, id_existed)
     
@@ -361,7 +368,7 @@ def metatask_str(input_data: dict) -> None:
             # store results
             _save_converter_seq_result(id, converter_result)
 
-    _run_plm(id, id_existed)
+    _run_plank(id, id_existed)
     
     conservation = _run_conservation(id, id_existed)
 

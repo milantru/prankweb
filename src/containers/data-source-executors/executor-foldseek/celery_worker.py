@@ -2,7 +2,7 @@
 
 import os
 from celery import Celery
-import foldseek_executor
+import executor
 
 celery = Celery(
     os.getenv('CELERY_NAME'),
@@ -11,4 +11,4 @@ celery = Celery(
 
 @celery.task(name='ds_foldseek')
 def ds_foldseek(id):
-    foldseek_executor.run_foldseek(id)
+    executor.run_foldseek(id)

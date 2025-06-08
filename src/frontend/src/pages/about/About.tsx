@@ -1,5 +1,3 @@
-import Footer from "../../shared/components/Footer";
-
 function About() {
     return (
         <div className="container">
@@ -18,9 +16,24 @@ function About() {
                 and convenient way for scientists to analyze proteins.
             </p>
 
+            <h2 id="structure-prediction">Structure prediction</h2>
+            <p>
+                For sequence input, the application uses the <a href="https://esmatlas.com/resources?action=fold"
+                    target="_blank" rel="noopener noreferrer">ESMFold&nbsp;API</a> to predict the 3D structure
+                of the provided protein sequence.
+            </p>
+
             <h2 id="data-sources">Data sources</h2>
             <p>
                 The application uses the following data sources:
+            </p>
+
+            <h3 id="esm2">ESM-2</h3>
+            <p>
+                <a href="https://github.com/facebookresearch/esm" target="_blank" rel="noopener noreferrer">ESM-2</a> is a
+                protein Language Model (pLM) that we use to generate embeddings for each residue.
+                These embeddings are then passed to our custom classification neural network to determine whether
+                a residue is part of a binding site without needing any information about the protein’s 3D structure.
             </p>
 
             <h3 id="p2rank">P2Rank</h3>
@@ -30,23 +43,13 @@ function About() {
                 In the application, the model is used to predict which residues are part of specific binding sites.
             </p>
 
-            <h3 id="esmfold">ESMFold</h3>
-            <p>
-                <a href="https://github.com/facebookresearch/esm" target="_blank" rel="noopener noreferrer">ESMFold</a> is a
-                protein Language Model (pLM) that we use to generate embeddings for each residue.
-                These embeddings are then passed to a classification neural network to determine whether
-                a residue is part of a binding site.
-            </p>
-
             <h3 id="foldseek">Foldseek</h3>
             <p>
                 <a href="https://github.com/steineggerlab/foldseek" target="_blank" rel="noopener noreferrer">Foldseek</a> is a
                 tool which enables fast and sensitive comparisons of large protein structure sets,
-                supporting monomer and multimer searches, as well as clustering. We use it with the <strong>PDB100 database</strong> to get
+                supporting monomer and multimer searches, as well as clustering. We use it with the <strong>PDB100 database</strong> (100% sequence identity clustered PDB) to get
                 the proteins most similar to the submitted protein, along with their associated data.
             </p>
-
-            <Footer />
         </div>
     );
 }

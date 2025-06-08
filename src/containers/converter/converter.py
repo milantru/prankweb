@@ -54,7 +54,7 @@ def run_structure_to_sequence(id):
                         with open(MAPPING_FILE, "r") as infile:
                             mapping_dict = json.load(infile)
                         if residue in mapping_dict:
-                            print("UPDATE")
+                            logger.info(f'{id} Residue {residue} found in mapping file, converting to standard residue')
                             residue = mapping_dict[residue]
                         else:
                             raise ValueError(f"Residue {residue} not found in {MAPPING_FILE}")                        
@@ -76,7 +76,7 @@ def run_structure_to_sequence(id):
     logger.info(f'{id} converter_str_to_seq finished, returning {len(chains)} unique sequences')
     return {
         "chains": chains,
-        "seq_to_str_mapping": seq_to_str_mapping
+        "seqToStrMapping": seq_to_str_mapping
     }
 
 def run_sequence_to_structure(id):

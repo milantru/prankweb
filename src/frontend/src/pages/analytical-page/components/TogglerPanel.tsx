@@ -1,9 +1,21 @@
 import { useEffect, useRef, useState } from "react";
 import { ScaleLoader } from "react-spinners";
+import chroma from "chroma-js";
+import { toBindingSiteLabel } from "../../../shared/helperFunctions/labels";
+import { BindingSite } from "../AnalyticalPage";
+
+type PanelTitle = {
+    pdbCode?: string; // When pdb code isn't specified, query protein is assumed 
+    chain: string;
+    dataSourceName: string;
+};
 
 type Props = {
-    title: string;
-    bindingSiteRecord: Record<string, boolean>;
+    title: PanelTitle;
+    color: string;
+    dataSourceDisplayNames: Record<string, string>;
+    bindingSiteRecord: Record<string, boolean>; // bindingSiteRecord[bindingSiteId] -> true/false whether is binding site displayed
+    bindingSites: Record<string, BindingSite>; // bindingSites[bindingSiteId] -> binding site
     isDisabled: boolean;
     displayLoadingAnimationWhenDisabled: boolean;
     onBindingSiteToggle: (bindingSiteId: string, checked: boolean) => void;
@@ -11,7 +23,10 @@ type Props = {
 
 function TogglerPanel({
     title,
+    color,
+    dataSourceDisplayNames,
     bindingSiteRecord,
+    bindingSites,
     isDisabled,
     displayLoadingAnimationWhenDisabled,
     onBindingSiteToggle
@@ -59,12 +74,18 @@ function TogglerPanel({
     }, [checkAll, justUncheckCheckbox, isDisabled]);
 
     return (
-        <div className={`border rounded mb-2 pt-2 pb-1 px-2 ${isDisabled ? "bg-light text-dark" : ""}`}
-            title={`${isDisabled ? "Bindings sites (or ligands) are loading..." : ""}`}>
-            <div className="d-flex flex-row mb-1"
-                style={{ cursor: "pointer" }}
+        <div className={`border rounded mb-2 ${isDisabled ? "bg-light text-dark" : ""}`}
+            title={`${isDisabled ? "Bindings sites (or ligands) are loading..." : ""}`}
+            style={{ backgroundColor: color }}>
+            <div className="pt-2 d-flex flex-row"
+                style={{
+                    cursor: "pointer",
+                    backgroundColor: chroma(color).alpha(0.175).css(),
+                    boxShadow: !isPanelOpened ? "0 2px 8px rgba(0, 0, 0, 0.15)" : "0 2px 8px rgba(0, 0, 0, 0.25)",
+                    padding: "2px 4px 0 4px"
+                }}
                 onClick={() => setIsPanelOpened(prevState => !prevState)}>
-                <div className="d-flex w-100 border-bottom mb-1 mr-auto pl-1 align-items-center">
+                <div className="d-flex w-100 mb-1 mr-auto pl-1 align-items-center">
                     <input type="checkbox"
                         className="mr-2"
                         checked={checkAll}
@@ -72,7 +93,11 @@ function TogglerPanel({
                         onClick={e => e.stopPropagation()} // This onClick prevents toggling the panel when clicking the checkbox
                         onChange={e => setCheckAll(e.target.checked)}
                         title="Check/Uncheck all items in panel" />
-                    {title}
+                    <span>
+                        <span><strong>{`${title.pdbCode?.toUpperCase() ?? "Query protein"}`}</strong></span>
+                        <span> (chain <strong>{title.chain}</strong></span>
+                        <span>, source: <em>{dataSourceDisplayNames[title.dataSourceName]}</em>)</span>
+                    </span>
 
                     <div className="d-flex align-items-center ml-auto">
                         {isDisabled && displayLoadingAnimationWhenDisabled &&
@@ -84,25 +109,50 @@ function TogglerPanel({
                 </div>
             </div>
 
-            {isPanelOpened && (<>
+            {isPanelOpened && (<div className="mt-2 px-2">
                 {Object.entries(bindingSiteRecord).length === 0
                     ? <div className="pl-1">No binding sites.</div>
-                    : <div className="d-flex flex-row flex-wrap pl-1" style={{ maxHeight: "23vh", overflow: "auto" }}>
-                        {Object.entries(bindingSiteRecord).map(([bindingSiteId, isDisplayed], i) =>
-                            <div key={`${bindingSiteId}-${i}`}>
-                                <label className="mr-2">
-                                    <input type="checkbox"
-                                        name="checkbox"
-                                        className="mr-1"
-                                        checked={isDisplayed}
-                                        disabled={isDisabled}
-                                        onChange={() => handleChange(bindingSiteId, !isDisplayed)} />
-                                    {bindingSiteId}
-                                </label>
-                            </div>
-                        )}
+                    : <div className="pl-1" style={{ maxHeight: "23vh", overflow: "auto" }}>
+                        <table className="table table-sm">
+                            <thead className="thead-light" style={{ position: "sticky", top: 0, zIndex: 1 }}>
+                                <tr>
+                                    {/* border top is disabled here, otherwise when user was scrolling down
+                                      * and then returned back to the top (trying to go even higher), the line (border top) appeared */}
+                                    <th style={{ borderTop: "none" }}>Name</th>
+                                    <th style={{ borderTop: "none" }}>Rank</th>
+                                    <th style={{ borderTop: "none" }}>Score</th>
+                                    <th style={{ borderTop: "none" }}>Probability</th>
+                                    <th style={{ borderTop: "none" }}># of residues</th>
+                                    <th style={{ borderTop: "none" }}>Avg conservation</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {Object.entries(bindingSiteRecord).map(([bindingSiteId, isDisplayed], i) =>
+                                    bindingSiteId in bindingSites && (
+                                        <tr key={`${bindingSiteId}-${i}`}>
+                                            <td className="align-middle">
+                                                <label className="mb-0 d-flex align-items-center">
+                                                    <input type="checkbox"
+                                                        name="checkbox"
+                                                        className="mr-2"
+                                                        checked={isDisplayed}
+                                                        disabled={isDisabled}
+                                                        onChange={() => handleChange(bindingSiteId, !isDisplayed)} />
+                                                    {toBindingSiteLabel(bindingSiteId)}
+                                                </label>
+                                            </td>
+                                            <td>{bindingSites[bindingSiteId]?.rank ?? "-"}</td>
+                                            <td>{bindingSites[bindingSiteId]?.score?.toFixed(2) ?? "-"}</td>
+                                            <td>{bindingSites[bindingSiteId].confidence.toFixed(2)}</td>
+                                            <td>{bindingSites[bindingSiteId].residues.length}</td>
+                                            <td>{bindingSites[bindingSiteId]?.avgConservation?.toFixed(2) ?? "-"}</td>
+                                        </tr>
+                                    )
+                                )}
+                            </tbody>
+                        </table>
                     </div>}
-            </>)}
+            </div>)}
         </div>
     );
 

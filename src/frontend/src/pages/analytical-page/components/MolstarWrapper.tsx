@@ -2,12 +2,9 @@ import { useEffect, createRef, forwardRef, useImperativeHandle, useRef, useState
 import { createPluginUI } from "molstar/lib/mol-plugin-ui";
 import { renderReact18 } from "molstar/lib/mol-plugin-ui/react18";
 import { PluginUIContext } from "molstar/lib/mol-plugin-ui/context";
-/*  Might require extra configuration,
-see https://webpack.js.org/loaders/sass-loader/ for example.
-create-react-app should support this natively. */
 import "molstar/lib/mol-plugin-ui/skin/light.scss";
 import { DefaultPluginUISpec } from "molstar/lib/mol-plugin-ui/spec";
-import { ChainResult, ChainResults, ProcessedResult, Residue } from "../AnalyticalPage";
+import { ChainResult, ProcessedResult, SimilarProtein } from "../AnalyticalPage";
 import { StateBuilder, StateObjectRef, StateObjectSelector } from "molstar/lib/mol-state";
 import { Asset } from "molstar/lib/mol-util/assets";
 import { MolScriptBuilder as MS } from "molstar/lib/mol-script/language/builder";
@@ -25,12 +22,18 @@ import { setSubtreeVisibility } from 'molstar/lib/mol-plugin/behavior/static/sta
 import { Color } from "molstar/lib/mol-util/color";
 import { StructureOption } from "./SettingsPanel";
 import Switch from "./Switch";
+import { Script } from "molstar/lib/mol-script/script";
+import { useInterval } from "../../../shared/hooks/useInterval";
+import { toastWarning } from "../../../shared/helperFunctions/toasts";
 
 export type MolStarWrapperHandle = {
 	toggleQueryProteinBindingSite: (dataSourceName: string, chain: string, bindingSiteId: string, show: boolean) => void;
 	toggleSimilarProteinBindingSite: (dataSourceName: string, pdbCode: string, chain: string, bindingSiteId: string, show: boolean) => void;
 	toggleSimilarProteinStructure: (dataSourceName: string, pdbCode: string, chain: string, show: boolean) => void;
 	hideAllSimilarProteinStructures: (except: StructureOption[]) => void;
+	highlight: (structureIndices: number[], dataSourceName?: string, pdbCode?: string, chain?: string) => void;
+	focus: (structureIndices: number[], dataSourceName?: string, pdbCode?: string, chain?: string) => void;
+	getMolstarPlugin: () => PluginUIContext;
 };
 
 declare global {
@@ -59,46 +62,68 @@ type VisiblePocketObjects = {
 };
 
 type Props = {
-	chainResults: ChainResults;
+	chainResult: ChainResult;
 	selectedChain: string;
+	selectedStructures: StructureOption[];
 	// bindingSiteSupportCounter[residue index in structure (of pocket)] -> number of data sources supporting that the residue index is part of binding site
 	bindingSiteSupportCounter: Record<number, number>;
 	dataSourceCount: number;
+	// queryProteinBindingSitesData[dataSourceName][chain][bindingSiteId] -> true/false to show bindings site (and ligands if available) 
+	queryProteinBindingSitesData: Record<string, Record<string, Record<string, boolean>>>;
+	// similarProteinBindingSitesData[dataSourceName][pdbCode][chain][bindingSiteId] -> true/false to show bindings site (and ligands if available) 
+	similarProteinBindingSitesData: Record<string, Record<string, Record<string, Record<string, boolean>>>>;
 	onStructuresLoadingStart: () => void;
 	onStructuresLoadingEnd: () => void;
+	onAlignAndSuperposeError: () => void;
 };
 
 export const MolStarWrapper = forwardRef(({
-	chainResults,
+	chainResult,
 	selectedChain,
+	selectedStructures,
 	bindingSiteSupportCounter,
 	dataSourceCount,
+	queryProteinBindingSitesData,
+	similarProteinBindingSitesData,
 	onStructuresLoadingStart,
-	onStructuresLoadingEnd
+	onStructuresLoadingEnd,
+	onAlignAndSuperposeError
 }: Props, ref) => {
-	const chainResult = chainResults[selectedChain];
-	if (!chainResult) {
-		return <div>No data for the selected chain.</div>
-	}
 	const parent = createRef<HTMLDivElement>();
-	const queryStructure = useRef<VisibleObject>(null!);
+
+	const queryStructure = useRef<VisibleObject | null>(null);
+	// queryProteinPockets[dataSourceName][chain][bindingSiteId]
 	const queryProteinPockets = useRef<Record<string, Record<string, Record<string, VisiblePocketObjects>>>>({});
+	// queryProteinLigands[dataSourceName][chain][bindingSiteId]
 	const queryProteinLigands = useRef<Record<string, Record<string, Record<string, VisibleObject>>>>({});
+
+	// similarProteinStructures[dataSourceName][pdbCode][chain]
 	const similarProteinStructures = useRef<Record<string, Record<string, Record<string, VisibleObject>>>>({});
+	// similarProteinPockets[dataSourceName][pdbCode][chain][bindingSiteId]
 	const similarProteinPockets = useRef<Record<string, Record<string, Record<string, Record<string, VisiblePocketObjects>>>>>({});
+	// similarProteinLigands[dataSourceName][pdbCode][chain][bindingSiteId]
 	const similarProteinLigands = useRef<Record<string, Record<string, Record<string, Record<string, VisibleObject>>>>>({});
+
 	const [isHighlightModeOn, setIsHighlightModeOn] = useState<boolean>(false);
+	const [isHighlightModeSwitchingDisabled, setIsHighlightModeSwitchingDisabled] = useState<boolean>(false);
 	const [structuresLoaded, setStructuresLoaded] = useState<boolean>(false);
+	const loadingMessage = useRef<string>("Loading structure(s)...");
+	const [displayedLoadingMessageLength, setDisplayedLoadingMessageLength] = useState<number>(loadingMessage.current.length);
+
+	const alignAndSuperposeFailed = useRef<boolean>(false);
 
 	useImperativeHandle(ref, () => ({
 		toggleQueryProteinBindingSite,
 		toggleSimilarProteinBindingSite,
 		toggleSimilarProteinStructure,
-		hideAllSimilarProteinStructures
+		hideAllSimilarProteinStructures,
+		highlight,
+		focus,
+		getMolstarPlugin
 	}));
 
-	// In debug mode of react's strict mode, this code will
-	// be called twice in a row, which might result in unexpected behavior.
+	/* In debug mode of react's strict mode, this code will
+	 * be called twice in a row, which might result in unexpected behavior. */
 	useEffect(() => {
 		async function init() {
 			const plugin = await createPluginUI({
@@ -109,14 +134,14 @@ export const MolStarWrapper = forwardRef(({
 					layout: {
 						initial: {
 							isExpanded: false,
-							showControls: false, // show advanced controls
+							showControls: false, // Show advanced controls
 							controlsDisplay: "reactive",
 							regionState: {
-								top: "hidden",    //sequence
+								top: "hidden",    // Sequence
 								left: (window.innerWidth > 1200) ? "collapsed" : "hidden",
-								//tree with some components, hide for small and medium screens
-								bottom: "hidden", //shows log information
-								right: "hidden"   //structure tools
+								// Tree with some components, hide for small and medium screens
+								bottom: "hidden", // Shows log information
+								right: "hidden"   // Structure tools
 							}
 						}
 					},
@@ -128,7 +153,7 @@ export const MolStarWrapper = forwardRef(({
 
 			window.molstar = plugin;
 
-			loadNewStructures(plugin, "pdb", selectedChain);
+			loadNewStructures(plugin, "pdb", selectedChain, selectedStructures);
 		}
 
 		init();
@@ -140,13 +165,27 @@ export const MolStarWrapper = forwardRef(({
 	}, []);
 
 	useEffect(() => {
+		async function loadNewStructuresWrapper(plugin: PluginUIContext) {
+			await loadNewStructures(plugin, "pdb", selectedChain, selectedStructures);
+			if (alignAndSuperposeFailed.current) {
+				alignAndSuperposeFailed.current = false;
+				/* Try again... It should not fail this time as alignAndSuperpose will not be called because
+				 * we pass no options (selected structures), only query struct should be visualised. */
+				await loadNewStructures(plugin, "pdb", selectedChain, []);
+				toastWarning("One or more selected proteins could not be aligned or superposed due to an error. \
+						As a result, only the query protein is displayed in the structural visualization. \
+						Please modify your selection and try again.");
+				onAlignAndSuperposeError();
+			}
+		}
+
 		const plugin: PluginUIContext = window.molstar;
 		if (!plugin) {
 			return;
 		}
 
-		loadNewStructures(plugin, "pdb", selectedChain);
-	}, [/*chainResult, */selectedChain]); // TODO is not dependant on chainResult because query seq should not change
+		loadNewStructuresWrapper(plugin);
+	}, [selectedStructures, selectedChain]); // It is not dependant on chainResult because query seq should not change
 
 	useEffect(() => {
 		async function updatePocketsTransparency() {
@@ -160,34 +199,46 @@ export const MolStarWrapper = forwardRef(({
 
 			const plugin = window.molstar;
 			if (!plugin) {
-				console.error("Tried to update pockets transparency due to highlight mode toggle, but plugin is missing.");
+				console.error("Tried to update pockets transparency due to Support-Based Highlighting toggle, but plugin is missing.");
 				return;
 			}
 
 			const update = plugin.build();
+			let transparencyError = false;
 			// Update query structure pockets
 			for (const [dataSourceName, o1] of Object.entries(queryProteinPockets.current)) {
 				for (const [chain, o2] of Object.entries(o1)) {
 					for (const [bindingSiteId, pocket] of Object.entries(o2)) {
 						for (const o of pocket.residueObjectsAndSupporters) {
-							updateTransparency(update, o);
+							try {
+								updateTransparency(update, o);
+							}
+							catch (e) { transparencyError = true; }
 						}
 					}
 				}
 			}
+
 			// Update similar structures pockets
 			for (const [dataSourceName, o1] of Object.entries(similarProteinPockets.current)) {
 				for (const [pdbId, o2] of Object.entries(o1)) {
 					for (const [chain, o3] of Object.entries(o2)) {
 						for (const [bindingSiteId, pocket] of Object.entries(o3)) {
 							for (const o of pocket.residueObjectsAndSupporters) {
-								updateTransparency(update, o);
+								try {
+									updateTransparency(update, o);
+								}
+								catch (e) { transparencyError = true; }
 							}
 						}
 					}
 				}
 			}
+			if (transparencyError) {
+				console.error("Failed to update pockets transparency.");
+			}
 			await update.commit();
+			setIsHighlightModeSwitchingDisabled(false);
 		}
 
 		if (structuresLoaded) {
@@ -195,13 +246,35 @@ export const MolStarWrapper = forwardRef(({
 		}
 	}, [isHighlightModeOn, structuresLoaded]);
 
+	useEffect(() => {
+		if (structuresLoaded) { // After loading, always reset length so next time full message will be displayed
+			setDisplayedLoadingMessageLength(loadingMessage.current.length);
+		}
+	}, [structuresLoaded]);
+
+	useInterval(() => {
+		// It is desired to display "Loading structures...", then "Loading structures.", and then "Loading structures.." (and loop it)
+		setDisplayedLoadingMessageLength(prevLen => {
+			if ((prevLen + 1) > loadingMessage.current.length) {
+				return loadingMessage.current.length - 3;
+			}
+			return prevLen + 1;
+		});
+	}, structuresLoaded ? null : 500);
+
 	return (
 		<div className="w-100">
 			<div className="d-flex">
+				{/* When loading msg animation ("Loading structures.", "Loading structures..", "Loading structures...",...)
+				  * is on and the screen is small, the animation moves "Support-Based Highlighting" and Switch with each tick, 
+				  * which doesn't look nice. Max width 200px solves this problem. */}
+				<div className="d-flex align-items-center" style={{ minWidth: "200px" }}>
+					{structuresLoaded ? "" : loadingMessage.current.substring(0, displayedLoadingMessageLength)}
+				</div>
 				<div className="mt-2 ml-auto"
-					title="When the mode is enabled, the opacity of visualized binding sites increases with the number of supporting data sources.">
-					Highlight mode
-					<Switch classes="ml-2" onToggle={isOn => setIsHighlightModeOn(isOn)} />
+					title="When the mode is enabled, the opacity of residues of visualized binding sites increases with the number of supporting data sources.">
+					Support-Based Highlighting {/* Support-Based Highlighting was previously known as Highlight mode */}
+					<Switch classes="ml-2" isDisabled={isHighlightModeSwitchingDisabled || !structuresLoaded} onToggle={handleSwitchToggle} />
 				</div>
 			</div>
 
@@ -209,11 +282,20 @@ export const MolStarWrapper = forwardRef(({
 		</div>
 	);
 
+	function getMolstarPlugin(): PluginUIContext | null {
+		const plugin: PluginUIContext = window.molstar;
+		if (!plugin) {
+			return null;
+		}
+
+		return plugin;
+	}
+
 	function getQuerySequenceUrl(chainResult: ChainResult) {
 		const dseResults = Object.values(chainResult.dataSourceExecutorResults) as ProcessedResult[];
 		if (dseResults.length === 0) {
-			/* No query sequence pdb url, this should not happen. */
-			throw new Error("No query sequence url."); // TODO
+			// No query sequence pdb url, this should not happen.
+			throw new Error("No query sequence url.");
 		}
 
 		// For all results should be query seq pdb url the same, we take the one at index 0
@@ -241,6 +323,16 @@ export const MolStarWrapper = forwardRef(({
 		return alpha;
 	}
 
+	async function handleSwitchToggle(isOn: boolean) {
+		if (isHighlightModeSwitchingDisabled) {
+			return;
+		}
+		/* Disable Support-Based Highlighting switching until transparency of residues is updated, 
+		 * after that the switching will be enabled again. */
+		setIsHighlightModeSwitchingDisabled(true);
+		setIsHighlightModeOn(isOn);
+	}
+
 	async function createPocketRepresentationForStruct(
 		plugin: PluginContext,
 		struct: VisibleObject,
@@ -257,12 +349,12 @@ export const MolStarWrapper = forwardRef(({
 		const alpha = getPocketTransparency(pocketExprAndSupportersCount.supportersCount);
 
 		const pr = await plugin.builders.structure.representation.addRepresentation(p, {
-			type: "cartoon",
+			type: "gaussian-surface",
 			typeParams: { alpha: alpha },
 			color: "uniform",
 			colorParams: { value: Color(Number("0xff0000")) }, // red color
 			size: "physical",
-			sizeParams: { scale: 1.10 }
+			sizeParams: { scale: 0.5 }
 		});
 		setSubtreeVisibility(plugin.state.data, p.ref, !showRepresentationWhenCreated);
 
@@ -298,7 +390,7 @@ export const MolStarWrapper = forwardRef(({
 		structs: Record<string, Record<string, Record<string, VisibleObject>>>,
 		ligandsExpression: Record<string, Record<string, Record<string, Record<string, Expression>>>>,
 		pocketsExpressions: Record<string, Record<string, Record<string, Record<string, { expr: Expression, supportersCount: number }[]>>>>,
-		showRepresentationsWhenCreated: boolean
+		options: StructureOption[]
 	) {
 		const ls: Record<string, Record<string, Record<string, Record<string, VisibleObject>>>> = {};
 		const ps: Record<string, Record<string, Record<string, Record<string, VisiblePocketObjects>>>> = {};
@@ -308,6 +400,10 @@ export const MolStarWrapper = forwardRef(({
 			}
 
 			for (const simProt of result.similarProteins) {
+				if (!isSimProtInOptions(dataSourceName, simProt, options)) {
+					continue;
+				}
+
 				if (simProt.bindingSites.length === 0) {
 					if (!(dataSourceName in ps)) {
 						ps[dataSourceName] = {};
@@ -337,8 +433,9 @@ export const MolStarWrapper = forwardRef(({
 					for (let i = 0; i < pocketsExpressionsAndSupporters.length; i++) {
 						const pocketExprAndSupporters = pocketsExpressionsAndSupporters[i];
 						const key = `${dataSourceName}-${simProt.pdbId}-${simProt.chain}-${bindingSite.id}-pocket-${i}`;
+						const show = similarProteinBindingSitesData[dataSourceName][simProt.pdbId][simProt.chain][bindingSite.id];
 
-						const resObj = await createPocketRepresentationForStruct(plugin, struct, key, pocketExprAndSupporters, showRepresentationsWhenCreated);
+						const resObj = await createPocketRepresentationForStruct(plugin, struct, key, pocketExprAndSupporters, show);
 						if (!resObj) {
 							console.warn("Failed to create pocket representation (for 1 residue). Key: ", key);
 							continue;
@@ -356,12 +453,13 @@ export const MolStarWrapper = forwardRef(({
 					}
 					ps[dataSourceName][simProt.pdbId][simProt.chain][bindingSite.id] = { residueObjectsAndSupporters: residueObjects, isVisible: false };
 
-					if (!bindingSite.id.startsWith("pocket_")) {
+					if (!bindingSite.id.startsWith("pocket")) {
 						// We know pocket also has ligand so we create expr for that too 
 						const key = `${dataSourceName}-${simProt.pdbId}-${simProt.chain}-${bindingSite.id}-ligand`;
 						const ligandsOfOneType = ligandsExpression[dataSourceName][simProt.pdbId][simProt.chain][bindingSite.id];
+						const show = similarProteinBindingSitesData[dataSourceName][simProt.pdbId][simProt.chain][bindingSite.id];
 
-						const l = await createLigandsRepresentationForStruct(plugin, struct, key, ligandsOfOneType, showRepresentationsWhenCreated);
+						const l = await createLigandsRepresentationForStruct(plugin, struct, key, ligandsOfOneType, show);
 						if (l) {
 							if (!(dataSourceName in ls)) {
 								ls[dataSourceName] = {};
@@ -399,7 +497,7 @@ export const MolStarWrapper = forwardRef(({
 		}
 	}
 
-	async function _loadStructure(plugin: PluginContext, structureUrl: string, format: BuiltInTrajectoryFormat) {
+	async function _loadStructure(plugin: PluginContext, structureUrl: string, format: BuiltInTrajectoryFormat): Promise<VisibleObject> {
 		const data = await plugin.builders.data.download({
 			url: Asset.Url(structureUrl),
 			isBinary: false
@@ -437,13 +535,21 @@ export const MolStarWrapper = forwardRef(({
 		visibleObjects.isVisible = show;
 	}
 
-	function performDynamicSuperposition(plugin: PluginContext, format: BuiltInTrajectoryFormat, chain: string) {
+	function isSimProtInOptions(dataSourceName, simProt: SimilarProtein, options: StructureOption[]) {
+		const inOptions = options.some(o => o.value.dataSourceName === dataSourceName
+			&& o.value.pdbId === simProt.pdbId
+			&& o.value.chain === simProt.chain);
+		return inOptions;
+	}
+
+	function performDynamicSuperposition(plugin: PluginContext, format: BuiltInTrajectoryFormat, chain: string, options: StructureOption[]) {
 		return plugin.dataTransaction(async () => {
 			// Load query protein structure
 			const querySequenceUrl = getQuerySequenceUrl(chainResult);
 			const queryStructureTmp = await _loadStructure(plugin, querySequenceUrl, format);
 			queryStructure.current = queryStructureTmp;
 
+			// Load query protein bindings sites/pockets (and also ligands if available)
 			const queryProteinPocketsExpression: Record<string, Record<string, Record<string, { expr: Expression, supportersCount: number }[]>>> = {};
 			const queryProteinLigandsExpression: Record<string, Record<string, Record<string, Expression>>> = {};
 			const dseResult = chainResult.dataSourceExecutorResults
@@ -453,17 +559,12 @@ export const MolStarWrapper = forwardRef(({
 					const residuesExpressionsAndSupporters = residues.map(r => ({
 						expr: MS.struct.modifier.wholeResidues({
 							0: MS.struct.generator.atomGroups({
-								'chain-test': MS.core.rel.eq([MS.struct.atomProperty.macromolecular.auth_asym_id(), chain]), // TODO: probably no need for chain test
+								'chain-test': MS.core.rel.eq([MS.struct.atomProperty.macromolecular.auth_asym_id(), chain]),
 								'residue-test': MS.core.rel.eq([MS.struct.atomProperty.macromolecular.label_seq_id(), r])
 							})
 						}),
 						supportersCount: bindingSiteSupportCounter[r]
 					}));
-					// TODO netreba to ako v prankwebe v zdrojaku je?
-					// const wholeResiduesExpression = MS.struct.generator.atomGroups({
-					// 	'chain-test': MS.core.rel.eq([MS.struct.atomProperty.macromolecular.auth_asym_id(), chain]),
-					// 	'residue-test': MS.core.logic.or(partsExpressions)
-					// });
 
 					if (!(dataSourceName in queryProteinPocketsExpression)) {
 						queryProteinPocketsExpression[dataSourceName] = {};
@@ -476,7 +577,7 @@ export const MolStarWrapper = forwardRef(({
 					}
 					queryProteinPocketsExpression[dataSourceName][selectedChain][bindingSite.id].push(...residuesExpressionsAndSupporters);
 
-					if (!bindingSite.id.startsWith("pocket_")) {
+					if (!bindingSite.id.startsWith("pocket")) {
 						// We know pocket also has ligand so we create expr for that too 
 						const ligandLabel = bindingSite.id.substring(bindingSite.id.indexOf("_") + 1); // e.g. "H_SO4" -> "SO4"
 						const ligandsOfOneType = MS.struct.generator.atomGroups({
@@ -510,6 +611,10 @@ export const MolStarWrapper = forwardRef(({
 				}
 
 				for (const simProt of result.similarProteins) {
+					if (!isSimProtInOptions(dataSourceName, simProt, options)) {
+						continue;
+					}
+
 					if (!(dataSourceName in structuresTmp)) {
 						structuresTmp[dataSourceName] = {};
 					}
@@ -522,6 +627,7 @@ export const MolStarWrapper = forwardRef(({
 			}
 			similarProteinStructures.current = structuresTmp;
 
+			// Load similar proteins binding sites/pockets (and also ligands if available) 
 			const similarProteinPocketsExpression: Record<string, Record<string, Record<string, Record<string, { expr: Expression, supportersCount: number }[]>>>> = {};
 			const similarProteinLigandsExpression: Record<string, Record<string, Record<string, Record<string, Expression>>>> = {};
 			for (const [dataSourceName, result] of Object.entries(chainResult.dataSourceExecutorResults)) {
@@ -530,6 +636,10 @@ export const MolStarWrapper = forwardRef(({
 				}
 
 				for (const simProt of result.similarProteins) {
+					if (!isSimProtInOptions(dataSourceName, simProt, options)) {
+						continue;
+					}
+
 					if (simProt.bindingSites.length === 0) {
 						if (!(dataSourceName in similarProteinPocketsExpression)) {
 							similarProteinPocketsExpression[dataSourceName] = {};
@@ -563,11 +673,6 @@ export const MolStarWrapper = forwardRef(({
 							}),
 							supportersCount: bindingSiteSupportCounter[r]
 						}));
-						// TODO netreba to ako v prankwebe v zdrojaku je?
-						// const wholeResiduesExpression = MS.struct.generator.atomGroups({
-						// 	'chain-test': MS.core.rel.eq([MS.struct.atomProperty.macromolecular.auth_asym_id(), chain]),
-						// 	'residue-test': MS.core.logic.or(partsExpressions)
-						// });
 
 						if (!(dataSourceName in similarProteinPocketsExpression)) {
 							similarProteinPocketsExpression[dataSourceName] = {};
@@ -583,7 +688,7 @@ export const MolStarWrapper = forwardRef(({
 						}
 						similarProteinPocketsExpression[dataSourceName][simProt.pdbId][simProt.chain][bindingSite.id].push(...residuesExpressionsAndSupporters);
 
-						if (!bindingSite.id.startsWith("pocket_")) {
+						if (!bindingSite.id.startsWith("pocket")) {
 							// We know pocket also has ligand so we create expr for that too 
 							const ligandLabel = bindingSite.id.substring(bindingSite.id.indexOf("_") + 1); // e.g. "H_SO4" -> "SO4"
 							const ligandsOfOneType = MS.struct.generator.atomGroups({
@@ -615,7 +720,8 @@ export const MolStarWrapper = forwardRef(({
 
 			const xs = plugin.managers.structure.hierarchy.current.structures;
 			if (xs.length === 0) {
-				console.warn("No structures to display.");
+				// This should never happen, always at least query struct is displayed
+				console.error("No structures to display.");
 				return;
 			}
 
@@ -626,6 +732,10 @@ export const MolStarWrapper = forwardRef(({
 				}
 
 				for (const simProt of result.similarProteins) {
+					if (!isSimProtInOptions(dataSourceName, simProt, options)) {
+						continue;
+					}
+
 					similarProteinsChains.push(simProt.chain);
 				}
 			}
@@ -653,7 +763,16 @@ export const MolStarWrapper = forwardRef(({
 
 			let transforms: MinimizeRmsd.Result[] | null = null;
 			if (xs.length > 1) { // At least 1 similar protein structure selected (not only query protein is being visualised)
-				transforms = alignAndSuperpose(selections);
+				try {
+					transforms = alignAndSuperpose(selections);
+				} catch {
+					/* Mol* may fail to align and superpose structures (probably due to unknown residues,
+					 * more here: https://www.rcsb.org/ligand/UNK). We have encountered this problem when
+					 * 155C was query protein and selected similar protein was 1COT, 
+					 * more here: https://github.com/milantru/prankweb/issues/78. */
+					alignAndSuperposeFailed.current = true;
+					return;
+				}
 			}
 
 			// Create representation of query protein structure
@@ -685,8 +804,9 @@ export const MolStarWrapper = forwardRef(({
 					for (let i = 0; i < pocketExpressionsAndSupporters.length; i++) {
 						const pocketExprAndSupportersCount = pocketExpressionsAndSupporters[i];
 						const key = `${dataSourceName}-${selectedChain}-${bindingSite.id}-pocket-${i}`;
+						const show = queryProteinBindingSitesData[dataSourceName][selectedChain][bindingSite.id];
 
-						const resObj = await createPocketRepresentationForStruct(plugin, queryStructureTmp, key, pocketExprAndSupportersCount, false);
+						const resObj = await createPocketRepresentationForStruct(plugin, queryStructureTmp, key, pocketExprAndSupportersCount, show);
 						if (!resObj) {
 							console.warn("Failed to create pocket representation (for 1 residue). Key: ", key);
 							continue;
@@ -701,11 +821,12 @@ export const MolStarWrapper = forwardRef(({
 					}
 					queryProteinPocketsTmp[dataSourceName][selectedChain][bindingSite.id] = { residueObjectsAndSupporters: residueObjects, isVisible: false };
 
-					if (!bindingSite.id.startsWith("pocket_")) {
+					if (!bindingSite.id.startsWith("pocket")) {
 						const key = `${dataSourceName}-${selectedChain}-${bindingSite.id}-ligand`;
 						const ligandOfOneTypeExpr = queryProteinLigandsExpression[dataSourceName][selectedChain][bindingSite.id];
+						const show = queryProteinBindingSitesData[dataSourceName][selectedChain][bindingSite.id];
 
-						const l = await createLigandsRepresentationForStruct(plugin, queryStructureTmp, key, ligandOfOneTypeExpr, false);
+						const l = await createLigandsRepresentationForStruct(plugin, queryStructureTmp, key, ligandOfOneTypeExpr, show);
 						if (l) {
 							if (!(dataSourceName in queryProteinLigandsTmp)) {
 								queryProteinLigandsTmp[dataSourceName] = {};
@@ -726,11 +847,12 @@ export const MolStarWrapper = forwardRef(({
 			// Create representations of similar protein structures
 			for (let i = 1; i < (selections?.length ?? 1); i++) {
 				await transform(plugin, xs[i].cell, transforms[i - 1].bTransform);
-				await createStructureRepresentation(plugin, xs[i].cell, createGetChainExpression(similarProteinsChains[i - 1]), false);
+				await createStructureRepresentation(plugin, xs[i].cell, createGetChainExpression(similarProteinsChains[i - 1]), true);
 			}
 
 			// Create representations of similar protein ligands
-			await createPocketsAndLigandsRepresentationForStructs(plugin, structuresTmp, similarProteinLigandsExpression, similarProteinPocketsExpression, false);
+			await createPocketsAndLigandsRepresentationForStructs(
+				plugin, structuresTmp, similarProteinLigandsExpression, similarProteinPocketsExpression, options);
 
 			// Reset camera (this should make the structures more visible)
 			plugin.canvas3d?.requestCameraReset();
@@ -738,11 +860,11 @@ export const MolStarWrapper = forwardRef(({
 		});
 	}
 
-	async function loadNewStructures(plugin: PluginUIContext, format: BuiltInTrajectoryFormat, chain: string) {
+	async function loadNewStructures(plugin: PluginUIContext, format: BuiltInTrajectoryFormat, chain: string, options: StructureOption[]) {
 		setStructuresLoaded(false);
 		onStructuresLoadingStart();
 		await plugin.clear();
-		await performDynamicSuperposition(plugin, format, chain);
+		await performDynamicSuperposition(plugin, format, chain, options);
 		onStructuresLoadingEnd();
 		setStructuresLoaded(true);
 	}
@@ -752,7 +874,7 @@ export const MolStarWrapper = forwardRef(({
 		const pocket = queryProteinPockets.current[dataSourceName][chain][bindingSiteId]
 		setVisibilityOfObjects(pocket, show);
 
-		if (bindingSiteId.startsWith("pocket_")) {
+		if (bindingSiteId.startsWith("pocket")) {
 			return;
 		}
 		// We know ligand exists in the pocket so we show/hide it as well
@@ -765,7 +887,7 @@ export const MolStarWrapper = forwardRef(({
 		const pocket = similarProteinPockets.current[dataSourceName][pdbCode][chain][bindingSiteId];
 		setVisibilityOfObjects(pocket, show);
 
-		if (bindingSiteId.startsWith("pocket_")) {
+		if (bindingSiteId.startsWith("pocket")) {
 			return;
 		}
 		// We know ligand exists in the pocket so we show/hide it as well
@@ -790,7 +912,6 @@ export const MolStarWrapper = forwardRef(({
 			setVisibilityOfObject(ligand, ligand.isVisible);
 		}
 
-		// TODO maybe to other functions as well?
 		// Reset camera (this should make the structures more visible)
 		window.molstar?.canvas3d?.requestCameraReset();
 		window.molstar?.managers.camera.reset()
@@ -824,5 +945,136 @@ export const MolStarWrapper = forwardRef(({
 				}
 			}
 		}
+	}
+
+	/**
+	 * Method which gets selection from specified chainId and residues.
+	 * @param struct Mol* Structure object
+	 * @param chainId Chain (letter) to be focused on
+	 * @param positions Residue ids
+	 * @returns StructureSelection of the desired residues
+	 */
+	function getSelectionFromChainAuthId(struct: StateObjectSelector, chainId: string, positions: number[]) {
+		const query = MS.struct.generator.atomGroups({
+			'chain-test': MS.core.rel.eq([MS.struct.atomProperty.macromolecular.auth_asym_id(), chainId]),
+			'residue-test': MS.core.set.has([MS.set(...positions), MS.struct.atomProperty.macromolecular.auth_seq_id()]),
+			'group-by': MS.struct.atomProperty.macromolecular.residueKey()
+		});
+		return Script.getStructureSelection(query, struct.cell.obj!.data);
+	}
+
+	/**
+	 * Highlights specified residue loci in either the query protein structure 
+	 * or a similar protein structure, depending on provided parameters.
+	 * - If all optional parameters (`dataSourceName`, `pdbCode`, and `chain`) are provided, 
+	 *   the residues are highlighted in a similar protein structure.
+	 * - If any of the optional parameters are missing, the residues are highlighted 
+	 *   in the query (default) protein structure.
+	 * 
+	 * @param structureIndices Array of residue indices to highlight.
+	 * @param dataSourceName (Optional) Data source identifier for a similar protein structure.
+	 * @param pdbCode (Optional) PDB code of the similar protein structure.
+	 * @param chain (Optional) Chain identifier within the similar protein structure.
+	 * @returns void
+	 */
+	function highlight(structureIndices: number[], dataSourceName?: string, pdbCode?: string, chain?: string) {
+		if (dataSourceName && pdbCode && chain) {
+			highlightInSimilarProteinStruct(structureIndices, dataSourceName, pdbCode, chain);
+		} else {
+			highlightInQueryProteinStruct(structureIndices);
+		}
+	}
+
+	function highlightInQueryProteinStruct(structureIndices: number[]) {
+		const plugin = window.molstar;
+		if (!plugin) {
+			console.warn("Tried to highlight item in Mol* viewer, but the plugin is missing.");
+			return;
+		}
+
+		if (!queryStructure.current) {
+			return; // In case visualization is not loaded yet
+		}
+
+		const sel = getSelectionFromChainAuthId(queryStructure.current.object, selectedChain, structureIndices);
+		const loci = StructureSelection.toLociWithSourceUnits(sel);
+		plugin.managers.interactivity.lociHighlights.highlightOnly({ loci });
+	}
+
+	function highlightInSimilarProteinStruct(structureIndices: number[], dataSourceName: string, pdbCode: string, chain: string) {
+		const plugin = window.molstar;
+		if (!plugin) {
+			console.warn("Tried to highlight item in Mol* viewer, but the plugin is missing.");
+			return;
+		}
+
+		if (!(dataSourceName in similarProteinStructures.current
+			&& pdbCode in similarProteinStructures.current[dataSourceName]
+			&& chain in similarProteinStructures.current[dataSourceName][pdbCode])) {
+			return; // In case visualization is not loaded yet
+		}
+		const simStruct = similarProteinStructures.current[dataSourceName][pdbCode][chain];
+
+		const sel = getSelectionFromChainAuthId(simStruct.object, chain, structureIndices);
+		const loci = StructureSelection.toLociWithSourceUnits(sel);
+		plugin.managers.interactivity.lociHighlights.highlightOnly({ loci });
+	}
+
+	/**
+	 * Focuses on the specified residue indices within a protein structure.
+	 * 
+	 * If `dataSourceName`, `pdbCode`, and `chain` are provided, the focus will be
+	 * applied to a similar protein structure. Otherwise, it defaults to focusing
+	 * on the query protein structure.
+	 * 
+	 * @param structureIndices - Array of residue indices to focus on.
+	 * @param dataSourceName - (Optional) Name of the data source for the similar protein structure.
+	 * @param pdbCode - (Optional) PDB code of the similar protein structure.
+	 * @param chain - (Optional) Chain identifier within the similar protein structure.
+	 * @returns void
+	 */
+	function focus(structureIndices: number[], dataSourceName?: string, pdbCode?: string, chain?: string) {
+		if (dataSourceName && pdbCode && chain) {
+			focusInSimilarProteinStruct(structureIndices, dataSourceName, pdbCode, chain);
+		} else {
+			focusInQueryProteinStruct(structureIndices);
+		}
+	}
+
+	function focusInQueryProteinStruct(structureIndices: number[]) {
+		const plugin = window.molstar;
+		if (!plugin) {
+			console.warn("Tried to focus on item in Mol* viewer, but the plugin is missing.");
+			return;
+		}
+
+		if (!queryStructure.current) {
+			return; // In case visualization is not loaded yet
+		}
+
+		const sel = getSelectionFromChainAuthId(queryStructure.current.object, selectedChain, structureIndices);
+		const loci = StructureSelection.toLociWithSourceUnits(sel);
+		plugin.managers.interactivity.lociHighlights.highlightOnly({ loci });
+		plugin.managers.camera.focusLoci(loci);
+	}
+
+	function focusInSimilarProteinStruct(structureIndices: number[], dataSourceName: string, pdbCode: string, chain: string) {
+		const plugin = window.molstar;
+		if (!plugin) {
+			console.warn("Tried to focus on item in Mol* viewer, but the plugin is missing.");
+			return;
+		}
+
+		if (!(dataSourceName in similarProteinStructures.current
+			&& pdbCode in similarProteinStructures.current[dataSourceName]
+			&& chain in similarProteinStructures.current[dataSourceName][pdbCode])) {
+			return;// In case visualization is not loaded yet
+		}
+		const simStruct = similarProteinStructures.current[dataSourceName][pdbCode][chain];
+
+		const sel = getSelectionFromChainAuthId(simStruct.object, chain, structureIndices);
+		const loci = StructureSelection.toLociWithSourceUnits(sel);
+		plugin.managers.interactivity.lociHighlights.highlightOnly({ loci });
+		plugin.managers.camera.focusLoci(loci);
 	}
 });

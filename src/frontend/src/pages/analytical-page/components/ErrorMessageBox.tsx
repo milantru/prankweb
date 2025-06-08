@@ -30,7 +30,9 @@ function ErrorMessageBox({ classes = "", errorMessages, onClose }: Props) {
                         </button>
 
                         <p className="mb-0 text-center">
-                            {errorMessages.map(errorMessage => (<>{errorMessage}<br /></>))}
+                            {errorMessages.filter(errMsg => errMsg).map((errorMessage, i) => (
+                                <span key={i}>{errorMessage}<br /></span>
+                            ))}
                         </p>
                     </div>
                 </div>

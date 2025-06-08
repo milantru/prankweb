@@ -2,17 +2,24 @@ import { useSearchParams } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
 import { useInterval } from "../../shared/hooks/useInterval";
 import { useVisibilityChange } from "../../shared/hooks/useVisibilityChange";
-import { DataStatus, getAllChainsAPI, getConservationsAPI, getDataSourceExecutorResultAPI, getDataSourceExecutorResultStatusAPI } from "../../shared/services/apiCalls";
-import RcsbSaguaro from "./components/RcsbSaguaro";
-import { FadeLoader, ScaleLoader } from "react-spinners";
+import { DataStatus, getAllChainsAPI, getConservationsAPI, getDataSourceExecutorResultAPI, getDataSourceExecutorResultStatusAPI, getQuerySeqToStrMappingsAPI } from "../../shared/services/apiCalls";
+import RcsbSaguaro, { RcsbSaguaroHandle } from "./components/RcsbSaguaro";
+import { ScaleLoader } from "react-spinners";
 import { MolStarWrapper, MolStarWrapperHandle } from "./components/MolstarWrapper";
 import { toastWarning } from "../../shared/helperFunctions/toasts";
 import ErrorMessageBox from "./components/ErrorMessageBox";
 import SettingsPanel, { StructureOption } from "./components/SettingsPanel";
 import TogglerPanels from "./components/TogglerPanels";
+import { RcsbFv } from "@rcsb/rcsb-saguaro";
 import "./AnalyticalPage.tsx.css"
+import { Canvas3D } from "molstar/lib/mol-canvas3d/canvas3d";
+import { Bond, StructureElement, StructureProperties } from "molstar/lib/mol-model/structure";
+import { Loci } from "molstar/lib/mol-model/loci";
+import { PluginUIContext } from "molstar/lib/mol-plugin-ui/context";
+import Skeleton from "react-loading-skeleton";
+import "react-loading-skeleton/dist/skeleton.css";
 
-const POLLING_INTERVAL = 1000 * 5; // every 5 seconds
+const POLLING_INTERVAL = 1000 * 0.5; // every 0,5 second
 
 export type Conservation = {
 	index: number;
@@ -37,22 +44,36 @@ export type Residue = {
 
 export type BindingSite = {
 	id: string;
-	confidence: number;
+	rank?: number;
+	score?: number;
+	avgConservation?: number;
+	confidence: number; // probability
 	residues: Residue[];
 };
 
-type UnprocessedSimilarProtein = {
+type UnalignedSimilarProtein = {
 	pdbId: string; // pdb id of the similar sequence
 	pdbUrl: string;
 	sequence: string;
 	chain: string;
 	bindingSites: BindingSite[];
+	seqToStrMapping: Record<number, number>; // seqToStrMapping[seqIdx] -> structIdx
 	alignmentData: AlignmentData;
+	tmScore: number;
 };
 
 type Metadata = {
 	dataSource: string;
 	timestamp: Date;
+};
+
+type UnalignedResult = {
+	id: string; // id from the IdProvider
+	sequence: string; // query sequence
+	chain: string;
+	pdbUrl: string;
+	bindingSites: BindingSite[]; // e.g. found them experimentally (1 source) or predicted (another source) 
+	metadata: Metadata;
 };
 
 export type UnprocessedResult = {
@@ -61,26 +82,29 @@ export type UnprocessedResult = {
 	chain: string;
 	pdbUrl: string;
 	bindingSites: BindingSite[]; // e.g. found them experimentally (1 source) or predicted (another source) 
-	similarProteins: UnprocessedSimilarProtein[] | null;
+	similarProteins: UnalignedSimilarProtein[] | null;
 	metadata: Metadata;
 };
 
 type DataSourceExecutor = {
-	name: string;
+	name: string; // name of the data source used to fetch results, e.g. "foldseek" 
+	displayName: string; // used for displaying in UI, e.g. "P2Rank" instead of "p2rank"
 	// one result for each chain (here will be stored results from data source executors temporarily until all are fetched)
 	results: UnprocessedResult[];
 };
 
-type SimilarProtein = {
+export type SimilarProtein = {
 	pdbId: string;
 	pdbUrl: string;
 	sequence: string;
 	chain: string;
 	bindingSites: BindingSite[];
+	seqToStrMapping: Record<number, number>; // seqToStrMapping[seqIdx] -> structIdx
+	tmScore: number;
 };
 
 export type ProcessedResult = {
-	pdbUrl: string; // TODO asi nad daj jak aj query seq daj lebo to je asi pre query tak nech pri query seq je
+	pdbUrl: string;
 	bindingSites: BindingSite[]; // e.g. found them experimentally (1 source) or predicted (another source) 
 	/* The original idea was that similar proteins are optional so they could be null,
 	 * but it seems even though the server (Python) sets it to None, package used
@@ -90,15 +114,19 @@ export type ProcessedResult = {
 	similarProteins: SimilarProtein[] | undefined | null;
 };
 
-type DataSourceExecutorResult = Record<string, ProcessedResult>; // key is data source name
+type DataSourceExecutorResult = Record<string, ProcessedResult>; // DataSourceExecutorResult[data source name] -> ProcessedResult
+
+type StatusMessage = {
+	message: string;
+	isDone: boolean;
+};
 
 export type ChainResult = {
 	querySequence: string,
+	querySeqToStrMapping: Record<number, number>; // querySeqToStrMapping[seqIdx] -> structIdx
 	dataSourceExecutorResults: DataSourceExecutorResult;
 	conservations: Conservation[];
 };
-
-export type ChainResults = Record<string, ChainResult>;
 
 function AnalyticalPage() {
 	const [searchParams, setSearchParams] = useSearchParams();
@@ -115,28 +143,43 @@ function AnalyticalPage() {
 	const [pollingInterval, setPollingInterval] = useState<number | null>(null);
 	const isPageVisible = useVisibilityChange();
 	const dataSourceExecutors = useRef<DataSourceExecutor[]>([
-		{ name: "plm", results: [] },
-		{ name: "p2rank", results: [] },
-		{ name: "foldseek", results: [] }
+		{ name: "plank", displayName: "Plank", results: [] },
+		{ name: "p2rank", displayName: "P2Rank", results: [] },
+		{ name: "foldseek", displayName: "Foldseek", results: [] }
 	]);
+	const dataSourceDisplayNames = useRef<Record<string, string>>(
+		Object.fromEntries(dataSourceExecutors.current.map(ds => [ds.name, ds.displayName]))
+	);
 	const isFetching = useRef<boolean[]>(new Array(dataSourceExecutors.current.length).fill(false));
 	const isPollingFinished = useRef<boolean[]>(new Array(dataSourceExecutors.current.length).fill(false));
 	const [errorMessages, setErrorMessages] = useState<string[]>(new Array(dataSourceExecutors.current.length).fill(""));
-	const [chainResults, setChainResults] = useState<ChainResults | null>(null);
+	const [currChainResult, setCurrChainResult] = useState<ChainResult | null>(null);
+	const [statusMessages, setStatusMessages] = useState<StatusMessage[]>(new Array(dataSourceExecutors.current.length).fill({ message: "", isDone: false }));
 	const [selectedChain, setSelectedChain] = useState<string | null>(null); // Will be set when chain results are set
+	const [selectedStructures, setSelectedStructures] = useState<StructureOption[]>([]);
 	const [squashBindingSites, setSquashBindingSites] = useState<boolean>(false);
 	const [startQuerySequenceAtZero, setStartQuerySequenceAtZero] = useState<boolean>(false);
-	// queryProteinLigandData[dataSourceName][chain][bindingSiteId] -> true/false to show bindings site (and also ligands if available)
-	// similarProteinLigandData[dataSourceName][pdbCode][chain][bindingSiteId] -> true/false to show bindings site (and also ligands if available)
-	// bindingSiteId can be e.g. H_SO4, but it can also be prediction e.g. pocket_1
-	const [queryProteinBindingSitesData, setQueryProteinBindingSitesData] = useState<Record<string, Record<string, Record<string, boolean>>>>(null!);
-	const [similarProteinBindingSitesData, setSimilarProteinBindingSitesData] = useState<Record<string, Record<string, Record<string, Record<string, boolean>>>>>(null!);
+	/* BindingSiteData hold information which binding sites (and also ligands if availabe) are currently visualised.
+	 * queryProteinBindingSitesData[dataSourceName][chain][bindingSiteId] -> true/false to show bindings site (and also ligands if available)
+	 * similarProteinBindingSitesData[dataSourceName][pdbCode][chain][bindingSiteId] -> true/false to show bindings site (and also ligands if available)
+	 * bindingSiteId can be e.g. H_SO4, but it can also be prediction e.g. pocket_1 */
+	const [queryProteinBindingSitesData, setQueryProteinBindingSitesData] = useState<Record<string, Record<string, Record<string, boolean>>>>({});
+	const [similarProteinBindingSitesData, setSimilarProteinBindingSitesData] = useState<Record<string, Record<string, Record<string, Record<string, boolean>>>>>({});
 	const [isMolstarLoadingStructures, setIsMolstarLoadingStructures] = useState<boolean>(true);
 	const molstarWrapperRef = useRef<MolStarWrapperHandle>(null!);
+	const rcsbSaguaroRef = useRef<RcsbSaguaroHandle>(null!);
 	const [allDataFetched, setAllDataFetched] = useState<boolean>(false);
 	const chains = useRef<string[]>([]);
+	// querySeqToStrMappings stores mappings for each chain of query protein (unmapped/unaligned/"fresh" from data soruces)
+	const querySeqToStrMappings = useRef<Record<string, Record<number, number>>>(null!); // querySeqToStrMappings[chain][rcsb position - 1 , i.e. seq idx] -> molstar struct idx
 	// bindingSiteSupportCounter[chain][residue index in structure (of pocket)] -> number of data sources supporting that residue is part of binding site
 	const [bindingSiteSupportCounter, setBindingSiteSupportCounter] = useState<Record<string, Record<number, number>>>({});
+	const isMolstarLinkedToRcsb = useRef<boolean>(false);
+	// unalignedResult[dataSourceName] -> UnalignedResult for currently selected chain
+	const unalignedResult = useRef<Record<string, UnalignedResult>>({});
+	// unalignedSimProts[dataSourceName] -> UnalignedSimilarProtein for currently selected chain
+	const unalignedSimProts = useRef<Record<string, UnalignedSimilarProtein[]>>({});
+	const conservations = useRef<Conservation[]>([]); // conservations for currently selected query chain
 
 	useEffect(() => {
 		if (isPollingFinished.current.every(x => x)) {
@@ -161,44 +204,31 @@ function AnalyticalPage() {
 	}, []);
 
 	useEffect(() => {
-		async function processData(dataSourceExecutors: DataSourceExecutor[], defaultChain: string) {
-			setPollingInterval(null); // turn off polling entirely (for all data sources)
+		function stopPollingAndAlignSequences(dataSourceExecutors: DataSourceExecutor[], defaultChain: string) {
+			// Turn off polling entirely (for all data sources)
+			setPollingInterval(null);
 
-			// TODO zmen nazvy refactor?
-			const allResults = dataSourceExecutors.flatMap(x => x.results);
-			const chainUnprocessedResults = transform(allResults);
-			const chainResultsTmp: ChainResults = {};
-			const entries = Object.entries(chainUnprocessedResults);
-			for (let i = 0; i < entries.length; i++) {
-				const [chain, dataSourceResults] = entries[i];
-
-				let conservations: Conservation[] = [];
-				if (useConservation) {
-					const {
-						conservations: conservationsTmp,
-						userFriendlyErrorMessage: conservationFetchingErrorMsg
-					} = await getConservationsAPI(id, chain);
-					if (conservationFetchingErrorMsg.length > 0) {
-						toastWarning(conservationFetchingErrorMsg + "\nRetrying...");
-						i--; // Try again
-						continue;
-					}
-					conservations = conservationsTmp;
-				}
-
-				chainResultsTmp[chain] = alignSequencesAcrossAllDataSources(dataSourceResults, conservations, chain);
-			}
-			handleChainSelect(chainResultsTmp[defaultChain], defaultChain); // Every protein has at least 1 chain
-			setChainResults(chainResultsTmp);
+			// Aligning will take place in the following function
+			handleChainSelect(dataSourceExecutors, defaultChain);
 		}
 
 		if (allDataFetched) {
 			// both dataSourceExecutors and chains should be already initialized when allDataFetched is set to true
 			const defaultChain = chains.current[0]; // Protein always has at least 1 chain
 
-			processData(dataSourceExecutors.current, defaultChain);
+			stopPollingAndAlignSequences(dataSourceExecutors.current, defaultChain);
 		}
 	}, [allDataFetched]);
+
+	useEffect(() => {
+		if (isMolstarLinkedToRcsb.current || isMolstarLoadingStructures || !molstarWrapperRef.current || !rcsbSaguaroRef.current) {
+			return;
+		}
+
+		const molstarPlugin = molstarWrapperRef.current.getMolstarPlugin();
+		const rcsbPlugin = rcsbSaguaroRef.current.getRcsbPlugin();
+		linkMolstarToRcsb(molstarPlugin, rcsbPlugin);
+	}, [isMolstarLoadingStructures]);
 
 	useInterval(() => {
 		for (let dataSourceExecutorIdx = 0; dataSourceExecutorIdx < dataSourceExecutors.current.length; dataSourceExecutorIdx++) {
@@ -215,24 +245,53 @@ function AnalyticalPage() {
 				<ErrorMessageBox classes="mt-2" errorMessages={errorMessages} onClose={clearErrorMessages} />
 			)}
 
+			{!allDataFetched && (
+				<div className="container-fluid pt-2">
+					<div className="box-wrapper mx-auto">
+						<ul className="list-group shadow-sm">
+							{statusMessages.map((msg, idx) =>
+								msg.message ? (
+									<li
+										key={idx}
+										className={`list-group-item d-flex flex-column flex-sm-row align-items-start align-items-sm-center py-1 ${msg.isDone ? "list-group-item-success" : "list-group-item-light"
+											}`}
+									>
+										<div className="d-flex align-items-center">
+											{msg.isDone ? (
+												<></>
+											) : (
+												<span className="custom-spinner mr-3" role="status" />
+											)}
+											<span>{msg.message}</span>
+										</div>
+									</li>
+								) : null
+							)}
+						</ul>
+					</div>
+				</div>
+			)}
 			<div id="visualizations">
 				{/* Sometimes when RcsbSaguro rerendered it kept rerendering over and over again. If you resized the window,
 					it stopped (sometimes it stopped on its own without resizing). When minHeight: "100vh" was added, 
 					this weird behavior disappeared. */}
 				<div id="visualization-rcsb">
-					{chainResults && selectedChain ? (
+					{currChainResult && chains.current.length > 0 ? (
 						<div className="d-flex flex-column align-items-center">
 							{/* Settings/Filter panel */}
 							<div className="d-flex w-100 position-relative px-3">
 								<SettingsPanel classes="w-100 mx-auto mt-2 px-3 py-2"
-									chainResults={chainResults}
+									chains={chains.current}
+									dataSourcesSimilarProteins={unalignedSimProts.current}
 									squashBindingSites={squashBindingSites}
 									startQuerySequenceAtZero={startQuerySequenceAtZero}
+									dataSourceDisplayNames={dataSourceDisplayNames.current}
 									isDisabled={isMolstarLoadingStructures}
-									onChainSelect={selectedChain => handleChainSelect(chainResults[selectedChain], selectedChain)}
+									onChainSelect={selectedChain => handleChainSelect(dataSourceExecutors.current, selectedChain)}
 									onBindingSitesSquashClick={() => setSquashBindingSites(prevState => !prevState)}
 									onStartQuerySequenceAtZero={() => setStartQuerySequenceAtZero(prevState => !prevState)}
-									onStructuresSelect={handleStructuresSelect} />
+									onStructuresSelect={handleStructuresSelect}
+									onExport={downloadData} />
 								{isMolstarLoadingStructures &&
 									<ScaleLoader className="position-absolute w-100 h-100 justify-content-center align-items-center"
 										height={"21px"}
@@ -240,39 +299,52 @@ function AnalyticalPage() {
 								}
 							</div>
 
-							<RcsbSaguaro classes="w-100 mt-2"
-								chainResult={chainResults[selectedChain]}
+							<RcsbSaguaro ref={rcsbSaguaroRef}
+								classes="w-100 mt-2"
+								chainResult={currChainResult}
+								dataSourceDisplayNames={dataSourceDisplayNames.current}
 								squashBindingSites={squashBindingSites}
-								startQuerySequenceAtZero={startQuerySequenceAtZero} />
+								startQuerySequenceAtZero={startQuerySequenceAtZero}
+								onHighlight={handleRcsbHighlight}
+								onClick={handleRcsbClick} />
 						</div>
 					) : (
-						<div className="d-flex justify-content-center align-items-center" style={{ height: "100vh" }}>
-							<FadeLoader color="#c3c3c3" />
+						<div className="p-4 w-100">
+							<Skeleton height={60} count={1} className="mb-2" />
+							<Skeleton height={400} />
 						</div>
 					)}
 				</div>
 				<div id="visualization-molstar">
-					{chainResults && selectedChain && selectedChain in bindingSiteSupportCounter ? (<>
+					{currChainResult && selectedChain && selectedChain in bindingSiteSupportCounter ? (<>
 						<div className="w-100 d-flex justify-content-center align-items-center mb-2 px-4">
 							<MolStarWrapper ref={molstarWrapperRef}
-								chainResults={chainResults}
+								chainResult={currChainResult}
 								selectedChain={selectedChain}
+								selectedStructures={selectedStructures}
 								bindingSiteSupportCounter={bindingSiteSupportCounter[selectedChain]}
 								dataSourceCount={dataSourceExecutors.current.length}
+								queryProteinBindingSitesData={queryProteinBindingSitesData}
+								similarProteinBindingSitesData={similarProteinBindingSitesData}
 								onStructuresLoadingStart={() => setIsMolstarLoadingStructures(true)}
-								onStructuresLoadingEnd={() => setIsMolstarLoadingStructures(false)} />
+								onStructuresLoadingEnd={() => setIsMolstarLoadingStructures(false)}
+								onAlignAndSuperposeError={handleAlignAndSuperposeError} />
 						</div>
-						{queryProteinBindingSitesData && similarProteinBindingSitesData && (
+						{currChainResult && queryProteinBindingSitesData && similarProteinBindingSitesData && (
 							<TogglerPanels classes="px-4"
+								chainResult={currChainResult}
 								queryProteinBindingSitesData={queryProteinBindingSitesData}
 								similarProteinsBindingSitesData={similarProteinBindingSitesData}
+								dataSourceDisplayNames={dataSourceDisplayNames.current}
 								isDisabled={isMolstarLoadingStructures}
 								onQueryProteinBindingSiteToggle={handleQueryProteinBindingSiteToggle}
 								onSimilarProteinBindingSiteToggle={handleSimilarProteinBindingSiteToggle} />
 						)}
 					</>) : (
-						<div className="d-flex justify-content-center align-items-center" style={{ height: "100vh" }}>
-							<FadeLoader color="#c3c3c3" />
+						<div className="p-4 w-100">
+							<Skeleton height={400} />
+							<Skeleton height={40} className="mt-3" />
+							<Skeleton height={40} className="mt-2" />
 						</div>
 					)}
 				</div>
@@ -345,35 +417,65 @@ function AnalyticalPage() {
 		// Get status
 		const {
 			status,
+			infoMessage,
 			userFriendlyErrorMessage: statusFetchingErrorMessage
 		} = await getDataSourceExecutorResultStatusAPI(dataSourceExecutors.current[dataSourceIndex].name, id, useConservation);
 		if (statusFetchingErrorMessage.length > 0) {
+			if (useConservation && dataSourceExecutors.current[dataSourceIndex].name === "p2rank") {
+				// We are waiting for the conservation
+				updateStatusMessages(dataSourceIndex, dataSourceExecutors.current[dataSourceIndex].displayName + ": Waiting for conservation data");
+			}
 			console.warn(statusFetchingErrorMessage + "\nRetrying...");
 			isFetching.current[dataSourceIndex] = false;
 			return;
 		}
 
 		// Init chains (either from params, or from servers chains file which should be already created when status is retrieved)
-		const { chains: chainsTmp, errMsg: allChainsFetchingErrorMessage } = await tryGetChains();
-		if (allChainsFetchingErrorMessage.length > 0) {
-			toastWarning(allChainsFetchingErrorMessage + "\nRetrying...");
+		if (dataSourceIndex === 0) {
+			/* We do not want to spam toasts for each data source in case fetching fails, 
+			 * that's why only for one data source chains are being fetched. */
+			const { chains: chainsTmp, errMsg: allChainsFetchingErrorMessage } = await tryGetChains();
+			if (allChainsFetchingErrorMessage.length > 0) {
+				toastWarning(allChainsFetchingErrorMessage + "\nRetrying...");
+				isFetching.current[dataSourceIndex] = false;
+				return;
+			}
+			chains.current = chainsTmp;
+			const defaultChain = chains.current[0]; // Protein always has at least 1 chain
+			setSelectedChain(defaultChain);
+		}
+		if (chains.current.length === 0) {
+			// Chains not fetched yet... Try again.
 			isFetching.current[dataSourceIndex] = false;
 			return;
 		}
-		chains.current = chainsTmp;
-		const defaultChain = chainsTmp[0]; // Protein always has at least 1 chain
-		setSelectedChain(defaultChain);
+
+		// Init seq to struct mapping for each chain if not inited yet (this is just for query protein)
+		if (!querySeqToStrMappings.current) {
+			const {
+				seqToStrMappings: seqToStrMappingsTmp,
+				userFriendlyErrorMessage: querySeqToStrMappingsFetchingErrorMessage
+			} = await getQuerySeqToStrMappingsAPI(id);
+			if (querySeqToStrMappingsFetchingErrorMessage.length > 0) {
+				toastWarning(querySeqToStrMappingsFetchingErrorMessage + "\nRetrying...");
+				isFetching.current[dataSourceIndex] = false;
+				return;
+			}
+			querySeqToStrMappings.current = seqToStrMappingsTmp;
+		}
 
 		// Choose next action depending on status
 		if (status === DataStatus.Processing) {
 			isFetching.current[dataSourceIndex] = false;
+			updateStatusMessages(dataSourceIndex, `${dataSourceExecutors.current[dataSourceIndex].displayName}: ${infoMessage}`, false);
 			return;
 		} else if (status === DataStatus.Failed) {
-			const errMsg = `Failed to fetch data from ${dataSourceExecutors.current[dataSourceIndex].name}, so they won't be displayed.`;
+			const errMsg = `Failed to fetch data from ${dataSourceExecutors.current[dataSourceIndex].displayName}, skipping.`;
 			updateErrorMessages(dataSourceIndex, errMsg);
 		} else if (status === DataStatus.Completed) {
-			const results = await getResults(dataSourceIndex, id, chainsTmp, useConservation);
+			const results = await getResults(dataSourceIndex, id, chains.current, useConservation);
 			dataSourceExecutors.current[dataSourceIndex].results = results;
+			updateStatusMessages(dataSourceIndex, `${dataSourceExecutors.current[dataSourceIndex].displayName}: ${infoMessage}`, true);
 		} else {
 			throw new Error("Unknown status."); // This should never happen.
 		}
@@ -434,7 +536,18 @@ function AnalyticalPage() {
 		}
 	}
 
-	function alignQueryAndSimilarSequence(querySequence: string, similarProtein: UnprocessedSimilarProtein) {
+	function getAvgConservationForQueryBindingSite(bindingSite: BindingSite) {
+		const bindingSiteConservations = conservations.current.filter(c =>
+			bindingSite.residues.some(r => r.sequenceIndex === c.index));
+
+		const bindingSiteConservationValues = bindingSiteConservations.map(v => v.value);
+
+		const avg = bindingSiteConservationValues.reduce((a, b) => a + b) / bindingSiteConservationValues.length;
+
+		return avg;
+	}
+
+	function alignQueryAndSimilarSequence(querySequence: string, similarProtein: UnalignedSimilarProtein) {
 		let querySeq = replaceWithAlignedPart(
 			querySequence,
 			similarProtein.alignmentData.querySeqAlignedPartStartIdx,
@@ -481,87 +594,51 @@ function AnalyticalPage() {
 		similarProtein.alignmentData.similarSequence = similarSeq;
 	}
 
-	function getQuerySeqLength(querySeqWithGaps: string) {
-		let counter = 0;
-
-		for (const c of querySeqWithGaps) {
-			if (c !== '-') {
-				counter++;
-			}
-		}
-
-		return counter;
-	}
-
-	function transform(unprocessedResults: UnprocessedResult[]) {
-		// should transform results so we can access them like this: res[chain][dataSourceName] -> result
-		const res: Record<string, Record<string, UnprocessedResult>> = {};
-
-		unprocessedResults.forEach(ur => {
-			if (!(ur.chain in res)) {
-				res[ur.chain] = {};
-			}
-
-			res[ur.chain][ur.metadata.dataSource] = ur;
-		});
-
-		return res;
-	}
-
 	function alignSequencesAcrossAllDataSources(
-		unprocessedResultPerDataSourceExecutor: Record<string, UnprocessedResult>,
+		unprocessedResultPerDataSourceExecutor: Record<string, UnalignedResult>,
+		selectedSimilarProteins: Record<string, UnalignedSimilarProtein[]>,
 		conservations: Conservation[],
-		chain: string
+		chain: string,
+		querySeqToStrMapping: Record<number, number>
 	): ChainResult {
+		// unprocessedResultPerDataSourceExecutor[dataSourceName] -> UnprocessedResult
 		const dataSourceExecutorsCount = Object.keys(unprocessedResultPerDataSourceExecutor).length;
 		if (dataSourceExecutorsCount == 0) {
 			// if we dont have any result from any data source executor, then we have nothing to align
-			return { querySequence: "", dataSourceExecutorResults: {}, conservations: [] };
-			// return dataSourceExecutorsResults; // TODO asi skor toto vrat potom
+			return { querySequence: "", querySeqToStrMapping: {}, dataSourceExecutorResults: {}, conservations: [] };
 		}
-		// TODO what if we have data source executor results but no with sim prots? Maybe add if?
 
-		// TODO mozno zmat getQuerySeqLength aj ten riadok cely: const querySeqLength = getQuerySeqLength(dataSourceExecutors[0].results[0].sequence);
-		// TODO issue #23 ["foldseek"] a ?? nestaci, binding sity nie su poposuvane...
 		const querySeq = unprocessedResultPerDataSourceExecutor["foldseek"]?.sequence
 			?? Object.values(unprocessedResultPerDataSourceExecutor)[0].sequence;
 		const querySeqLength = querySeq.length; // Length of the query sequence (sequence with no gaps)
 
 		/* "Preprocessing phase": Align query and similar sequences while also updating binding site indices.
 		 * Results without similar sequences are skipped (unchanged). */
-		for (const unprocessedResult of Object.values(unprocessedResultPerDataSourceExecutor)) {
-			if (!unprocessedResult.similarProteins) {
-				continue;
-			}
-			// TODO issue #23
-			// const querySeq = unprocessedResult.sequence;
+		for (const [dataSourceName, similarProteins] of Object.entries(selectedSimilarProteins)) {
 			// Creates pairs of query seq and similar seq and aligns them (updates using reference) 
-			unprocessedResult.similarProteins.forEach(simProt => alignQueryAndSimilarSequence(querySeq, simProt));
+			for (const simProt of similarProteins) {
+				alignQueryAndSimilarSequence(querySeq, simProt);
+			}
 		}
 
 		/* "Merge phase": Create master query sequence and align other sequences and binding sites to it.
 		 * Master query sequence is query sequence on which every similar sequence and binding site can be aligned with/mapped to. */
 		let masterQuerySeq = "";
 		const similarProteins: Record<string, SimilarProtein[]> = {};
-		for (const [dataSourceName, result] of Object.entries(unprocessedResultPerDataSourceExecutor)) {
-			if (!result.similarProteins) {
-				continue;
-			}
-			similarProteins[dataSourceName] = result.similarProteins.map<SimilarProtein>(simProt => ({
-				pdbId: simProt.pdbId,
-				pdbUrl: simProt.pdbUrl,
-				chain: simProt.chain,
-				bindingSites: simProt.bindingSites,
+		for (const [dataSourceName, unalignedSimilarProteins] of Object.entries(selectedSimilarProteins)) {
+			similarProteins[dataSourceName] = unalignedSimilarProteins.map<SimilarProtein>(({ alignmentData, ...simProt }) => ({
+				...simProt,
 				sequence: "" // will be set later when aligning
 			}));
 		}
 
 		const offsets: Record<string, number[]> = {};
-		for (const [dataSourceName, result] of Object.entries(unprocessedResultPerDataSourceExecutor)) {
-			if (!result.similarProteins) {
-				continue;
-			}
-			offsets[dataSourceName] = new Array(result.similarProteins.length).fill(0);
+		for (const [dataSourceName, similarProteins] of Object.entries(selectedSimilarProteins)) {
+			offsets[dataSourceName] = new Array(similarProteins.length).fill(0);
+		}
+		const isSimProtRead: Record<string, boolean[]> = {};
+		for (const [dataSourceName, similarProteins] of Object.entries(selectedSimilarProteins)) {
+			isSimProtRead[dataSourceName] = new Array(similarProteins.length).fill(false);
 		}
 
 		/* Now we are going to create 2 mappings: A and B.
@@ -578,45 +655,54 @@ function AnalyticalPage() {
 		const mapping: Record<number, number> = {};
 		// mapping B: similarProteinsMapping[dataSourceName][simProtIdx][idxFrom] -> idxTo
 		const similarProteinsMapping: Record<string, Record<number, number>[]> = {};
-		for (const [dataSourceName, result] of Object.entries(unprocessedResultPerDataSourceExecutor)) {
-			if (result.similarProteins) {
-				similarProteinsMapping[dataSourceName] = Array.from(
-					{ length: result.similarProteins.length },
-					(): Record<number, number> => ({})
-				);
-			}
+		for (const [dataSourceName, similarProteins] of Object.entries(selectedSimilarProteins)) {
+			similarProteinsMapping[dataSourceName] = Array.from(
+				{ length: similarProteins.length },
+				(): Record<number, number> => ({})
+			);
 		};
 
+		const getIsGapMode = (aaIdx: number) => {
+			/* We can imagine sequence viewer as a table. We go through all data sources and all similar proteins,
+			 * but we still look on the same index, we can imagine it as if we were going though one column.
+			 * If in that column exists gap, it means we are in gap mode. This means we "output" to master query sequence 
+			 * a gap ("-"). */
+			for (const [dataSourceName, similarProteins] of Object.entries(selectedSimilarProteins)) {
+				for (let simProtIdx = 0; simProtIdx < similarProteins.length; simProtIdx++) {
+					const simProt = similarProteins[simProtIdx];
+					if (simProt.alignmentData.querySequence[aaIdx + offsets[dataSourceName][simProtIdx]] === "-") {
+						return true;
+					}
+				}
+			}
+			return false;
+		}
 		for (let aminoAcidIdx = 0; aminoAcidIdx < querySeqLength; aminoAcidIdx++) {
-			const isGapMode = Object.entries(unprocessedResultPerDataSourceExecutor).some(([dataSourceName, result]) =>
-				result.similarProteins && result.similarProteins.some((simProt, simProtIdx) =>
-					simProt.alignmentData.querySequence[aminoAcidIdx + offsets[dataSourceName][simProtIdx]] === '-')
-			);
+			const isGapMode = getIsGapMode(aminoAcidIdx);
 
-			let aminoAcidOfQuerySeq: string = null!;
+			let aminoAcidOfQuerySeq: string | null = null;
 			/* Master query sequence is being built iteratively character by character,
 			 * that is why we can use masterQuerySeq.length to point to the newest character.
 			 * This variable holds index of the current character (amino acid or gap) of
 			 * master query sequence that will be outputted/added later in code. */
 			const aminoAcidOrGapOfMasterQuerySeqCurrIdx = masterQuerySeq.length;
 			mapping[aminoAcidIdx] = aminoAcidOrGapOfMasterQuerySeqCurrIdx;
-			for (const [dataSourceName, result] of Object.entries(unprocessedResultPerDataSourceExecutor)) {
-
-				if (!result.similarProteins) {
-					continue;
-				}
-				for (let simProtIdx = 0; simProtIdx < result.similarProteins.length; simProtIdx++) {
-					const similarProtein = result.similarProteins[simProtIdx];
+			for (const [dataSourceName, unAlignedSimilarProteins] of Object.entries(selectedSimilarProteins)) {
+				for (let simProtIdx = 0; simProtIdx < unAlignedSimilarProteins.length; simProtIdx++) {
+					const similarProtein = unAlignedSimilarProteins[simProtIdx];
 					const offset = offsets[dataSourceName][simProtIdx];
 
 					const aminoAcidOrGapOfQuerySeq = similarProtein.alignmentData.querySequence[aminoAcidIdx + offset];
 					if (isGapMode) {
-						if (aminoAcidOrGapOfQuerySeq === '-') {
+						if (aminoAcidOrGapOfQuerySeq === "-") {
 							similarProteins[dataSourceName][simProtIdx].sequence += similarProtein.alignmentData.similarSequence[aminoAcidIdx + offset];
 							similarProteinsMapping[dataSourceName][simProtIdx][aminoAcidIdx + offset] = aminoAcidOrGapOfMasterQuerySeqCurrIdx;
 							offsets[dataSourceName][simProtIdx] = offset + 1;
+							if ((aminoAcidIdx + offset) === (similarProtein.alignmentData.similarSequence.length - 1)) {
+								isSimProtRead[dataSourceName][simProtIdx] = true; // Read char was the last one, entire sim prot is read
+							}
 						} else {
-							similarProteins[dataSourceName][simProtIdx].sequence += '-';
+							similarProteins[dataSourceName][simProtIdx].sequence += "-";
 						}
 					} else {
 						/* All of the results have the same query sequence (if we ignore gaps). On the (aminoAcidIdx + offset) index
@@ -626,12 +712,16 @@ function AnalyticalPage() {
 						aminoAcidOfQuerySeq = aminoAcidOrGapOfQuerySeq;
 						similarProteins[dataSourceName][simProtIdx].sequence += similarProtein.alignmentData.similarSequence[aminoAcidIdx + offset];
 						similarProteinsMapping[dataSourceName][simProtIdx][aminoAcidIdx + offset] = aminoAcidOrGapOfMasterQuerySeqCurrIdx;
+						if ((aminoAcidIdx + offset) === (similarProtein.alignmentData.similarSequence.length - 1)) {
+							isSimProtRead[dataSourceName][simProtIdx] = true; // Read char was the last one, entire sim prot is read
+						}
 					}
 				}
 			}
 
 			if (isGapMode) {
-				masterQuerySeq += '-';
+				masterQuerySeq += "-";
+				// Note: Because of aaIdx decrement, loop can't end with gap mode (this info may help someone in the future)
 				aminoAcidIdx--; // Sequences with gaps where shifted, repeat for the same amino acid
 			} else {
 				/* The only way `aminoAcidOfQuerySeq` can be null here is if we don't have any similar sequences at all (in any data source).
@@ -642,17 +732,69 @@ function AnalyticalPage() {
 			}
 		}
 
-		/* "Postprocessing phase": Update all residue indices of each binding site, 
-		 * also count how many data sources support certain binding site. */
+		/* Imagine pairs (pair of query seq and sim prot, both aligned, padded), now imagine we went through all amino acids,
+		 * query prot ends with gaps, there was no gap (so no gap mode), now we ended because we went through all amino acids,
+		 * BUT what if similar protein is longer? Query protein is padded with gaps at the end to match sim prot, but we went
+		 * through all the amino acids so the algorithm has ended. The problem is that the sim prot did not copy "to the output".
+		 * That is why now we finish the process by outputting remaining sim prots parts. */
+		const areAllSimProtsRead = () => {
+			for (const areSimProtsPerDataSourceRead of Object.values(isSimProtRead)) {
+				for (const isSimProtRead of areSimProtsPerDataSourceRead) {
+					if (!isSimProtRead) {
+						return false;
+					}
+				}
+			}
+			return true;
+		};
+		while (Object.entries(selectedSimilarProteins).length > 0 && !areAllSimProtsRead()) {
+			const lastAminoAcidIdx = querySeqLength - 1; // we will want to read new one, that's why later is + 1 used
+			const aminoAcidOrGapOfMasterQuerySeqCurrIdx = masterQuerySeq.length;
+			/* Attention! Mapping from query sequence to master query sequence (mapping A) is not being created here,
+			 * only gaps will be outputted to master query seq now, as all the bindings sites that needs this mapping
+			 * are on the indices of amino acids of query prot. And again, now only gaps will be outputted. 
+			 * So it seems this mapping does not have to be created now for such high indices. */
+			for (const [dataSourceName, unAlignedSimilarProteins] of Object.entries(selectedSimilarProteins)) {
+				for (let simProtIdx = 0; simProtIdx < unAlignedSimilarProteins.length; simProtIdx++) {
+					if (isSimProtRead[dataSourceName][simProtIdx]) {
+						/* This sim prot was all read, but it seems there is at least one which was not read all yet,
+						 * so for the current one we just output "-". */
+						similarProteins[dataSourceName][simProtIdx].sequence += "-";
+						continue;
+					}
+					const similarProtein = unAlignedSimilarProteins[simProtIdx];
+					const offset = offsets[dataSourceName][simProtIdx];
+					const lastReadAminoAcidIndex = lastAminoAcidIdx + offset;
+
+					const aminoAcidOrGapOfQuerySeq = similarProtein.alignmentData.querySequence[lastReadAminoAcidIndex + 1];
+					if (aminoAcidOrGapOfQuerySeq === "-") {
+						similarProteins[dataSourceName][simProtIdx].sequence += similarProtein.alignmentData.similarSequence[lastReadAminoAcidIndex + 1];
+						similarProteinsMapping[dataSourceName][simProtIdx][lastReadAminoAcidIndex + 1] = aminoAcidOrGapOfMasterQuerySeqCurrIdx;
+						offsets[dataSourceName][simProtIdx] = offset + 1;
+						if ((lastReadAminoAcidIndex + 1) === (similarProtein.alignmentData.similarSequence.length - 1)) {
+							isSimProtRead[dataSourceName][simProtIdx] = true; // Read char was the last one, entire sim prot is read
+						}
+					} else {
+						similarProteins[dataSourceName][simProtIdx].sequence += "-";
+					}
+				}
+			}
+
+			masterQuerySeq += "-";
+		}
+
+		/* "Postprocessing phase": Update all residue indices of each binding site, seq to struct mappings,
+		 * also count how many data sources support certain binding site and calculate avg conservations if required. */
 		// bindingSiteSupportCounterTmp[residue index in structure (of pocket)]: number of data sources supporting pocket on the index
 		const bindingSiteSupportCounterTmp: Record<number, number> = {};
 		for (const [dataSourceName, result] of Object.entries(unprocessedResultPerDataSourceExecutor)) {
 			let supporterCounted: Record<number, boolean> = {}; // one data source can support residue just once
 
-			// Update residues of binding sites of query protein and count supporters
 			for (const bindingSite of result.bindingSites) {
+				// Update residues of binding site of query protein 
 				updateBindingSiteResiduesIndices(bindingSite, mapping);
 
+				// Count supporters (how many data sources support that the residue is part of binding site)
 				for (const residue of bindingSite.residues) {
 					if (supporterCounted[residue.structureIndex]) {
 						continue;
@@ -664,18 +806,27 @@ function AnalyticalPage() {
 					bindingSiteSupportCounterTmp[residue.structureIndex] += 1;
 					supporterCounted[residue.structureIndex] = true;
 				}
+
+				// Calculate average conservation value for the binding site
+				if (useConservation) {
+					bindingSite.avgConservation = getAvgConservationForQueryBindingSite(bindingSite);
+				}
 			}
 
-			if (!result.similarProteins) {
+			const unalignedSimilarProteins = selectedSimilarProteins[dataSourceName]
+			if (!unalignedSimilarProteins) {
 				continue;
 			}
-			// Update residues of binding sites of all similar proteins and count supporters
-			for (let simProtIdx = 0; simProtIdx < result.similarProteins.length; simProtIdx++) {
-				const simProt = result.similarProteins[simProtIdx];
+			// Update residues of binding sites of all similar proteins, and also count supporters
+			for (let simProtIdx = 0; simProtIdx < unalignedSimilarProteins.length; simProtIdx++) {
+				const simProt = unalignedSimilarProteins[simProtIdx];
+				const simProtMapping = similarProteinsMapping[dataSourceName][simProtIdx];
 
 				for (const bindingSite of simProt.bindingSites) {
-					updateBindingSiteResiduesIndices(bindingSite, similarProteinsMapping[dataSourceName][simProtIdx]);
+					// Update residues of binding sites...
+					updateBindingSiteResiduesIndices(bindingSite, simProtMapping);
 
+					// ...and count supporters
 					for (const residue of bindingSite.residues) {
 						if (supporterCounted[residue.structureIndex]) {
 							continue;
@@ -706,20 +857,117 @@ function AnalyticalPage() {
 				similarProteins: similarProteins[dataSourceName]
 			}
 		);
-		return { querySequence: masterQuerySeq, dataSourceExecutorResults: dataSourceExecutorResultsTmp, conservations: conservations };
+
+		return {
+			querySequence: masterQuerySeq,
+			querySeqToStrMapping: querySeqToStrMapping,
+			dataSourceExecutorResults: dataSourceExecutorResultsTmp,
+			conservations: conservations
+		};
+	}
+
+	function prepareUnalignedDataForQueryChain(dataSourceExecutors: DataSourceExecutor[], chain: string) {
+		function transform(unprocessedResults: UnprocessedResult[]) {
+			// should transform results so we can access them like this: res[chain][dataSourceName] -> result
+			const res: Record<string, Record<string, UnprocessedResult>> = {};
+
+			unprocessedResults.forEach(ur => {
+				if (!(ur.chain in res)) {
+					res[ur.chain] = {};
+				}
+
+				res[ur.chain][ur.metadata.dataSource] = ur;
+			});
+
+			return res;
+		}
+
+		const allResults = dataSourceExecutors.flatMap(x => x.results);
+		const chainUnprocessedResults = transform(allResults);
+		const dataSourceResults = chainUnprocessedResults[chain];
+
+		// unalignedResultTmp[chain][dataSourceName] -> UnalignedResult
+		const unalignedResultTmp: Record<string, UnalignedResult> = {};
+		// unalignedSimProtsTmp[chain][dataSourceName] -> UnalignedSimilarProtein
+		const unalignedSimProtsTmp: Record<string, UnalignedSimilarProtein[]> = {};
+
+		for (const [dataSourceName, unprocessedResult] of Object.entries(dataSourceResults)) {
+			const unprocessedResultWithoutSimilarProteins: UnalignedResult = {
+				id: unprocessedResult.id,
+				sequence: unprocessedResult.sequence,
+				chain: unprocessedResult.chain,
+				pdbUrl: unprocessedResult.pdbUrl,
+				bindingSites: unprocessedResult.bindingSites,
+				metadata: unprocessedResult.metadata
+			};
+			unalignedResultTmp[dataSourceName] = unprocessedResultWithoutSimilarProteins;
+
+			if (!unprocessedResult.similarProteins) {
+				continue;
+			}
+			const simProts: UnalignedSimilarProtein[] = []
+			for (const simProt of unprocessedResult.similarProteins) {
+				simProts.push(simProt);
+			}
+			unalignedSimProtsTmp[dataSourceName] = simProts;
+		}
+
+		unalignedResult.current = unalignedResultTmp;
+		unalignedSimProts.current = unalignedSimProtsTmp;
+	}
+
+	function alignSequences(options: StructureOption[], chain: string) {
+		setCurrChainResult(null);
+		// Get selected sim prots
+		const selectedSimProts: Record<string, UnalignedSimilarProtein[]> = {};
+		for (const [dataSourceName, simProts] of Object.entries(unalignedSimProts.current)) {
+			for (const simProt of simProts) {
+				const isInOptions = options.some(o => o.value.dataSourceName === dataSourceName
+					&& o.value.pdbId === simProt.pdbId
+					&& o.value.chain === simProt.chain);
+				if (!isInOptions) {
+					continue;
+				}
+
+				if (!(dataSourceName in selectedSimProts)) {
+					selectedSimProts[dataSourceName] = [];
+				}
+				selectedSimProts[dataSourceName].push({ ...simProt });
+			}
+		}
+
+		// Perform aligning
+		const unalignedResultDeepCopy = JSON.parse(JSON.stringify(unalignedResult.current));
+		const selectedSimProtsDeepCopy = JSON.parse(JSON.stringify(selectedSimProts));
+		const conservationsDeepCopy = JSON.parse(JSON.stringify(conservations.current));
+		const querySeqToStrMapping = JSON.parse(JSON.stringify(querySeqToStrMappings.current[chain]));
+		const chainResult = alignSequencesAcrossAllDataSources(
+			unalignedResultDeepCopy, selectedSimProtsDeepCopy, conservationsDeepCopy, chain, querySeqToStrMapping);
+
+		setCurrChainResult(chainResult);
+		return chainResult;
 	}
 
 	function updateErrorMessages(dataSourceIndex: number, errorMessage: string) {
-		const updatedErrorMessages = [...errorMessages];
-		updatedErrorMessages[dataSourceIndex] = errorMessage;
-		setErrorMessages(updatedErrorMessages);
+		setErrorMessages(prevState =>
+			prevState.map((errMsg, i) => dataSourceIndex === i ? errorMessage : errMsg));
 	};
+
+	function updateStatusMessages(dataSourceIndex: number, statusMessage: string, isDone: boolean = false) {
+		setStatusMessages(prevState =>
+			prevState.map((msg, i) =>
+				dataSourceIndex === i ? { message: statusMessage, isDone } : msg
+			)
+		);
+	}
 
 	function clearErrorMessages() {
 		setErrorMessages(new Array(dataSourceExecutors.current.length).fill(""));
 	}
 
-	function toSimilarProteinLigandData(chainResult: ChainResult, selectedStructureOptions: StructureOption[]) {
+	/** Returns object that holds information which binding sites (and ligands if available) of similar proteins are displayed. */
+	function getSimilarProteinLigandData(chainResult: ChainResult, selectedStructureOptions: StructureOption[]) {
+		// res[dataSourceName][pdbCode][chain][bindingSiteId] -> true/false whether is binding site (and ligands if available) displayed
 		const res: Record<string, Record<string, Record<string, Record<string, boolean>>>> = {};
 
 		for (const [dataSourceName, result] of Object.entries(chainResult.dataSourceExecutorResults)) {
@@ -807,30 +1055,56 @@ function AnalyticalPage() {
 		molstarWrapperRef.current?.toggleSimilarProteinBindingSite(dataSourceName, pdbCode, chain, bindingSiteId, show);
 	}
 
-	function handleChainSelect(chainResult: ChainResult, selectedChain: string) {
-		setSelectedChain(selectedChain);
+	async function handleChainSelect(dataSourceExecutors: DataSourceExecutor[], newSelectedChain: string) {
+		// Get conservation (if required)
+		if (useConservation) {
+			const {
+				conservations: conservationsTmp,
+				userFriendlyErrorMessage: conservationFetchingErrorMsg
+			} = await getConservationsAPI(id, newSelectedChain);
+			if (conservationFetchingErrorMsg.length > 0) {
+				toastWarning(conservationFetchingErrorMsg);
+				conservations.current = [];
+			} else {
+				conservations.current = conservationsTmp;
+			}
+		}
 
-		const queryProteinLigandsDataTmp = getQueryProteinLigandsData(chainResult, selectedChain);
+		// Prepare unaligned data (transform data to more appropriate data structures)
+		prepareUnalignedDataForQueryChain(dataSourceExecutors, newSelectedChain);
+
+		const newChainResult = alignSequences([], newSelectedChain);
+
+		setSelectedChain(newSelectedChain);
+
+		const queryProteinLigandsDataTmp = getQueryProteinLigandsData(newChainResult, newSelectedChain);
 		setQueryProteinBindingSitesData(queryProteinLigandsDataTmp);
+
+		// Also deselect structures
+		setSelectedStructures([]);
+		const similarProteinLigandDataTmp = getSimilarProteinLigandData(newChainResult, []);
+		setSimilarProteinBindingSitesData(similarProteinLigandDataTmp);
 	}
 
 	function handleStructuresSelect(selectedStructureOptions: StructureOption[]) {
-		const similarProteinLigandDataTmp = toSimilarProteinLigandData(chainResults[selectedChain], selectedStructureOptions);
-		setSimilarProteinBindingSitesData(similarProteinLigandDataTmp);
+		setSelectedStructures(selectedStructureOptions);
 
-		// User selected some structures, we hide them all, and then display only the selected ones
-		molstarWrapperRef.current?.hideAllSimilarProteinStructures(selectedStructureOptions);
-		for (const option of selectedStructureOptions) {
-			molstarWrapperRef.current?.toggleSimilarProteinStructure(
-				option.value.dataSourceName,
-				option.value.pdbId,
-				option.value.chain,
-				true
-			);
-		}
+		const newChainResult = alignSequences(selectedStructureOptions, selectedChain);
+
+		const similarProteinLigandDataTmp = getSimilarProteinLigandData(newChainResult, selectedStructureOptions);
+		setSimilarProteinBindingSitesData(similarProteinLigandDataTmp);
 	}
 
+	function handleAlignAndSuperposeError() {
+		// Make sure toggle panels for binding sites of similar proteins are not shown
+		const similarProteinLigandDataTmp = getSimilarProteinLigandData(currChainResult, []);
+		setSimilarProteinBindingSitesData(similarProteinLigandDataTmp);
+	}
+
+	/** Returns object that holds information which binding sites (and ligands if available) of query protein are displayed. */
 	function getQueryProteinLigandsData(chainResult: ChainResult, selectedChain: string) {
+		/* queryProteinLigandsData[dataSourceName][selectedChain][bindingSite.id] -> true/false whether binding site 
+		 * (and also ligands if available) is displayed */
 		const queryProteinLigandsData: Record<string, Record<string, Record<string, boolean>>> = {};
 
 		const dseResult = chainResult.dataSourceExecutorResults;
@@ -842,11 +1116,124 @@ function AnalyticalPage() {
 				if (!(selectedChain in queryProteinLigandsData[dataSourceName])) {
 					queryProteinLigandsData[dataSourceName][selectedChain] = {};
 				}
-				queryProteinLigandsData[dataSourceName][selectedChain][bindingSite.id] = false;
+
+				let newValue = false;
+				if (dataSourceName in queryProteinLigandsData
+					&& selectedChain in queryProteinLigandsData[dataSourceName]
+					&& bindingSite.id in queryProteinLigandsData[dataSourceName][selectedChain]) {
+					newValue = queryProteinLigandsData[dataSourceName][selectedChain][bindingSite.id];
+				}
+				queryProteinLigandsData[dataSourceName][selectedChain][bindingSite.id] = newValue;
 			}
 		}
 
 		return queryProteinLigandsData;
+	}
+
+	function handleRcsbHighlight(structureIndices: number[], dataSourceName?: string, pdbCode?: string, chain?: string) {
+		molstarWrapperRef.current?.highlight(structureIndices, dataSourceName, pdbCode, chain);
+	}
+
+	function handleRcsbClick(structureIndices: number[], dataSourceName?: string, pdbCode?: string, chain?: string) {
+		molstarWrapperRef.current?.focus(structureIndices, dataSourceName, pdbCode, chain);
+	}
+
+	/**
+	 * Method which connects Mol* viewer activity to the RCSB plugin
+	 * @param molstarPlugin Mol* plugin
+	 * @param rcsbPlugin Rcsb plugin
+	 * @returns void
+	 */
+	function linkMolstarToRcsb(molstarPlugin: PluginUIContext, rcsbPlugin: RcsbFv) {
+		//cc: https://github.com/scheuerv/molart/
+		function getStructureElementLoci(loci: Loci): StructureElement.Loci | undefined {
+			if (loci.kind == "bond-loci") {
+				return Bond.toStructureElementLoci(loci);
+			} else if (loci.kind == "element-loci") {
+				return loci;
+			}
+			return undefined;
+		}
+
+		// cc: https://github.com/scheuerv/molart/
+		// listens for hover event over anything on Mol* plugin and then it determines
+		// if it is loci of type StructureElement. If it is StructureElement then it
+		// propagates this event from MolstarPlugin transformed as MolstarResidue.
+		// in our modification it also highlights the section in RCSB viewer
+		molstarPlugin.canvas3d?.interaction.hover.subscribe((event: Canvas3D.HoverEvent) => {
+			const structureElementLoci = getStructureElementLoci(event.current.loci);
+			if (structureElementLoci) {
+				const structureElement = StructureElement.Stats.ofLoci(structureElementLoci);
+				const location = structureElement.firstElementLoc;
+				if (!location.structure) {
+					console.error("Hovered on item in Mol* viewer, but can't highlight it in Rcsb Saguaro viewer.")
+					return;
+				}
+				const molstarResidue = {
+					authName: StructureProperties.atom.auth_comp_id(location),
+					name: StructureProperties.atom.label_comp_id(location),
+					isHet: StructureProperties.residue.hasMicroheterogeneity(location),
+					insCode: StructureProperties.residue.pdbx_PDB_ins_code(location),
+					index: StructureProperties.residue.key(location),
+					seqNumber: StructureProperties.residue.label_seq_id(location),
+					authSeqNumber: StructureProperties.residue.auth_seq_id(location),
+					chain: {
+						asymId: StructureProperties.chain.label_asym_id(location),
+						authAsymId: StructureProperties.chain.auth_asym_id(location),
+						entity: {
+							entityId: StructureProperties.entity.id(location),
+							index: StructureProperties.entity.key(location)
+						},
+						index: StructureProperties.chain.key(location)
+					}
+				};
+				const toFind = molstarResidue.authSeqNumber;
+				const structureIndices = Object.values(querySeqToStrMappings.current[selectedChain]);
+				const positionInRcsb = structureIndices.indexOf(toFind) + 1;
+				rcsbPlugin.setSelection({
+					elements: {
+						begin: positionInRcsb
+					},
+					mode: 'hover'
+				});
+			}
+		});
+
+		isMolstarLinkedToRcsb.current = true;
+	}
+
+	async function downloadData() {
+		function getTimestamp() {
+			const now = new Date();
+			const pad = (n: number) => n.toString().padStart(2, "0");
+			const year = now.getFullYear().toString(); 			 // YYYY
+			const month = pad(now.getMonth() + 1);               // mm (0-based, so +1)
+			const day = pad(now.getDate());                      // DD
+			const hours = pad(now.getHours());                   // HH (24h)
+			const minutes = pad(now.getMinutes());               // MM
+			const seconds = pad(now.getSeconds());               // SS
+
+			const timestamp = `${year}-${month}-${day}T${hours}-${minutes}-${seconds}`;
+			return timestamp;
+		}
+
+		if (!currChainResult) {
+			toastWarning("No data to export.");
+			return;
+		}
+
+		const json = JSON.stringify(currChainResult, null, 2); // Pretty print with 2-space indentation
+		const blob = new Blob([json], { type: "application/json" });
+		const url = URL.createObjectURL(blob);
+
+		const link = document.createElement("a");
+		link.href = url;
+		const timestamp = getTimestamp();
+		link.download = `export-chain-${selectedChain}-${timestamp}.json`;
+		document.body.appendChild(link); // Required for Firefox
+		link.click();
+		document.body.removeChild(link);
+		URL.revokeObjectURL(url); // Clean up
 	}
 }
 

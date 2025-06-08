@@ -5,7 +5,7 @@
       "input_protein": "6XEZ"
     },
     "description": "Valid PDB input: correct 4-character PDB ID",
-    "result": {"id": "pdb_6xez"}
+    "result": {"id": "pdb_6xez", "error": null}
   },
   {
     "payload": {
@@ -13,7 +13,7 @@
       "input_protein": "6xez"
     },
     "description": "Valid PDB input: correct 4-character PDB ID - lowercase",
-    "result": {"id": "pdb_6xez"}
+    "result": {"id": "pdb_6xez", "error": null}
   },
   {
     "payload": {
@@ -21,7 +21,7 @@
       "input_protein": "MVLSPADKTNVKAAWGKVGAHAGEYGAEALERMFLSFPTTKTYFPHF"
     },
     "description": "Invalid PDB input",
-    "result": {"id": null}
+    "result": {"id": null, "error": null}
   },
   {
     "payload": {
@@ -29,7 +29,7 @@
       "input_protein": "P12345"
     },
     "description": "Valid UniProt input: correct UniProt ID",
-    "result": {"id": "uniprot_p12345"}
+    "result": {"id": "uniprot_p12345", "error": null}
   },
   {
     "payload": {
@@ -37,7 +37,7 @@
       "input_protein": "p12345"
     },
     "description": "Valid UniProt input: correct UniProt ID - lowercase",
-    "result": {"id": "uniprot_p12345"}
+    "result": {"id": "uniprot_p12345", "error": null}
   },
   {
     "payload": {
@@ -45,7 +45,7 @@
       "input_protein": "2src"
     },
     "description": "Invalid UniProt ID",
-    "result": {"id": null}
+    "result": {"id": null, "error": null}
   },
   {
     "payload": {
@@ -53,7 +53,7 @@
       "input_protein": "MVLSPADKTNVKAAWGKVGAHAGEYGAEALERMFLSFPTTKTYFPHF"
     },
     "description": "Valid sequence input",
-    "result": {"id": "sequence_"}
+    "result": {"id": "sequence_", "error": null}
   },
   {
     "payload": {
@@ -61,7 +61,7 @@
       "input_protein": "mvlspadktnvkaawgkvgahageygaealermflsfpttktyfphf"
     },
     "description": "Valid sequence input - lowercase",
-    "result": {"id": "sequence_"}
+    "result": {"id": "sequence_", "error": null}
   },
   {
     "payload": {
@@ -69,26 +69,26 @@
       "input_protein": "P12345"
     },
     "description": "Invalid sequence input: UniProt ID used instead of raw sequence",
-    "result": {"id": null}
+    "result": {"id": null, "error": null}
   },
   {
     "payload": {},
     "description": "Missing input method and protein",
-    "result": {"error": "input_method not specified"}
+    "result": {"id": null, "error": "input_method not specified"}
   },
   {
     "payload": {
       "input_protein": "2src"
     },
     "description": "Missing input method",
-    "result": {"error": "input_method not specified"}
+    "result": {"id": null, "error": "input_method not specified"}
   },
   {
     "payload": {
       "input_method": "pdb"
     },
     "description": "Missing protein value",
-    "result": {"error": "input_protein not specified"}
+    "result": {"id": null, "error": "input_protein not specified"}
   },
   {
     "payload": {
@@ -96,6 +96,6 @@
       "input_protein": "6XEZ"
     },
     "description": "Invalid input method",
-    "result": {"error": "Input method invalid_method not supported"}
+    "result": {"id": null, "error": "Input method invalid_method not supported"}
   }
 ]

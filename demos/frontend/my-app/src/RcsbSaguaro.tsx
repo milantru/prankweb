@@ -182,7 +182,7 @@ function RcsbSaguaro({ queryProtein, similarProteins }: Props) {
 
     // Update sequences to use common similar parts (with -)
     function createSequencesWithSubstitutedCommonSimilarParts(sequences: string[], similar_sequences: string[], start_indices: number[]) {
-        for (let i = 1; i < sequences.length; i++) { // we skip i = 0 because it is a query sequence (no common similar part TODO?)
+        for (let i = 1; i < sequences.length; i++) { // we skip i = 0 because it's a query sequence (no common similar part)
             const sequence = sequences[i];
 
             const firstPart = sequence.substring(0, start_indices[i]);

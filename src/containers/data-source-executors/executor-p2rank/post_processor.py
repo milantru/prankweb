@@ -15,6 +15,8 @@ from tasks_logger import create_logger
 # ____________________________________________
 
 PREDICTION_POCKET_INDEX = 0
+PREDICTION_RANK_INDEX = 1
+PREDICTION_SCORE_INDEX = 2
 PREDICTION_PROBABILITY_INDEX = 3
 
 # ______________residues.csv__________________
@@ -34,6 +36,18 @@ MAPPING_FILE = "mapping.json"
 
 logger = create_logger('ds-p2rank')
 
+def parse_residue_index(res_id: str) -> int:
+    """
+    Parses a residue index that may include an insertion code as the last character (e.g., '122A' in 1GD1 protein)
+    and returns the integer residue number (e.g., 122).
+    """
+    if res_id[-1].isalpha():
+        numeric_part = res_id[:-1]
+    else:
+        numeric_part = res_id
+
+    return int(numeric_part)
+
 
 def is_amino_acid(code):
     return code.capitalize() in protein_letters_3to1
@@ -52,10 +66,12 @@ def read_residues(residues_result_file):
                     mapping_dict = json.load(infile)
                 if residue in mapping_dict:
                     residue = mapping_dict[residue]
+                elif residue == "UNK": # 'UNK' is used for unknown residues
+                    residue = "X"
                 else:
-                    raise ValueError(f"Residue {residue} not found in {MAPPING_FILE}")
+                    raise ValueError(f"Residue {residue} not found in {MAPPING_FILE} and is not marked as unknown (UNK)")
                 
-            if is_amino_acid(residue):
+            if is_amino_acid(residue) or residue == "X":  # 'X' is used for unknown residues
                 if curr_chain is None or curr_chain != chain:
                     seq_index = 0
                     curr_chain = chain
@@ -67,11 +83,11 @@ def read_residues(residues_result_file):
                     grouped_data[chain]["pockets"][pocket]['indices'].append(
                         Residue(
                             sequenceIndex=seq_index, 
-                            structureIndex=int(structure_index)
+                            structureIndex=parse_residue_index(structure_index)
                             )
                         )
 
-                grouped_data[chain]["residues"] += index_to_one(three_to_index(residue))
+                grouped_data[chain]["residues"] += index_to_one(three_to_index(residue)) if residue != "X" else residue
                 seq_index += 1
     return grouped_data
 
@@ -81,10 +97,13 @@ def update_pocket_probabilities(pocket_prediction_result_file, grouped_data):
         for line in file:
             row = [item.strip() for item in line.strip().split(',')]
             pocket, probability = int(row[PREDICTION_POCKET_INDEX].replace("pocket", "")), float(row[PREDICTION_PROBABILITY_INDEX])
+            rank, score = int(row[PREDICTION_RANK_INDEX]), float(row[PREDICTION_SCORE_INDEX])
 
             for chain in grouped_data:
                 if pocket in grouped_data[chain]["pockets"]:
                     grouped_data[chain]["pockets"][pocket]['probability'] = probability
+                    grouped_data[chain]["pockets"][pocket]['rank'] = rank
+                    grouped_data[chain]["pockets"][pocket]['score'] = score
 
 def process_p2rank_output(id, result_folder, query_file, pdb_url):
     residues_result_file = query_file + "_residues.csv"
@@ -105,6 +124,8 @@ def process_p2rank_output(id, result_folder, query_file, pdb_url):
             binding_site = BindingSite(
                 id=f"pocket_{pocket}", 
                 confidence=data['probability'], 
+                rank=data['rank'],
+                score=data['score'],
                 residues=sorted(data['indices'], key=lambda x: x.sequenceIndex)
             )
             protein_data_builder.add_binding_site(binding_site)

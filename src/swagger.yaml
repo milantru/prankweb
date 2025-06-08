@@ -4,10 +4,8 @@ info:
   version: 1.0.0
 
 servers:
-  - url: http://localhost:9864
-    description: Local development server
   - url: https://prankweb2.ksi.projekty.ms.mff.cuni.cz
-    description: Coming soon...
+
 
 paths:
   /upload-data:
@@ -124,7 +122,7 @@ paths:
           example: 2src
       responses:
         '200':
-          description: Successful response with the protein ID.
+          description: Successful response with the protein ID or null if the ID is not in the database.
           content:
             application/json:
               schema:
@@ -132,8 +130,14 @@ paths:
                 properties:
                   id:
                     type: string
+                    nullable: true
                     description: The ID associated with the protein.
                     example: "pdb_2src"
+                  error:
+                    type: string
+                    nullable: true
+                    description: "No error, response was successful."
+                    example: null
         '400':
           description: Bad request due to invalid input method or missing protein identifier.
           content:
@@ -141,6 +145,11 @@ paths:
               schema:
                 type: object
                 properties:
+                  id:
+                    type: string
+                    nullable: true
+                    description: "No ID should be provided, response was not successful."
+                    example: null
                   error:
                     type: string
                     description: Error message describing the problem.
@@ -244,6 +253,18 @@ paths:
       summary: Get the status of the data source computation
       parameters:
         - in: path
+          name: dataSourceName
+          required: true
+          description: |
+            The name of the data source, one of:
+            - ds_foldseek
+            - ds_p2rank
+            - ds_p2rank/conservation
+            - ds_plank
+          schema:
+            type: string
+            example: "foldseek"
+        - in: path
           name: inputId
           required: true
           description: The generated ID of a protein
@@ -267,9 +288,13 @@ paths:
                         - 1: Completed
                         - 2: Failed
                     example: 1
-                  errorMessages:
+                  infoMessage:
                     type: string
-                    description: Error message(s) if the computation failed.
+                    description: Info message about the computation status.
+                    example: "" 
+                  errorMessage:
+                    type: string
+                    description: Error message if the computation failed.
                     example: "" 
   /data/{dataSourceName}/{inputId}/{chainId}_chain_result.json:
     get:
@@ -283,7 +308,7 @@ paths:
             - ds_foldseek
             - ds_p2rank
             - ds_p2rank/conservation
-            - ds_plm
+            - ds_plank
           schema:
             type: string
             example: "foldseek"
@@ -447,10 +472,14 @@ paths:
                         - 1: Completed
                         - 2: Failed
                     example: 1
-                  errorMessages:
+                  infoMessage:
                     type: string
-                    description: Error message(s) if the computation failed.
-                    example: ""
+                    description: Info message about the computation status.
+                    example: "" 
+                  errorMessage:
+                    type: string
+                    description: Error message if the computation failed.
+                    example: "" 
   /data/conservation/{inputId}/input{chainId}.json:
     get:
       summary: Get protein conservation data for a specific chain
