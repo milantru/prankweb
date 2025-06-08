@@ -125,6 +125,7 @@ function AnalyticalPage() {
 	const [chainResults, setChainResults] = useState<ChainResults | null>(null);
 	const [selectedChain, setSelectedChain] = useState<string | null>(null); // Will be set when chain results are set
 	const [squashBindingSites, setSquashBindingSites] = useState<boolean>(false);
+	const [startQuerySequenceAtZero, setStartQuerySequenceAtZero] = useState<boolean>(false);
 	// queryProteinLigandData[dataSourceName][chain][bindingSiteId] -> true/false to show bindings site (and also ligands if available)
 	// similarProteinLigandData[dataSourceName][pdbCode][chain][bindingSiteId] -> true/false to show bindings site (and also ligands if available)
 	// bindingSiteId can be e.g. H_SO4, but it can also be prediction e.g. pocket_1
@@ -226,9 +227,11 @@ function AnalyticalPage() {
 								<SettingsPanel classes="w-100 mx-auto mt-2 px-3 py-2"
 									chainResults={chainResults}
 									squashBindingSites={squashBindingSites}
+									startQuerySequenceAtZero={startQuerySequenceAtZero}
 									isDisabled={isMolstarLoadingStructures}
 									onChainSelect={selectedChain => handleChainSelect(chainResults[selectedChain], selectedChain)}
 									onBindingSitesSquashClick={() => setSquashBindingSites(prevState => !prevState)}
+									onStartQuerySequenceAtZero={() => setStartQuerySequenceAtZero(prevState => !prevState)}
 									onStructuresSelect={handleStructuresSelect} />
 								{isMolstarLoadingStructures &&
 									<ScaleLoader className="position-absolute w-100 h-100 justify-content-center align-items-center"
@@ -239,7 +242,8 @@ function AnalyticalPage() {
 
 							<RcsbSaguaro classes="w-100 mt-2"
 								chainResult={chainResults[selectedChain]}
-								squashBindingSites={squashBindingSites} />
+								squashBindingSites={squashBindingSites}
+								startQuerySequenceAtZero={startQuerySequenceAtZero} />
 						</div>
 					) : (
 						<div className="d-flex justify-content-center align-items-center" style={{ height: "100vh" }}>
