@@ -30,7 +30,7 @@ function TogglerPanels({
     // queryProteinBindingSites[dataSourceName][bindingSiteId] -> binding site of query protein
     const [queryProteinBindingSites, setQueryProteinBindingSitesData] = useState<Record<string, Record<string, BindingSite>> | null>(null);
     // similarProteinsBindingSites[dataSourceName][pdbCode][chain][bindingSiteId] -> binding site of simialr protein
-    const [similarProteinsBindingSites, setSimilarProteinsBindingSites] = useState<Record<string, Record<string, Record<string, Record<string, BindingSite>>>> | null>(null);
+    const [similarProteinsBindingSites, setSimilarProteinsBindingSites] = useState<Record<string, Record<string, Record<string, Record<string, BindingSite> & { __tmScore: number }>>> | null>(null);
 
     useEffect(() => {
         // Init data source colors
@@ -47,7 +47,7 @@ function TogglerPanels({
         setSimilarProteinsBindingSites(null);
 
         const queryProteinBindingSitesTmp: Record<string, Record<string, BindingSite>> = {};
-        const similarProteinsBindingSitesTmp: Record<string, Record<string, Record<string, Record<string, BindingSite>>>> = {};
+        const similarProteinsBindingSitesTmp: Record<string, Record<string, Record<string, Record<string, BindingSite> & { __tmScore: number }>>> = {};
 
         for (const [dataSourceName, result] of Object.entries(chainResult.dataSourceExecutorResults)) {
             // Store binding sites of query protein
@@ -63,10 +63,6 @@ function TogglerPanels({
             }
             // Store binding sites of similar proteins
             for (const simProt of result.similarProteins) {
-                if (simProt.bindingSites.length === 0) {
-                    continue; // Skip if no binding sites
-                }
-
                 for (const bindingSite of simProt.bindingSites) {
                     if (!(dataSourceName in similarProteinsBindingSitesTmp)) {
                         similarProteinsBindingSitesTmp[dataSourceName] = {};
@@ -75,20 +71,19 @@ function TogglerPanels({
                         similarProteinsBindingSitesTmp[dataSourceName][simProt.pdbId] = {};
                     }
                     if (!(simProt.chain in similarProteinsBindingSitesTmp[dataSourceName][simProt.pdbId])) {
-                        similarProteinsBindingSitesTmp[dataSourceName][simProt.pdbId][simProt.chain] = {};
+                        // as is used to silence type error that says __tmScore is missing, it will be added right away
+                        similarProteinsBindingSitesTmp[dataSourceName][simProt.pdbId][simProt.chain] = {} as Record<string, BindingSite> & { __tmScore: number };
                     }
 
                     const chainObj = similarProteinsBindingSitesTmp[dataSourceName][simProt.pdbId][simProt.chain];
 
-                    if (!('__tmScore' in chainObj)) {
-                        chainObj.__tmScore = simProt.tmScore;
-                    }
+                    // Set TM score...
+                    chainObj.__tmScore = simProt.tmScore;
 
-                    // Store binding site
+                    // ...and store binding site
                     chainObj[bindingSite.id] = bindingSite;
                 }
             }
-
         }
 
         setQueryProteinBindingSitesData(queryProteinBindingSitesTmp);
@@ -120,25 +115,27 @@ function TogglerPanels({
 
                 {/* Panels for similar proteins */}
                 {Object.entries(similarProteinsBindingSitesData).map(([dataSourceName, structureRecord]) => {
-                    if (!(dataSourceName in dataSourceColors) || !(dataSourceName in similarProteinsBindingSites)) return null;
+                    if (!(dataSourceName in dataSourceColors) || !(dataSourceName in similarProteinsBindingSites)) {
+                        return null;
+                    }
 
                     const chainEntries = [];
-
                     for (const [pdbCode, chainRecord] of Object.entries(structureRecord)) {
                         for (const [chain, bindingSiteRecord] of Object.entries(chainRecord)) {
                             const simChainData = similarProteinsBindingSites[dataSourceName]?.[pdbCode]?.[chain];
-                            if (!simChainData) continue;
+                            if (!simChainData) {
+                                continue;
+                            }
 
-                            const tmScore = simChainData.__tmScore ?? 0;
+                            const tmScore = simChainData.__tmScore;
                             chainEntries.push({ pdbCode, chain, bindingSiteRecord, tmScore });
                         }
                     }
-
+                    // Sort to make sure panels are displayed ordered by TM score
                     chainEntries.sort((a, b) => b.tmScore - a.tmScore);
 
                     return chainEntries.map(({ pdbCode, chain, bindingSiteRecord, tmScore }) => (
-                        <TogglerPanel
-                            key={`${dataSourceName}-${pdbCode}-${chain}`}
+                        <TogglerPanel key={`${dataSourceName}-${pdbCode}-${chain}`}
                             title={{ pdbCode, chain, dataSourceName, tmScore }}
                             color={dataSourceColors[dataSourceName]}
                             dataSourceDisplayNames={dataSourceDisplayNames}
@@ -147,11 +144,9 @@ function TogglerPanels({
                             isDisabled={isDisabled}
                             displayLoadingAnimationWhenDisabled={true}
                             onBindingSiteToggle={(bindingSiteId, checked) =>
-                                onSimilarProteinBindingSiteToggle(dataSourceName, pdbCode, chain, bindingSiteId, checked)}
-                        />
+                                onSimilarProteinBindingSiteToggle(dataSourceName, pdbCode, chain, bindingSiteId, checked)} />
                     ));
                 })}
-
             </>)}
         </div>
     );
