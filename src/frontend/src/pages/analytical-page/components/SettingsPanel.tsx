@@ -122,8 +122,7 @@ function SettingsPanel({
                                 className="plankweb-checkbox-input"
                                 disabled={isDisabled}
                                 checked={startQuerySequenceAtZero}
-                                onChange={onStartQuerySequenceAtZero}
-                            />
+                                onChange={onStartQuerySequenceAtZero} />
                             <span className="plankweb-checkbox-box">
                                 <svg className="checkmark" viewBox="0 0 24 24">
                                     <polyline points="20 6 9 17 4 12" />
