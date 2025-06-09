@@ -270,38 +270,36 @@ export const MolStarWrapper = forwardRef(({
 		<div className="w-100">
 			<div className="d-flex">
 				{
-					downloadingStructures 
-					? (
-						<>
-							{/* When loading msg animation ("Loading structures.", "Loading structures..", "Loading structures...",...)
+					downloadingStructures
+						? (
+							<>
+								{/* When loading msg animation ("Loading structures.", "Loading structures..", "Loading structures...",...)
 							* is on and the screen is small, the animation moves "Support-Based Highlighting" and Switch with each tick, 
 							* which doesn't look nice. Max width 200px solves this problem. */}
-							<div className="d-flex align-items-center" style={{ minWidth: "200px" }}>
-								{loadingMessage.current.substring(0, displayedLoadingMessageLength)}
-							</div>
-						</>
-					)
-					: <></>
+								<div className="d-flex align-items-center" style={{ minWidth: "200px" }}>
+									{loadingMessage.current.substring(0, displayedLoadingMessageLength)}
+								</div>
+							</>
+						)
+						: <></>
 				}
 				<div className="d-flex flex-column" style={{ minWidth: "200px" }}>
 					{similarStructuresRemainingCount > 0 && binidingSitesRemainingCount > 0 ? (
 						<>
-						<div className="mb-1">
-							Loading {similarStructuresRemainingCount > 0 ? `${similarStructuresRemainingCount} structure${similarStructuresRemainingCount > 1 ? "s" : ""}` : ""}
-							{similarStructuresRemainingCount > 0 && bindingSitesCount > 0 ? " and " : ""}
-							{binidingSitesRemainingCount > 0 && bindingSitesCount > 0
-							? `${bindingSitesCount - binidingSitesRemainingCount} of ${bindingSitesCount} binding sites`
-							: ""}
-							.
-						</div>
+							<div className="mb-1">
+								Loading {similarStructuresRemainingCount > 0 ? `${similarStructuresRemainingCount} structure${similarStructuresRemainingCount > 1 ? "s" : ""}` : ""}
+								{similarStructuresRemainingCount > 0 && bindingSitesCount > 0 ? " and " : ""}
+								{binidingSitesRemainingCount > 0 && bindingSitesCount > 0
+									? `${bindingSitesCount - binidingSitesRemainingCount} of ${bindingSitesCount} binding sites`
+									: ""}
+								.
+							</div>
 
-						{bindingSitesCount > 0 && (
-							<progress
-							value={bindingSitesCount - binidingSitesRemainingCount}
-							max={bindingSitesCount}
-							style={{ width: "100%", height: "12px" }}
-							/>
-						)}
+							{bindingSitesCount > 0 && (
+								<progress value={bindingSitesCount - binidingSitesRemainingCount}
+									max={bindingSitesCount}
+									style={{ width: "100%", height: "12px" }} />
+							)}
 						</>
 					) : (
 						""
@@ -439,7 +437,7 @@ export const MolStarWrapper = forwardRef(({
 				if (!isSimProtInOptions(dataSourceName, simProt, options)) {
 					continue;
 				}
-				
+
 				setSimilarStructuresRemainingCount(prev => prev - 1);
 
 				if (simProt.bindingSites.length === 0) {

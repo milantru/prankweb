@@ -21,13 +21,11 @@ function Switch({ classes = "", isDisabled, isOnInitially = false, onToggle }: P
         <div className={`plankweb-checkbox-wrapper ${classes}`}>
             <label className="plankweb-checkbox">
                 <span className="plankweb-checkbox-label">Support-Based Highlighting</span>
-                <input
-                    type="checkbox"
+                <input type="checkbox"
                     className="plankweb-checkbox-input"
                     checked={checked}
                     disabled={isDisabled}
-                    onChange={handleChange}
-                />
+                    onChange={handleChange} />
                 <span className="plankweb-checkbox-box">
                     <svg className="checkmark" viewBox="0 0 24 24">
                         <polyline points="20 6 9 17 4 12" />
@@ -35,8 +33,6 @@ function Switch({ classes = "", isDisabled, isOnInitially = false, onToggle }: P
                 </span>
             </label>
         </div>
-
-
     );
 }
 
