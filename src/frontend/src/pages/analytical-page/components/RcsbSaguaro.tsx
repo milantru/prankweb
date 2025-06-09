@@ -51,7 +51,7 @@ const RcsbSaguaro = forwardRef(({
     const bindingSitesColors = useRef<Record<string, string>>(null!); // bindingSitesColors[bindingSiteId] -> color in hex, e.g. #0ff1ce
     const similarProteinsColors = useRef<Record<string, string>>(null!); // similarProteinsColors[pdbId] -> color in hex, e.g. #0ff1ce
     const isFirstRender = useRef(true);
-    const offset = useRef(0);
+    const offset = useRef(0); // Used for "Start query sequence at 0" feature
 
     useImperativeHandle(ref, () => ({
         getRcsbPlugin
