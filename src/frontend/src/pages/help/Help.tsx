@@ -64,7 +64,8 @@ function Help() {
                 </p>
                 <p>
                     The panel can be also used to <strong>select one or multiple similar protein structures</strong> to be visualized
-                    in the both visualizations. After selecting the proteins, one must confirm the selection by clicking the Confirm button.
+                    in the both visualizations. The similar protein options are ordered by TM-score in descending order.
+                    After selecting the proteins, one must confirm the selection by clicking the Confirm button.
                 </p>
             </section>
 
@@ -75,9 +76,10 @@ function Help() {
                     <ul>
                         <li>Sequence of submitted protein (just the selected chain).</li>
                         <li>
-                            Selected sequences of proteins similar to the submitted protein (one row displays just one similar chain).
+                            Selected protein sequences similar to the submitted protein (one row displays just one similar chain).
                             <ul>
-                                <li>Selected sequences are aligned only with the query protein sequence, not with each other.</li>
+                                <li>Sequences are ordered by descending TM-score.</li>
+                                <li>Sequences are aligned only with the query protein sequence, not with each other.</li>
                             </ul>
                         </li>
                         <li>
@@ -150,6 +152,9 @@ function Help() {
                         <li>
                             For displaying individual pocket areas or ligands (if available),
                             the one needs to select the required parts from the panels under the visualization.
+                            <ul>
+                                <li>The panels belonging to similar proteins are ordered by TM-score in descending order.</li>
+                            </ul>
                         </li>
                         <li>
                             Above the visualization, the switch (<strong>Support-Based Highlighting</strong>) is present.

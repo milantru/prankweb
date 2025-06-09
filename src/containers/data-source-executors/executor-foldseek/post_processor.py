@@ -120,7 +120,7 @@ def process_similar_protein(result_folder: str, curr_chain: str, id: str, fields
         return None
     
     sim_prot_url = PDB_FILE_URL.format(sim_protein_pdb_id)
-    sim_prot_tm_score = float(fields[7]) 
+    sim_prot_tm_score = min(float(fields[7]), 1.0)
 
     sim_builder = SimilarProteinBuilder(sim_protein_pdb_id, fields[8], sim_protein_chain, sim_prot_url, sim_prot_tm_score)
 

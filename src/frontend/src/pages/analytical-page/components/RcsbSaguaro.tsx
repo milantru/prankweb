@@ -249,7 +249,7 @@ const RcsbSaguaro = forwardRef(({
         pdbCode?: string,
         chain?: string
     ): RcsbFvTrackDataElementInterface {
-        const residues = bindingSite.residues;
+        const residues = [...bindingSite.residues];
         if (residues.length === 0) {
             return {};
         }
@@ -523,7 +523,12 @@ const RcsbSaguaro = forwardRef(({
             if (!result.similarProteins) {
                 continue;
             }
-            for (const simProt of result.similarProteins) {
+            const similarProteins = [...result.similarProteins];
+
+            // Sort similar proteins by TM score
+            similarProteins.sort((a, b) => b.tmScore - a.tmScore);
+
+            for (const simProt of similarProteins) {
                 const id = `${dataSourceName}-${simProt.pdbId}-${simProt.chain}`;
                 const title = `${simProt.pdbId.toUpperCase()} (${simProt.chain})`;
                 const simProtColor = similarProteinsColors.current[simProt.pdbId];
