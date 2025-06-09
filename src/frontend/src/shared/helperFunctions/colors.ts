@@ -90,6 +90,19 @@ export function getUniqueColorForEachString(
     return colors;
 }
 
+/**
+ * Assigns a unique color to each binding site, taking into account confidence levels and any predefined color constraints.
+ *
+ * This function processes an array of binding sites, applying a minimum confidence threshold to ensure visibility
+ * and optionally uses a fixed color for predicted binding pockets. It generates the color assignments 
+ * while respecting forbidden colors.
+ *
+ * @param bindingSites - An array of binding site objects.
+ * @param forbiddenColors - An array of color strings that should not be used in the output.
+ * @param predictedPocketColor - (Optional) A fixed color to use for predicted binding sites whose IDs start with "pocket".
+ *
+ * @returns An object mapping each string to a unique color in hex format (starting with #).
+ */
 export function getUniqueColorForEachBindingSite(bindingSites: BindingSite[], forbiddenColors: string[], predictedPocketColor?: string) {
     const ids = [];
     const confidences = [];
@@ -107,9 +120,29 @@ export function getUniqueColorForEachBindingSite(bindingSites: BindingSite[], fo
         baseColors.push(baseColor);
     });
 
-    return getUniqueColorForEachString(ids, confidences, forbiddenColors);
+    return getUniqueColorForEachString(ids, confidences, forbiddenColors, baseColors);
 }
 
+/**
+ * Generates a unique hex color for each input string, with optional opacity, base color, and forbidden color constraints.
+ *
+ * This function ensures that each string is assigned a visually distinct color. If base colors are provided,
+ * they are used preferentially. Otherwise, the function generates colors using a deterministic hash function.
+ * Colors that appear in the `forbiddenColors` list or have already been assigned are avoided to ensure uniqueness.
+ *
+ * @param uniqueStrings - An array of unique strings for which to generate colors.
+ * @param opacities - (Optional) An array of opacity values (between 0 and 1) corresponding to each string.
+ *                    If provided, must be the same length as `uniqueStrings`. Defaults to 1 for all strings.
+ * @param forbiddenColors - (Optional) A list of color strings that must not be used in the result.
+ * @param baseColors - (Optional) An array of base color strings (e.g. "#ff0000") corresponding to each string.
+ *                     If a base color is provided for a string, it is used (with adjusted opacity).
+ *                     For any entry, you may use `undefined`, `null`, or an empty string (`""`)
+ *                     to fall back to default color generation for that string.
+ *
+ * @returns An object mapping each string from `uniqueStrings` to a unique hex color string (e.g., "#a1b2c3").
+ *
+ * @throws {Error} If `opacities` or `baseColors` are provided and their lengths do not match `uniqueStrings`.
+ */
 export function getUniqueColorForEachDataSource(dataSourceNames: string[]) {
     const opacities = new Array(dataSourceNames.length).fill(0.05);
     return getUniqueColorForEachString(dataSourceNames, opacities);

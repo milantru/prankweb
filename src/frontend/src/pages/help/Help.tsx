@@ -88,6 +88,9 @@ function Help() {
                             <ul>
                                 <li>Connected rectangles form one bindings site.</li>
                                 <li>
+                                    Predicted binding sites share the same color (transparency may differ, more on that later).
+                                </li>
+                                <li>
                                     Bindings sites of the same ligand share the same color,
                                     e.g. SO4 on the protein X would have the same color as SO4 on the protein Y.
                                 </li>
