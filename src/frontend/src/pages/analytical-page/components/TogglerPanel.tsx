@@ -98,8 +98,8 @@ function TogglerPanel({
                     <span>
                         <span><strong>{`${title.pdbCode?.toUpperCase() ?? "Query protein"}`}</strong></span>
                         <span> (chain <strong>{title.chain}</strong></span>
-                        <span>, source: <em>{dataSourceDisplayNames[title.dataSourceName]}</em></span>
-                        {title.tmScore && <span>, TM-score: <strong>{title.tmScore.toFixed(3)}</strong>)</span>}
+                        <span>, source: <em>{dataSourceDisplayNames[title.dataSourceName]}</em>)</span>
+                        {title.tmScore && <span> | TM-score: <strong>{title.tmScore.toFixed(3)}</strong></span>}
                     </span>
 
                     <div className="d-flex align-items-center ml-auto">
