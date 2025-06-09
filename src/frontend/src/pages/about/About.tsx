@@ -28,13 +28,14 @@ function About() {
                 The application uses the following data sources:
             </p>
 
-            <h3 id="esm2">ESM-2</h3>
+            <h3 id="plank">Plank</h3>
             <p>
-                <a href="https://github.com/facebookresearch/esm" target="_blank" rel="noopener noreferrer">ESM-2</a> is a
-                protein Language Model (pLM) that we use to generate embeddings for each residue.
-                These embeddings are then passed to our custom classification neural network to determine whether
-                a residue is part of a binding site without needing any information about the protein’s 3D structure.
+                Plank consists of two main components: 
+                <a href="https://github.com/facebookresearch/esm" target="_blank" rel="noopener noreferrer"> ESM-2</a>, a protein language model (pLM), 
+                and our custom classification neural network. ESM-2 generates embeddings for each residue, 
+                which are then passed to the neural network to predict whether a residue is part of a binding site—without requiring any information about the protein’s 3D structure.
             </p>
+
 
             <h3 id="p2rank">P2Rank</h3>
             <p>
