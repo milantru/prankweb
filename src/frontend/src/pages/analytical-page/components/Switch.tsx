@@ -1,5 +1,5 @@
 import { useState } from "react";
-import "./checkbox.css";
+import "./Switch.tsx.css";
 
 type Props = {
     classes?: string;

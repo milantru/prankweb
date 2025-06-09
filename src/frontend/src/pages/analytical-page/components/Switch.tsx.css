@@ -42,17 +42,17 @@
     transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
-.plankweb-checkbox-input:checked + .plankweb-checkbox-box {
+.plankweb-checkbox-input:checked+.plankweb-checkbox-box {
     background-color: #e6ffe6;
     border-color: #28a745;
 }
 
-.plankweb-checkbox-input:checked + .plankweb-checkbox-box .checkmark {
+.plankweb-checkbox-input:checked+.plankweb-checkbox-box .checkmark {
     opacity: 1;
     transform: scale(1);
 }
 
-.plankweb-checkbox-input:disabled + .plankweb-checkbox-box {
+.plankweb-checkbox-input:disabled+.plankweb-checkbox-box {
     opacity: 0.5;
     cursor: not-allowed;
 }
