@@ -90,7 +90,7 @@ type DataSourceExecutor = {
 	name: string; // name of the data source used to fetch results, e.g. "foldseek" 
 	displayName: string; // used for displaying in UI, e.g. "P2Rank" instead of "p2rank"
 	// one result for each chain (here will be stored results from data source executors temporarily until all are fetched)
-	results: UnprocessedResult[];
+	result: UnprocessedResult | null;
 };
 
 export type SimilarProtein = {
@@ -143,15 +143,15 @@ function AnalyticalPage() {
 	const [pollingInterval, setPollingInterval] = useState<number | null>(null);
 	const isPageVisible = useVisibilityChange();
 	const dataSourceExecutors = useRef<DataSourceExecutor[]>([
-		{ name: "plank", displayName: "Plank", results: [] },
-		{ name: "p2rank", displayName: "P2Rank", results: [] },
-		{ name: "foldseek", displayName: "Foldseek", results: [] }
+		{ name: "plank", displayName: "Plank", result: null },
+		{ name: "p2rank", displayName: "P2Rank", result: null },
+		{ name: "foldseek", displayName: "Foldseek", result: null }
 	]);
 	const dataSourceDisplayNames = useRef<Record<string, string>>(
 		Object.fromEntries(dataSourceExecutors.current.map(ds => [ds.name, ds.displayName]))
 	);
 	const isFetching = useRef<boolean[]>(new Array(dataSourceExecutors.current.length).fill(false));
-	const isPollingFinished = useRef<boolean[]>(new Array(dataSourceExecutors.current.length).fill(false));
+	const isFetchingFinished = useRef<boolean[]>(new Array(dataSourceExecutors.current.length).fill(false));
 	const [errorMessages, setErrorMessages] = useState<string[]>(new Array(dataSourceExecutors.current.length).fill(""));
 	const [currChainResult, setCurrChainResult] = useState<ChainResult | null>(null);
 	const [statusMessages, setStatusMessages] = useState<StatusMessage[]>(new Array(dataSourceExecutors.current.length).fill({ message: "", isDone: false }));
@@ -166,6 +166,7 @@ function AnalyticalPage() {
 	const [queryProteinBindingSitesData, setQueryProteinBindingSitesData] = useState<Record<string, Record<string, Record<string, boolean>>>>({});
 	const [similarProteinBindingSitesData, setSimilarProteinBindingSitesData] = useState<Record<string, Record<string, Record<string, Record<string, boolean>>>>>({});
 	const [isMolstarLoadingStructures, setIsMolstarLoadingStructures] = useState<boolean>(true);
+	const [isChangingChain, setIsChangingChain] = useState<boolean>(false);
 	const molstarWrapperRef = useRef<MolStarWrapperHandle>(null!);
 	const rcsbSaguaroRef = useRef<RcsbSaguaroHandle>(null!);
 	const [allDataFetched, setAllDataFetched] = useState<boolean>(false);
@@ -179,44 +180,71 @@ function AnalyticalPage() {
 	const unalignedResult = useRef<Record<string, UnalignedResult>>({});
 	// unalignedSimProts[dataSourceName] -> UnalignedSimilarProtein for currently selected chain
 	const unalignedSimProts = useRef<Record<string, UnalignedSimilarProtein[]>>({});
-	const conservations = useRef<Conservation[]>([]); // conservations for currently selected query chain
+	const conservations = useRef<Conservation[]>([]); // Conservations for currently selected query chain
+	const isPollingOffForGood = useRef<boolean>(false); // if true, polling is turned off and won't be turned on again 
 
 	useEffect(() => {
-		if (isPollingFinished.current.every(x => x)) {
-			/* If polling is finished for every data source, we don't want to turn it on again.
+		if (isPollingOffForGood.current) {
+			/* If initial data fetching/polling is finished for every data source, we don't want to turn it on again.
 			 * That is why we have this if here.
 			 * Moreover, we don't have to set pollingInterval to null here (in this if), because
-			 * it was set to null at the end of useInterval already. */
+			 * it was already set to null when all data was fetched. */
 			return;
 		}
 		setPollingInterval(isPageVisible ? POLLING_INTERVAL : null);
 	}, [isPageVisible]);
 
 	useEffect(() => {
-		/* There is a polling implemented in useInterval but it would start after POLLING_INTERVAL. If we want to try to
-		 * fetch data immediatelly after loading page (and not wait POLLING_INTERVAL), we use this useEffect.
-		 * If all of the data is not fetched yet, no problem, there is polling in useInterval which will poll for the rest. */
-		for (let dataSourceExecutorIdx = 0; dataSourceExecutorIdx < dataSourceExecutors.current.length; dataSourceExecutorIdx++) {
-			fetchDataFromDataSource(dataSourceExecutorIdx);
+		async function initChains() {
+			let chainsInitialized = false;
+			while (!chainsInitialized) {
+				const { chains: chainsTmp, errMsg: allChainsFetchingErrorMessage } = await tryGetChains();
+				if (allChainsFetchingErrorMessage.length > 0) {
+					const timeoutInSeconds = 0.5;
+					console.warn(allChainsFetchingErrorMessage
+						+ `\nMaybe file was not created yet? Retrying in ${timeoutInSeconds} second(s)...`);
+					await new Promise(f => setTimeout(f, 1000 * timeoutInSeconds)); // Sleep
+					continue;
+				}
+				chains.current = chainsTmp;
+				const defaultChain = chains.current[0]; // Protein always has at least 1 chain
+				setSelectedChain(defaultChain);
+				chainsInitialized = true;
+			}
 		}
 
-		setPollingInterval(POLLING_INTERVAL); // turn on the polling
+		async function init() {
+			await initChains();
+
+			const promises = [];
+			/* There is a polling implemented in useInterval but it would start after POLLING_INTERVAL. If we want to try to
+			 * fetch data immediatelly after loading page (and not wait POLLING_INTERVAL), we use this useEffect.
+			 * If all of the data is not fetched yet, no problem, there is polling in useInterval which will poll for the rest. */
+			for (let dataSourceExecutorIdx = 0; dataSourceExecutorIdx < dataSourceExecutors.current.length; dataSourceExecutorIdx++) {
+				promises.push(fetchDataFromDataSourceForChain(dataSourceExecutorIdx, chains.current[0]));
+			}
+			await Promise.all(promises);
+
+			if (!isPollingOffForGood.current) {
+				setPollingInterval(POLLING_INTERVAL); // Turn on the polling (if data has not been fetched yet)
+			}
+		}
+
+		init();
 	}, []);
 
 	useEffect(() => {
-		function stopPollingAndAlignSequences(dataSourceExecutors: DataSourceExecutor[], defaultChain: string) {
-			// Turn off polling entirely (for all data sources)
+		async function stopPollingAndAlignSequences(defaultChain: string) {
+			// Turn off polling entirely for all data sources (to be precise, this turns off useInterval)
 			setPollingInterval(null);
 
 			// Aligning will take place in the following function
-			handleChainSelect(dataSourceExecutors, defaultChain);
+			await handleChainSelect(defaultChain, false);
 		}
 
 		if (allDataFetched) {
 			// both dataSourceExecutors and chains should be already initialized when allDataFetched is set to true
-			const defaultChain = chains.current[0]; // Protein always has at least 1 chain
-
-			stopPollingAndAlignSequences(dataSourceExecutors.current, defaultChain);
+			stopPollingAndAlignSequences(chains.current[0]); // Protein always has at least 1 chain
 		}
 	}, [allDataFetched]);
 
@@ -232,10 +260,10 @@ function AnalyticalPage() {
 
 	useInterval(() => {
 		for (let dataSourceExecutorIdx = 0; dataSourceExecutorIdx < dataSourceExecutors.current.length; dataSourceExecutorIdx++) {
-			if (isFetching.current[dataSourceExecutorIdx] || isPollingFinished.current[dataSourceExecutorIdx]) {
+			if (isFetching.current[dataSourceExecutorIdx] || isFetchingFinished.current[dataSourceExecutorIdx]) {
 				continue;
 			}
-			fetchDataFromDataSource(dataSourceExecutorIdx);
+			fetchDataFromDataSourceForChain(dataSourceExecutorIdx, chains.current[0]);
 		}
 	}, pollingInterval);
 
@@ -286,8 +314,8 @@ function AnalyticalPage() {
 									squashBindingSites={squashBindingSites}
 									startQuerySequenceAtZero={startQuerySequenceAtZero}
 									dataSourceDisplayNames={dataSourceDisplayNames.current}
-									isDisabled={isMolstarLoadingStructures}
-									onChainSelect={selectedChain => handleChainSelect(dataSourceExecutors.current, selectedChain)}
+									isDisabled={isChangingChain || isMolstarLoadingStructures}
+									onChainSelect={selectedChain => handleChainSelect(selectedChain)}
 									onBindingSitesSquashClick={() => setSquashBindingSites(prevState => !prevState)}
 									onStartQuerySequenceAtZero={() => setStartQuerySequenceAtZero(prevState => !prevState)}
 									onStructuresSelect={handleStructuresSelect}
@@ -390,29 +418,9 @@ function AnalyticalPage() {
 		return { result: result, errMsg: "" };
 	}
 
-	async function getResults(dataSourceIndex: number, id: string, chains: string[], useConservation: boolean) {
-		const results: UnprocessedResult[] = [];
-
-		for (let i = 0; i < chains.length; i++) {
-			const {
-				result,
-				errMsg: dataFetchingErrorMessage
-			} = await tryGetResult(dataSourceExecutors.current[dataSourceIndex].name, id, chains[i], useConservation);
-
-			if (dataFetchingErrorMessage.length > 0) {
-				toastWarning(dataFetchingErrorMessage + "\nRetrying...");
-				i--; // Try again for the same chain
-				continue;
-			}
-			results.push(result);
-		}
-
-		return results;
-	}
-
-	async function fetchDataFromDataSource(dataSourceIndex: number) {
+	async function fetchDataFromDataSourceForChain(dataSourceIndex: number, chain: string, shouldSetDataFetched: boolean = true) {
 		isFetching.current[dataSourceIndex] = true;
-		console.info("Polling data source executor: " + dataSourceExecutors.current[dataSourceIndex].name);
+		console.info("Fetching data source executor: " + dataSourceExecutors.current[dataSourceIndex].name);
 
 		// Get status
 		const {
@@ -426,26 +434,6 @@ function AnalyticalPage() {
 				updateStatusMessages(dataSourceIndex, dataSourceExecutors.current[dataSourceIndex].displayName + ": Waiting for conservation data");
 			}
 			console.warn(statusFetchingErrorMessage + "\nRetrying...");
-			isFetching.current[dataSourceIndex] = false;
-			return;
-		}
-
-		// Init chains (either from params, or from servers chains file which should be already created when status is retrieved)
-		if (dataSourceIndex === 0) {
-			/* We do not want to spam toasts for each data source in case fetching fails, 
-			 * that's why only for one data source chains are being fetched. */
-			const { chains: chainsTmp, errMsg: allChainsFetchingErrorMessage } = await tryGetChains();
-			if (allChainsFetchingErrorMessage.length > 0) {
-				toastWarning(allChainsFetchingErrorMessage + "\nRetrying...");
-				isFetching.current[dataSourceIndex] = false;
-				return;
-			}
-			chains.current = chainsTmp;
-			const defaultChain = chains.current[0]; // Protein always has at least 1 chain
-			setSelectedChain(defaultChain);
-		}
-		if (chains.current.length === 0) {
-			// Chains not fetched yet... Try again.
 			isFetching.current[dataSourceIndex] = false;
 			return;
 		}
@@ -473,8 +461,16 @@ function AnalyticalPage() {
 			const errMsg = `Failed to fetch data from ${dataSourceExecutors.current[dataSourceIndex].displayName}, skipping.`;
 			updateErrorMessages(dataSourceIndex, errMsg);
 		} else if (status === DataStatus.Completed) {
-			const results = await getResults(dataSourceIndex, id, chains.current, useConservation);
-			dataSourceExecutors.current[dataSourceIndex].results = results;
+			const {
+				result,
+				errMsg: resultFetchingErrorMessage
+			} = await tryGetResult(dataSourceExecutors.current[dataSourceIndex].name, id, chain, useConservation);
+			if (resultFetchingErrorMessage.length > 0) {
+				toastWarning(resultFetchingErrorMessage + "\nRetrying...");
+				isFetching.current[dataSourceIndex] = false;
+				return;
+			}
+			dataSourceExecutors.current[dataSourceIndex].result = result;
 			updateStatusMessages(dataSourceIndex, `${dataSourceExecutors.current[dataSourceIndex].displayName}: ${infoMessage}`, true);
 		} else {
 			throw new Error("Unknown status."); // This should never happen.
@@ -483,10 +479,11 @@ function AnalyticalPage() {
 		/* Either was processing successful and we got the result (Status.Completed),
 		 * or it failed and we won't get result ever (Status.Failed). This means polling for this
 		 * data source result is not required anymore, and we can stop it. */
-		isPollingFinished.current[dataSourceIndex] = true;
+		isFetchingFinished.current[dataSourceIndex] = true;
 
-		if (isPollingFinished.current.every(x => x)) {
+		if (shouldSetDataFetched && isFetchingFinished.current.every(x => x)) {
 			// Polling is finished for all data sources
+			isPollingOffForGood.current = true;
 			setAllDataFetched(true);
 		}
 		isFetching.current[dataSourceIndex] = false;
@@ -536,14 +533,17 @@ function AnalyticalPage() {
 		}
 	}
 
-	function getAvgConservationForQueryBindingSite(bindingSite: BindingSite) {
-		const bindingSiteConservations = conservations.current.filter(c =>
+	function getAvgConservationForQueryBindingSite(bindingSite: BindingSite, conservations: Conservation[]) {
+		const bindingSiteConservations = conservations.filter(c =>
 			bindingSite.residues.some(r => r.sequenceIndex === c.index));
 
 		const bindingSiteConservationValues = bindingSiteConservations.map(v => v.value);
 
-		const avg = bindingSiteConservationValues.reduce((a, b) => a + b) / bindingSiteConservationValues.length;
+		if (bindingSiteConservationValues.length === 0) {
+			return 0;
+		}
 
+		const avg = bindingSiteConservationValues.reduce((a, b) => a + b) / bindingSiteConservationValues.length;
 		return avg;
 	}
 
@@ -783,6 +783,10 @@ function AnalyticalPage() {
 			masterQuerySeq += "-";
 		}
 
+		for (const conservation of conservations) {
+			conservation.index = mapping[conservation.index];
+		}
+
 		/* "Postprocessing phase": Update all residue indices of each binding site, seq to struct mappings,
 		 * also count how many data sources support certain binding site and calculate avg conservations if required. */
 		// bindingSiteSupportCounterTmp[residue index in structure (of pocket)]: number of data sources supporting pocket on the index
@@ -809,7 +813,7 @@ function AnalyticalPage() {
 
 				// Calculate average conservation value for the binding site
 				if (useConservation) {
-					bindingSite.avgConservation = getAvgConservationForQueryBindingSite(bindingSite);
+					bindingSite.avgConservation = getAvgConservationForQueryBindingSite(bindingSite, conservations);
 				}
 			}
 
@@ -841,9 +845,7 @@ function AnalyticalPage() {
 				}
 			}
 		}
-		for (const conservation of conservations) {
-			conservation.index = mapping[conservation.index];
-		}
+
 		setBindingSiteSupportCounter(prevState => ({
 			...prevState,
 			[chain]: bindingSiteSupportCounterTmp
@@ -866,50 +868,33 @@ function AnalyticalPage() {
 		};
 	}
 
-	function prepareUnalignedDataForQueryChain(dataSourceExecutors: DataSourceExecutor[], chain: string) {
-		function transform(unprocessedResults: UnprocessedResult[]) {
-			// should transform results so we can access them like this: res[chain][dataSourceName] -> result
-			const res: Record<string, Record<string, UnprocessedResult>> = {};
-
-			unprocessedResults.forEach(ur => {
-				if (!(ur.chain in res)) {
-					res[ur.chain] = {};
-				}
-
-				res[ur.chain][ur.metadata.dataSource] = ur;
-			});
-
-			return res;
-		}
-
-		const allResults = dataSourceExecutors.flatMap(x => x.results);
-		const chainUnprocessedResults = transform(allResults);
-		const dataSourceResults = chainUnprocessedResults[chain];
-
-		// unalignedResultTmp[chain][dataSourceName] -> UnalignedResult
+	/** Prepares unaligned data (data of type `UnalignedResult` and `UnalignedSimilarProtein`),
+	  * so it will be possible to access them via data source name using dictionary. */
+	function prepareUnalignedData(dataSourceExecutors: DataSourceExecutor[]) {
+		// unalignedResultTmp[dataSourceName] -> UnalignedResult for curr selected chain
 		const unalignedResultTmp: Record<string, UnalignedResult> = {};
-		// unalignedSimProtsTmp[chain][dataSourceName] -> UnalignedSimilarProtein
+		// unalignedSimProtsTmp[dataSourceName] -> UnalignedSimilarProtein for curr selected chain
 		const unalignedSimProtsTmp: Record<string, UnalignedSimilarProtein[]> = {};
 
-		for (const [dataSourceName, unprocessedResult] of Object.entries(dataSourceResults)) {
+		for (const dse of dataSourceExecutors) {
 			const unprocessedResultWithoutSimilarProteins: UnalignedResult = {
-				id: unprocessedResult.id,
-				sequence: unprocessedResult.sequence,
-				chain: unprocessedResult.chain,
-				pdbUrl: unprocessedResult.pdbUrl,
-				bindingSites: unprocessedResult.bindingSites,
-				metadata: unprocessedResult.metadata
+				id: dse.result.id,
+				sequence: dse.result.sequence,
+				chain: dse.result.chain,
+				pdbUrl: dse.result.pdbUrl,
+				bindingSites: dse.result.bindingSites,
+				metadata: dse.result.metadata
 			};
-			unalignedResultTmp[dataSourceName] = unprocessedResultWithoutSimilarProteins;
+			unalignedResultTmp[dse.name] = unprocessedResultWithoutSimilarProteins;
 
-			if (!unprocessedResult.similarProteins) {
+			if (!dse.result.similarProteins) {
 				continue;
 			}
 			const simProts: UnalignedSimilarProtein[] = []
-			for (const simProt of unprocessedResult.similarProteins) {
+			for (const simProt of dse.result.similarProteins) {
 				simProts.push(simProt);
 			}
-			unalignedSimProtsTmp[dataSourceName] = simProts;
+			unalignedSimProtsTmp[dse.name] = simProts;
 		}
 
 		unalignedResult.current = unalignedResultTmp;
@@ -1055,7 +1040,8 @@ function AnalyticalPage() {
 		molstarWrapperRef.current?.toggleSimilarProteinBindingSite(dataSourceName, pdbCode, chain, bindingSiteId, show);
 	}
 
-	async function handleChainSelect(dataSourceExecutors: DataSourceExecutor[], newSelectedChain: string) {
+	async function handleChainSelect(newSelectedChain: string, fetchData: boolean = true) {
+		setIsChangingChain(true);
 		// Get conservation (if required)
 		if (useConservation) {
 			const {
@@ -1070,11 +1056,35 @@ function AnalyticalPage() {
 			}
 		}
 
+		if (fetchData) {
+			// Get new data (data of selected chain)
+			while (isFetchingFinished.current.some(isFinished => !isFinished)) {
+				console.info("Trying to fetch data for the selected chain.");
+				const promises = [];
+				for (let dataSourceExecutorIdx = 0; dataSourceExecutorIdx < dataSourceExecutors.current.length; dataSourceExecutorIdx++) {
+					if (isFetching.current[dataSourceExecutorIdx] || isFetchingFinished.current[dataSourceExecutorIdx]) {
+						continue;
+					}
+					promises.push(fetchDataFromDataSourceForChain(dataSourceExecutorIdx, newSelectedChain, false));
+				}
+				await Promise.all(promises);
+			}
+		}
+
 		// Prepare unaligned data (transform data to more appropriate data structures)
-		prepareUnalignedDataForQueryChain(dataSourceExecutors, newSelectedChain);
+		prepareUnalignedData(dataSourceExecutors.current);
 
 		const newChainResult = alignSequences([], newSelectedChain);
 
+		// Reset variables, remove "raw" (unprocessed, unalidnged) data (we have processed data - chainResult - stored already)
+		for (let dataSourceIdx = 0; dataSourceIdx < isFetchingFinished.current.length; dataSourceIdx++) {
+			isFetchingFinished.current[dataSourceIdx] = false;
+		}
+		for (const dse of dataSourceExecutors.current) {
+			dse.result = null;
+		}
+
+		// Set new chain as selected and prepare data for toggler panels
 		setSelectedChain(newSelectedChain);
 
 		const queryProteinLigandsDataTmp = getQueryProteinLigandsData(newChainResult, newSelectedChain);
@@ -1084,6 +1094,7 @@ function AnalyticalPage() {
 		setSelectedStructures([]);
 		const similarProteinLigandDataTmp = getSimilarProteinLigandData(newChainResult, []);
 		setSimilarProteinBindingSitesData(similarProteinLigandDataTmp);
+		setIsChangingChain(false);
 	}
 
 	function handleStructuresSelect(selectedStructureOptions: StructureOption[]) {

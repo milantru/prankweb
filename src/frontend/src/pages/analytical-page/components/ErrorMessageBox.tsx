@@ -13,10 +13,8 @@ function ErrorMessageBox({ classes = "", errorMessages, onClose }: Props) {
         <div className={`container-fluid mb-4 ${classes}`}>
             <div className="row justify-content-center">
                 <div className="col-12 col-md-10 col-xl-8">
-                    <div
-                        className="alert position-relative border border-danger" style={{ backgroundColor: "#eee" }}>
-                        <button
-                            className="py-0 px-2 btn btn-sm btn-link position-absolute"
+                    <div className="alert position-relative border border-danger" style={{ backgroundColor: "#eee" }}>
+                        <button className="py-0 px-2 btn btn-sm btn-link position-absolute"
                             style={{
                                 fontSize: "1.5rem",
                                 color: "#333",

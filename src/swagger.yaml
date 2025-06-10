@@ -217,7 +217,7 @@ paths:
         '200':
           description: A FASTA file containing the sequence of the specified chain.
           content:
-            application/json:
+            text/plain:
               schema:
                 type: string
                 example: |
@@ -263,7 +263,7 @@ paths:
             - ds_plank
           schema:
             type: string
-            example: "foldseek"
+            example: "ds_foldseek"
         - in: path
           name: inputId
           required: true
@@ -311,7 +311,7 @@ paths:
             - ds_plank
           schema:
             type: string
-            example: "foldseek"
+            example: "ds_foldseek"
         - in: path
           name: inputId
           required: true
