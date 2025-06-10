@@ -177,6 +177,7 @@ services:
         --hostname=foldseek_worker 
         --loglevel=warning
         --concurrency=2
+        --pool=threads
         --events
 
   ds-p2rank:
