@@ -181,13 +181,14 @@ function AnalyticalPage() {
 	// unalignedSimProts[dataSourceName] -> UnalignedSimilarProtein for currently selected chain
 	const unalignedSimProts = useRef<Record<string, UnalignedSimilarProtein[]>>({});
 	const conservations = useRef<Conservation[]>([]); // Conservations for currently selected query chain
+	const isPollingOffForGood = useRef<boolean>(false); // if true, polling is turned off and won't be turned on again 
 
 	useEffect(() => {
-		if (isFetchingFinished.current.every(x => x)) {
-			/* If fetching/polling is finished for every data source, we don't want to turn it on again.
+		if (isPollingOffForGood.current) {
+			/* If initial data fetching/polling is finished for every data source, we don't want to turn it on again.
 			 * That is why we have this if here.
 			 * Moreover, we don't have to set pollingInterval to null here (in this if), because
-			 * it was set to null at the end of useInterval already. */
+			 * it was already set to null when all data was fetched. */
 			return;
 		}
 		setPollingInterval(isPageVisible ? POLLING_INTERVAL : null);
@@ -224,7 +225,9 @@ function AnalyticalPage() {
 			}
 			await Promise.all(promises);
 
-			setPollingInterval(POLLING_INTERVAL); // Turn on the polling
+			if (!isPollingOffForGood.current) {
+				setPollingInterval(POLLING_INTERVAL); // Turn on the polling (if data has not been fetched yet)
+			}
 		}
 
 		init();
@@ -232,7 +235,7 @@ function AnalyticalPage() {
 
 	useEffect(() => {
 		async function stopPollingAndAlignSequences(defaultChain: string) {
-			// Turn off polling entirely (for all data sources)
+			// Turn off polling entirely for all data sources (to be precise, this turns off useInterval)
 			setPollingInterval(null);
 
 			// Aligning will take place in the following function
@@ -480,6 +483,7 @@ function AnalyticalPage() {
 
 		if (shouldSetDataFetched && isFetchingFinished.current.every(x => x)) {
 			// Polling is finished for all data sources
+			isPollingOffForGood.current = true;
 			setAllDataFetched(true);
 		}
 		isFetching.current[dataSourceIndex] = false;
