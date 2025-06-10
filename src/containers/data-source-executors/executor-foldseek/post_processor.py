@@ -7,7 +7,7 @@ from Bio.PDB import PDBParser, PDBIO, NeighborSearch
 from Bio.PDB.Polypeptide import three_to_index, index_to_one, is_aa
 from data_format.builder import ProteinDataBuilder, SimilarProteinBuilder, BindingSite, Residue
 from dataclasses import asdict
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from functools import partial
 
 from tasks_logger import create_logger
@@ -188,7 +188,7 @@ def split_foldseek_result_file(result_folder, filepath):
     
     return result_file_base
 
-def process_chain_result(id, chain_result_file_path, result_folder, query_structure_file, query_structure_file_url, max_workers=10):
+def process_chain_result(id, chain_result_file_path, result_folder, query_structure_file, query_structure_file_url, max_workers=32):
     builder = None
     futures = []
 
@@ -209,7 +209,7 @@ def process_chain_result(id, chain_result_file_path, result_folder, query_struct
             futures.append(fields)
 
     wrapped_fn = partial(process_similar_protein, result_folder, chain, id)
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+    with ProcessPoolExecutor(max_workers=max_workers) as executor:
         submitted = [executor.submit(wrapped_fn, fields) for fields in futures]
 
         for future in as_completed(submitted):
