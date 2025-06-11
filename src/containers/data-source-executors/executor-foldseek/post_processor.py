@@ -252,10 +252,11 @@ def process_foldseek_output(result_folder, foldseek_result_file, id, query_struc
         else:
             # No similar proteins found for this chain, extract binding sites only
             logger.info(f'{id} No similar proteins found for chain {chain}, extracting binding sites only')
-            binding_sites, chain_seq, _ = extract_binding_sites_for_chain(id, query_structure_file, chain)
-            builder = ProteinDataBuilder(id, chain, chain_seq, query_structure_file_url)
-            for binding_site in binding_sites:
-                builder.add_binding_site(binding_site)
+            with open(query_structure_file, "r") as q_file:
+                binding_sites, chain_seq, _ = extract_binding_sites_for_chain(id, q_file.read(), chain)
+                builder = ProteinDataBuilder(id, chain, chain_seq, query_structure_file_url)
+                for binding_site in binding_sites:
+                    builder.add_binding_site(binding_site)
             save_results(result_folder, RESULT_FILE.format(chain), builder)
         processed_chains_count += 1
     logger.info(f'{id} Finished processing Foldseek output')
