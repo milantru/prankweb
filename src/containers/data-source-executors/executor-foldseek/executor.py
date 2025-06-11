@@ -86,5 +86,5 @@ def run_foldseek(id):
         logger.error(f'{id} An unexpected error occurred ({type(e).__name__}): {str(e)}')
         update_status(status_file_path, id, StatusType.FAILED, errorMessage = f"An unexpected error occurred: {str(e)}")
 
-    logger.info(f'{id} ds_foldseek finished')
+    logger.info(f'{id} Foldseek finished')
 
