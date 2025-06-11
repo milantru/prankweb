@@ -191,6 +191,7 @@ services:
       CELERY_BROKER_URL: amqp://${PLANKWEB_SERVICE_USER}:${PLANKWEB_SERVICE_PASS}@message-broker:5672// 
       INPUTS_URL: http://apache:80/data/inputs
       PLANKWEB_BASE_URL: ${PLANKWEB_URL}
+      FOLDSEEK_SIM_PROTS: 1000
       LOGGING_TZ: ${PLANKWEB_TIMEZONE:-Europe/Prague}
     logging:
       options:
