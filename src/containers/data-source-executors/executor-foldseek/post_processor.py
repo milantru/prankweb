@@ -1,9 +1,8 @@
 import json
 import os
 import requests
-import tempfile
 from typing import List, Tuple, Dict
-from Bio.PDB import PDBParser, PDBIO, NeighborSearch
+from Bio.PDB import PDBParser, NeighborSearch
 from Bio.PDB.Polypeptide import three_to_index, index_to_one, is_aa
 from data_format.builder import ProteinDataBuilder, SimilarProteinBuilder, BindingSite, Residue
 from dataclasses import asdict
@@ -115,7 +114,7 @@ def save_results(result_folder: str, file_name: str, builder: ProteinDataBuilder
 
     logger.info(f'{id} Results saved')
 
-def process_similar_protein(result_folder: str, curr_chain: str, id: str, fields: List[str]) -> SimilarProteinBuilder:
+def process_similar_protein(curr_chain: str, id: str, fields: List[str]) -> SimilarProteinBuilder:
     
     sim_protein_pdb_id, sim_protein_chain = fields[1][:4], fields[1].split("_")[1][0]
     if len(id)> 4 and id[-4:] == sim_protein_pdb_id and curr_chain == sim_protein_chain:
@@ -208,7 +207,7 @@ def process_chain_result(id, chain_result_file_path, result_folder, query_struct
 
             futures.append(fields)
 
-    wrapped_fn = partial(process_similar_protein, result_folder, chain, id)
+    wrapped_fn = partial(process_similar_protein, chain, id)
     with ProcessPoolExecutor(max_workers=max_workers) as executor:
         submitted = [executor.submit(wrapped_fn, fields) for fields in futures]
 
