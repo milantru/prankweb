@@ -398,6 +398,7 @@ services:
         --hostname=metatask_worker
         --loglevel=warning
         --concurrency=4
+        --pool=threads
         --events
 
   flower:
