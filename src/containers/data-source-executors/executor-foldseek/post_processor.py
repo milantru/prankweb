@@ -9,6 +9,7 @@ from data_format.builder import ProteinDataBuilder, SimilarProteinBuilder, Bindi
 from dataclasses import asdict
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from functools import partial
+from io import StringIO
 
 from tasks_logger import create_logger
 from status_manager import update_status, StatusType
@@ -36,9 +37,10 @@ RESULT_FILE = "{}_chain_result.json"
 logger = create_logger('ds-foldseek')
 
 
-def extract_binding_sites_for_chain(pdb_id, pdb_file_path, input_chain) -> Tuple[List[BindingSite], str, Dict[str, int]]:
-    with open(pdb_file_path, "r") as file:
-        pdb = PDBParser().get_structure(pdb_id, file)
+def extract_binding_sites_for_chain(pdb_id, pdb_file_text, input_chain) -> Tuple[List[BindingSite], str, Dict[str, int]]:
+    file = StringIO(pdb_file_text)
+    pdb = PDBParser().get_structure(pdb_id, file)
+    file.close()
 
     binding_sites = []
     dist_thresh = 5  # Distance threshold for neighbor search
@@ -98,6 +100,7 @@ def extract_binding_sites_for_chain(pdb_id, pdb_file_path, input_chain) -> Tuple
                         residues=sorted(residues, key=lambda r: r.sequenceIndex)
                     )
                 )
+
     return binding_sites, chain_seq, seq_to_str_mapping
 
 def save_results(result_folder: str, file_name: str, builder: ProteinDataBuilder):
@@ -137,16 +140,12 @@ def process_similar_protein(result_folder: str, curr_chain: str, id: str, fields
     pdb_filename = None
 
     try:
-        with tempfile.NamedTemporaryFile(dir=result_folder, suffix=".pdb", delete=False) as tmp_file:
-            pdb_filename = tmp_file.name
+        logger.info(f'{id} Downloading similar protein: {sim_protein_pdb_id}')
+        response = requests.get(PDB_FILE_URL.format(sim_protein_pdb_id), timeout=(15,30))
+        response.raise_for_status()
+        logger.info(f'{id} Similar protein {sim_protein_pdb_id} saved to: {pdb_filename}')
 
-            logger.info(f'{id} Downloading similar protein: {sim_protein_pdb_id}')
-            response = requests.get(PDB_FILE_URL.format(sim_protein_pdb_id), timeout=(15,30))
-            response.raise_for_status()
-            tmp_file.write(response.content)
-            logger.info(f'{id} Similar protein {sim_protein_pdb_id} saved to: {pdb_filename}')
-
-        binding_sites, _, mapping = extract_binding_sites_for_chain(id, pdb_filename, sim_protein_chain)
+        binding_sites, _, mapping = extract_binding_sites_for_chain(id, response.text, sim_protein_chain)
         sim_builder.set_seq_to_str_mapping(mapping)
         for binding_site in binding_sites:
             sim_builder.add_binding_site(binding_site)
@@ -188,7 +187,7 @@ def split_foldseek_result_file(result_folder, filepath):
     
     return result_file_base
 
-def process_chain_result(id, chain_result_file_path, result_folder, query_structure_file, query_structure_file_url, max_workers=32):
+def process_chain_result(id, chain_result_file_path, result_folder, query_structure_file, query_structure_file_url, max_workers=16):
     builder = None
     futures = []
 
@@ -202,9 +201,10 @@ def process_chain_result(id, chain_result_file_path, result_folder, query_struct
                 chain = input_name.split("_")[1] if "_" in input_name else "A"
                 builder = ProteinDataBuilder(id, chain, query_seq, query_structure_file_url)
                 
-                binding_sites = extract_binding_sites_for_chain(id, query_structure_file, chain)[0]
-                for binding_site in binding_sites:
-                    builder.add_binding_site(binding_site)
+                with open(query_structure_file, "r") as q_file:
+                    binding_sites = extract_binding_sites_for_chain(id, q_file.read(), chain)[0]
+                    for binding_site in binding_sites:
+                        builder.add_binding_site(binding_site)
 
             futures.append(fields)
 
