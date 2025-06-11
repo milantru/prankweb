@@ -38,6 +38,12 @@ function Help() {
                     the <a href="#settings-panel"><em>settings panel</em></a> and two visualizations
                     appear: <a href="#sequence-visualization"><em>sequence visualization</em></a> and <a href="#structural-visualization"><em>structural visualization</em></a>.
                 </p>
+                <div className="alert alert-info" role="alert">
+                    <strong>TIP:</strong> You can copy and save the URL of the analytical page to return
+                    to your analysis later without re-uploading and waiting for processing to finish.
+                    This works with all input methods, but it's especially useful with <em>Custom structure</em>,
+                    since calculations are redone each time the file is uploaded.
+                </div>
             </section>
 
             <section id="settings-panel">
