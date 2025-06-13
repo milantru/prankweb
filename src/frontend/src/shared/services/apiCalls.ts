@@ -192,8 +192,11 @@ export async function getChainsForPdbCodeAPI(pdbCode: string): Promise<{ chains:
 		}
 
 		const chainsSet = new Set<string>(); // set is used to avoid duplicates
+		/* startsWith("polypeptide") is there to target only amino acid chains, 
+		 * we don't want e.g. 6XEZ chain T, because it is DNA chain */
 		data[pdbCode.toLowerCase()]
 			.filter(entity => entity["sequence"])
+			.filter(entity => entity["molecule_type"] && entity["molecule_type"].startsWith("polypeptide"))
 			.forEach(entity =>
 				entity["in_chains"].forEach(chain => chainsSet.add(chain))
 			);
