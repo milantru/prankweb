@@ -12,6 +12,7 @@ RESULTS_FOLDER = "results"
 FOLDSEEK_DB = "foldseek_db/pdb"
 INPUTS_URL = os.getenv('INPUTS_URL')
 PLANKWEB_BASE_URL = os.getenv('PLANKWEB_BASE_URL')
+FOLDSEEK_SIM_PROTS = os.getenv('FOLDSEEK_SIM_PROTS')
 
 
 logger = create_logger('ds-foldseek')
@@ -46,7 +47,7 @@ def run_foldseek(id):
 
         command = [
             "foldseek", "easy-search", query_structure_file, FOLDSEEK_DB, foldseek_result_file, "tmp", 
-            "--max-seqs", "1000",
+            "--max-seqs", FOLDSEEK_SIM_PROTS,
             "--format-output", "query,target,alnlen,qseq,qstart,qend,qaln,alntmscore,tseq,tstart,tend,taln"
         ]
 
@@ -86,5 +87,5 @@ def run_foldseek(id):
         logger.error(f'{id} An unexpected error occurred ({type(e).__name__}): {str(e)}')
         update_status(status_file_path, id, StatusType.FAILED, errorMessage = f"An unexpected error occurred: {str(e)}")
 
-    logger.info(f'{id} ds_foldseek finished')
+    logger.info(f'{id} Foldseek finished')
 
