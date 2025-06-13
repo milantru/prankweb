@@ -31,8 +31,7 @@ function InputUserFileBlock({ data, setData, setErrorMessage }: Props) {
                 </label>
                 <input className="form-control" type="file" id="user-file" onChange={handleFileChange} />
             </div>
-            {/* Delete d-none to enable chains selecting if desired in the future. */}
-            <div className="d-none mb-3">
+            <div className="mb-3">
                 <label htmlFor="user-file-chains" className="form-label">Restrict to chains</label>
                 <input type="text"
                     className="form-control"
