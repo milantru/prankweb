@@ -78,7 +78,7 @@ function SettingsPanel({
     return (
         <div className={`d-flex flex-column justify-content-start align-items-center border rounded ${classes}`}>
             <div className="d-flex flex-row flex-wrap w-100">
-                <div className="d-flex align-items-center mr-2">
+                <div className="d-flex align-items-center mr-2 chains-select-wrapper">
                     <div className="mr-1 font-weight-bold">Chains:</div>
                     <Select defaultValue={{ label: selectedChain, chain: selectedChain }}
                         isDisabled={isDisabled}
@@ -136,7 +136,7 @@ function SettingsPanel({
                     </div>
                 </div>
 
-                <button className="btn btn-outline-secondary ml-auto"
+                <button className="btn btn-outline-secondary ml-auto plankweb-download-btn"
                     title="Export the current view to JSON."
                     type="button"
                     onClick={onExport}

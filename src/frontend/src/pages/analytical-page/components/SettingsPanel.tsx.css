@@ -1,25 +1,64 @@
 #similar-proteins-select {
-    flex-direction: row;
+  flex-direction: row;
 }
 
 #similar-proteins-select button {
-    width: 25%;
-    margin-left: 8px;
+  width: 25%;
+  margin-left: 8px;
 }
 
-/* Responsive styles for screens smaller than 485px */
-@media (max-width: 484px) {
-    #similar-proteins-select {
-        flex-direction: column;
-    }
+/* Responsive styles for screens smaller than 709px */
+@media (max-width: 708px) {
+  #similar-proteins-select {
+    flex-direction: column;
+  }
 
-    #similar-proteins-select>* {
-        margin-top: 4px;
-        width: 100%;
-    }
+  #similar-proteins-select>* {
+    margin-top: 4px;
+    width: 100%;
+  }
 
-    #similar-proteins-select button {
-        width: 100%;
-        margin-left: 0;
-    }
+  #similar-proteins-select button {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .chains-select-wrapper {
+    width: 100% !important;
+    margin-bottom: 8px;
+  }
+
+  .chains-select-wrapper>* {
+    width: 100%;
+  }
+
+  .plankweb-checkbox-wrapper {
+    width: 100% !important;
+    padding-left: 0px;
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+
+  .plankweb-checkbox {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    width: 100% !important;
+    gap: 0.5rem;
+  }
+
+  .plankweb-checkbox-wrapper>div {
+    width: 100% !important;
+  }
+
+  .plankweb-checkbox-input,
+  .plankweb-checkbox-box {
+    order: 2;
+  }
+
+  .plankweb-download-btn {
+    width: 100% !important;
+    margin-top: 8px;
+    margin-right: .5rem;
+  }
 }
