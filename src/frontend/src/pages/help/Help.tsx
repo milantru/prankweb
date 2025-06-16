@@ -19,7 +19,7 @@ function Help() {
                     The user can specify what protein to analyze in four ways:
                     <ul>
                         <li>PDB code <em>(Experimental structure)</em></li>
-                        <li>Upload a structure file (.pdb) with selected chains <em>(Custom structure)</em></li>
+                        <li>Upload a structure .pdb file <em>(Custom structure)</em></li>
                         <li>Uniprot ID <em>(AlphaFold structure)</em></li>
                         <li>Text sequence <em>(Sequence)</em></li>
                     </ul>
@@ -38,6 +38,12 @@ function Help() {
                     the <a href="#settings-panel"><em>settings panel</em></a> and two visualizations
                     appear: <a href="#sequence-visualization"><em>sequence visualization</em></a> and <a href="#structural-visualization"><em>structural visualization</em></a>.
                 </p>
+                <div className="alert alert-info" role="alert">
+                    <strong>TIP:</strong> You can copy and save the URL of the analytical page to return
+                    to your analysis later without re-uploading and waiting for processing to finish.
+                    This works with all input methods, but it's especially useful with <em>Custom structure</em>,
+                    since calculations are redone each time the file is uploaded.
+                </div>
             </section>
 
             <section id="settings-panel">
@@ -64,7 +70,8 @@ function Help() {
                 </p>
                 <p>
                     The panel can be also used to <strong>select one or multiple similar protein structures</strong> to be visualized
-                    in the both visualizations. After selecting the proteins, one must confirm the selection by clicking the Confirm button.
+                    in the both visualizations. The similar protein options are ordered by TM-score in descending order.
+                    After selecting the proteins, one must confirm the selection by clicking the Confirm button.
                 </p>
             </section>
 
@@ -75,9 +82,10 @@ function Help() {
                     <ul>
                         <li>Sequence of submitted protein (just the selected chain).</li>
                         <li>
-                            Selected sequences of proteins similar to the submitted protein (one row displays just one similar chain).
+                            Selected protein sequences similar to the submitted protein (one row displays just one similar chain).
                             <ul>
-                                <li>Selected sequences are aligned only with the query protein sequence, not with each other.</li>
+                                <li>Sequences are ordered by descending TM-score.</li>
+                                <li>Sequences are aligned only with the query protein sequence, not with each other.</li>
                             </ul>
                         </li>
                         <li>
@@ -86,14 +94,17 @@ function Help() {
                             <ul>
                                 <li>Connected rectangles form one bindings site.</li>
                                 <li>
+                                    Predicted binding sites share the same color (transparency may differ, more on that later).
+                                </li>
+                                <li>
                                     Bindings sites of the same ligand share the same color,
                                     e.g. SO4 on the protein X would have the same color as SO4 on the protein Y.
                                 </li>
                                 <li>
-                                    Different rectangles may have varying levels of transparency, depending on the confidence value.
-                                    The more transparent a rectangle is, the lower the confidence in the existence of that binding site.
-                                    For example, binding sites provided by Foldseek are experimentally confirmed rather than predicted,
-                                    so their confidence value is 1 (i.e., no transparency).
+                                    Different rectangles may have varying levels of transparency, depending on the probability
+                                    of the binding site existing. The more transparent a rectangle is, the lower the probability
+                                    of the existence of that binding site. For example, binding sites provided by Foldseek
+                                    are experimentally confirmed rather than predicted, so their probability is 1 (i.e., no transparency).
                                 </li>
                             </ul>
                         </li>
@@ -106,20 +117,22 @@ function Help() {
                 <p>
                     The background of rows displaying similar proteins or binding sites is colored according to the data source.
                     Each data source is assigned a specific color. Which color belongs to which data source can be viewed
-                    in the <strong>legend</strong> under the sequence visualization. Alternatively, when hovered
-                    on sequence residue or binding site, the information about the source is displayed in the tooltip.
+                    in the <strong>legend</strong> under the sequence visualization. Alternatively, hovering over a residue
+                    in any similar protein or binding site will display the data source in a tooltip.
                 </p>
                 <p>
-                    <strong>Tooltip</strong> can display not only source where the data came from, but also information such as:
+                    <strong>Tooltip</strong> can display information such as:
                     <ul>
                         <li><em>Position</em> in the viewer where the mouse currently hovers (along with the residue letter).</li>
-                        <li><em>Confidence</em> value of the binding site.</li>
+                        <li><em>Probability</em> of the binding site existing.</li>
+                        <li><em>Source</em> of the data.</li>
+                        <li><em>Name</em> of the pocket or ligand (displayed only if the "squash" feature is enabled).</li>
                         <li>(Conservation) <em>Value</em> of the currently hovered query protein residue.</li>
                     </ul>
                 </p>
                 <p>
                     As one <strong>hovers</strong> over the sequence with mouse, apart from the fact that the tooltip is displayed,
-                    the residues are highlighted in the 3D visualization. This feature allows to analyze the protein
+                    the residues are highlighted in the structural visualization. This feature allows to analyze the protein
                     both from the structural and sequential point of view. By default, the sequence view is zoomed out
                     so that the whole protein is displayed. You can use your mouse to zoom in, or zoom
                     to the selected residue by <strong>clicking</strong> the responsible area.
@@ -148,6 +161,9 @@ function Help() {
                         <li>
                             For displaying individual pocket areas or ligands (if available),
                             the one needs to select the required parts from the panels under the visualization.
+                            <ul>
+                                <li>The panels belonging to similar proteins are ordered by TM-score in descending order.</li>
+                            </ul>
                         </li>
                         <li>
                             Above the visualization, the switch (<strong>Support-Based Highlighting</strong>) is present.
@@ -213,13 +229,13 @@ function Help() {
                 <h3>Conservation</h3>
                 <p>
                     Besides selecting what protein to analyze, one can also specify whether evolutionary conservation should be
-                    included in the P2Rank prediction by checking the <em>Use conservation</em> checkbox. Slightly modified
-                    <a href="https://github.com/cusbg/prankweb/blob/main/conservation/hmm_based/conservation_hmm_based.py"> script </a>
-                    is used to calculate per-position information content (IC) values for amino acid residues which is between 0 and ~ 4 ( = log2(20) )
-                    with higher values corresponding to higher conservation.
-                    <a href="https://ftp.expasy.org/databases/uniprot/current_release/knowledgebase/complete/uniprot_sprot.fasta.gz">
-                        &nbsp; UniProtKB/Swiss-Prot </a>
-                    protein sequence database is used as the single target sequence database.
+                    included in the P2Rank prediction by checking the <em>Use conservation</em> checkbox or selecting <em>model
+                        with conservation</em> in case of Custom structure input method. Slightly modified <a
+                            href="https://github.com/cusbg/prankweb/blob/main/conservation/hmm_based/conservation_hmm_based.py">script</a> is
+                    used to calculate per-position information content (IC) values for amino acid residues which is between
+                    0 and ~&nbsp;4 (&nbsp;=&nbsp;log2(20)&nbsp;) with higher values corresponding to higher conservation. <a
+                        href="https://ftp.expasy.org/databases/uniprot/current_release/knowledgebase/complete/uniprot_sprot.fasta.gz">
+                        UniProtKB/Swiss-Prot</a> protein sequence database is used as the single target sequence database.
                 </p>
             </section>
 

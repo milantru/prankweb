@@ -107,8 +107,12 @@ export const MolStarWrapper = forwardRef(({
 	const [isHighlightModeOn, setIsHighlightModeOn] = useState<boolean>(false);
 	const [isHighlightModeSwitchingDisabled, setIsHighlightModeSwitchingDisabled] = useState<boolean>(false);
 	const [structuresLoaded, setStructuresLoaded] = useState<boolean>(false);
-	const loadingMessage = useRef<string>("Loading structure(s)...");
+	const [binidingSitesRemainingCount, setBindingSitesRemainingCount] = useState<number>(0);
+	const [bindingSitesCount, setBindingSitesCount] = useState<number>(0);
+	const loadingMessage = useRef<string>("Downloading structure(s)...");
 	const [displayedLoadingMessageLength, setDisplayedLoadingMessageLength] = useState<number>(loadingMessage.current.length);
+	const [downloadingStructures, setDownloadingStructures] = useState<boolean>(false);
+	const [similarStructuresRemainingCount, setSimilarStructuresRemainingCount] = useState<number>(0);
 
 	const alignAndSuperposeFailed = useRef<boolean>(false);
 
@@ -265,16 +269,46 @@ export const MolStarWrapper = forwardRef(({
 	return (
 		<div className="w-100">
 			<div className="d-flex">
-				{/* When loading msg animation ("Loading structures.", "Loading structures..", "Loading structures...",...)
-				  * is on and the screen is small, the animation moves "Support-Based Highlighting" and Switch with each tick, 
-				  * which doesn't look nice. Max width 200px solves this problem. */}
-				<div className="d-flex align-items-center" style={{ minWidth: "200px" }}>
-					{structuresLoaded ? "" : loadingMessage.current.substring(0, displayedLoadingMessageLength)}
+				{
+					downloadingStructures
+						? (
+							<>
+								{/* When loading msg animation ("Loading structures.", "Loading structures..", "Loading structures...",...)
+							* is on and the screen is small, the animation moves "Support-Based Highlighting" and Switch with each tick, 
+							* which doesn't look nice. Max width 200px solves this problem. */}
+								<div className="d-flex align-items-center" style={{ minWidth: "200px" }}>
+									{loadingMessage.current.substring(0, displayedLoadingMessageLength)}
+								</div>
+							</>
+						)
+						: <></>
+				}
+				<div className="d-flex flex-column" style={{ minWidth: "200px" }}>
+					{similarStructuresRemainingCount > 0 && binidingSitesRemainingCount > 0 ? (
+						<>
+							<div className="mb-1">
+								Loading {similarStructuresRemainingCount > 0 ? `${similarStructuresRemainingCount} structure${similarStructuresRemainingCount > 1 ? "s" : ""}` : ""}
+								{similarStructuresRemainingCount > 0 && bindingSitesCount > 0 ? " and " : ""}
+								{binidingSitesRemainingCount > 0 && bindingSitesCount > 0
+									? `${bindingSitesCount - binidingSitesRemainingCount} of ${bindingSitesCount} binding sites`
+									: ""}
+								.
+							</div>
+
+							{bindingSitesCount > 0 && (
+								<progress value={bindingSitesCount - binidingSitesRemainingCount}
+									max={bindingSitesCount}
+									style={{ width: "100%", height: "12px" }} />
+							)}
+						</>
+					) : (
+						""
+					)}
 				</div>
+
 				<div className="mt-2 ml-auto"
 					title="When the mode is enabled, the opacity of residues of visualized binding sites increases with the number of supporting data sources.">
-					Support-Based Highlighting {/* Support-Based Highlighting was previously known as Highlight mode */}
-					<Switch classes="ml-2" isDisabled={isHighlightModeSwitchingDisabled || !structuresLoaded} onToggle={handleSwitchToggle} />
+					<Switch isDisabled={isHighlightModeSwitchingDisabled || !structuresLoaded} onToggle={handleSwitchToggle} />
 				</div>
 			</div>
 
@@ -404,6 +438,8 @@ export const MolStarWrapper = forwardRef(({
 					continue;
 				}
 
+				setSimilarStructuresRemainingCount(prev => prev - 1);
+
 				if (simProt.bindingSites.length === 0) {
 					if (!(dataSourceName in ps)) {
 						ps[dataSourceName] = {};
@@ -475,6 +511,7 @@ export const MolStarWrapper = forwardRef(({
 							console.warn("Failed to create ligand representation. Key: ", key);
 						}
 					}
+					setBindingSitesRemainingCount(prev => prev - 1);
 				}
 			}
 		}
@@ -546,6 +583,7 @@ export const MolStarWrapper = forwardRef(({
 		return plugin.dataTransaction(async () => {
 			// Load query protein structure
 			const querySequenceUrl = getQuerySequenceUrl(chainResult);
+			setDownloadingStructures(true);
 			const queryStructureTmp = await _loadStructure(plugin, querySequenceUrl, format);
 			queryStructure.current = queryStructureTmp;
 
@@ -553,8 +591,11 @@ export const MolStarWrapper = forwardRef(({
 			const queryProteinPocketsExpression: Record<string, Record<string, Record<string, { expr: Expression, supportersCount: number }[]>>> = {};
 			const queryProteinLigandsExpression: Record<string, Record<string, Record<string, Expression>>> = {};
 			const dseResult = chainResult.dataSourceExecutorResults
+			let bindingSitesCount = 0;
+			let similarStructuresCount = 1; // 1 for query protein structure
 			for (const [dataSourceName, result] of Object.entries(dseResult)) {
 				for (const bindingSite of result.bindingSites) {
+					bindingSitesCount++;
 					const residues = bindingSite.residues.map(residue => residue.structureIndex);
 					const residuesExpressionsAndSupporters = residues.map(r => ({
 						expr: MS.struct.modifier.wholeResidues({
@@ -614,6 +655,7 @@ export const MolStarWrapper = forwardRef(({
 					if (!isSimProtInOptions(dataSourceName, simProt, options)) {
 						continue;
 					}
+					similarStructuresCount++;
 
 					if (!(dataSourceName in structuresTmp)) {
 						structuresTmp[dataSourceName] = {};
@@ -625,6 +667,7 @@ export const MolStarWrapper = forwardRef(({
 					structuresTmp[dataSourceName][simProt.pdbId][simProt.chain] = structure;
 				}
 			}
+			setDownloadingStructures(false);
 			similarProteinStructures.current = structuresTmp;
 
 			// Load similar proteins binding sites/pockets (and also ligands if available) 
@@ -663,6 +706,7 @@ export const MolStarWrapper = forwardRef(({
 						}
 					}
 					for (const bindingSite of simProt.bindingSites) {
+						bindingSitesCount++;
 						const residues = bindingSite.residues.map(residue => residue.structureIndex);
 						const residuesExpressionsAndSupporters = residues.map(r => ({
 							expr: MS.struct.modifier.wholeResidues({
@@ -717,6 +761,10 @@ export const MolStarWrapper = forwardRef(({
 					}
 				}
 			}
+
+			setBindingSitesCount(bindingSitesCount);
+			setBindingSitesRemainingCount(bindingSitesCount);
+			setSimilarStructuresRemainingCount(similarStructuresCount);
 
 			const xs = plugin.managers.structure.hierarchy.current.structures;
 			if (xs.length === 0) {
@@ -839,11 +887,11 @@ export const MolStarWrapper = forwardRef(({
 							console.warn("Failed to create ligand representation. Data: ", dataSourceName, selectedChain, bindingSite.id);
 						}
 					}
+					setBindingSitesRemainingCount(prevCount => prevCount - 1);
 				}
 			}
 			queryProteinPockets.current = queryProteinPocketsTmp;
 			queryProteinLigands.current = queryProteinLigandsTmp;
-
 			// Create representations of similar protein structures
 			for (let i = 1; i < (selections?.length ?? 1); i++) {
 				await transform(plugin, xs[i].cell, transforms[i - 1].bTransform);

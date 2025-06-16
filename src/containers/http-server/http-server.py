@@ -11,6 +11,7 @@ from typing import TypeAlias
 
 import requests
 from Bio import SeqIO, PDB
+from Bio.PDB.Polypeptide import is_aa
 from celery import Celery
 from flask import Flask, request, jsonify, Response
 from humps import decamelize
@@ -136,12 +137,13 @@ def _try_parse_pdb(pdb_file: str, user_chains: list) -> ErrorStr | None:
         parser = PDB.PDBParser(PERMISSIVE=False, QUIET=True)
         structure = parser.get_structure('Custom structure', pdb_file)  
 
-        file_chains = set()  # To avoid duplicates
+        protein_chains = set()
         for model in structure:
             for chain in model:
-                file_chains.add(chain.get_id())
+                if any(is_aa(res, standard=True) for res in chain.get_residues()): # Check if it is amino acid chain
+                    protein_chains.add(chain.id)
 
-        if not (user_chains <= file_chains):
+        if not (user_chains <= protein_chains):
             return 'Wrong chains selected for parsing user file'
     
     except Exception:
@@ -170,12 +172,13 @@ def _validate_pdb(input_data: dict) -> ValidationResult:
         chains_str = input_data['chains']
         selected_chains = set((chains_str.split(',') if chains_str else []))
 
-        pdb_chains = set()
-        for entry in response_data:
-            if 'in_chains' in entry:
-                pdb_chains.update(set(entry['in_chains']))
+        protein_chains = set()
 
-        if not (selected_chains <= pdb_chains):
+        for entity in response_data:
+            if entity.get("molecule_type", "").startswith('polypeptide'):
+                protein_chains.update(entity.get("in_chains", []))
+
+        if not (selected_chains <= protein_chains):
             return ValidationResult(err_msg='Wrong chains selected')
 
         # try to download download pdb file

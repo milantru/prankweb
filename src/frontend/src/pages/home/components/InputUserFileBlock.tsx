@@ -31,8 +31,7 @@ function InputUserFileBlock({ data, setData, setErrorMessage }: Props) {
                 </label>
                 <input className="form-control" type="file" id="user-file" onChange={handleFileChange} />
             </div>
-            {/* Delete d-none to enable chains selecting if desired in the future. */}
-            <div className="d-none mb-3">
+            <div className="mb-3">
                 <label htmlFor="user-file-chains" className="form-label">Restrict to chains</label>
                 <input type="text"
                     className="form-control"
@@ -49,26 +48,26 @@ function InputUserFileBlock({ data, setData, setErrorMessage }: Props) {
                     value={UserInputModel.Default} onChange={selectUserInputModel}
                     checked={data.userInputModel === UserInputModel.Default}
                     title="If selected, a default prediction model will be used." />
-                <label htmlFor="user-input-model-1" className="form-label">Default prediction model</label><br />
+                <label htmlFor="user-input-model-1" className="form-label pl-1">Default prediction model</label><br />
 
                 <input type="radio" name="user-input-model" id="user-input-model-2"
                     value={UserInputModel.ConservationHmm} onChange={selectUserInputModel}
                     checked={data.userInputModel === UserInputModel.ConservationHmm}
                     title="If selected, a default prediction model with conservation will be used." />
-                <label htmlFor="user-input-model-2" className="form-label">
+                <label htmlFor="user-input-model-2" className="form-label pl-1">
                     Default model with <a href="./help#conservation">conservation</a></label><br />
 
                 <input type="radio" name="user-input-model" id="user-input-model-3"
                     value={UserInputModel.Alphafold} onChange={selectUserInputModel}
                     checked={data.userInputModel === UserInputModel.Alphafold}
                     title="If selected, an AlphaFold prediction model will be used." />
-                <label htmlFor="user-input-model-3" className="form-label">AlphaFold model</label><br />
+                <label htmlFor="user-input-model-3" className="form-label pl-1">AlphaFold model</label><br />
 
                 <input type="radio" name="user-input-model" id="user-input-model-4"
                     value={UserInputModel.AlphafoldConservationHmm} onChange={selectUserInputModel}
                     checked={data.userInputModel === UserInputModel.AlphafoldConservationHmm}
                     title="If selected, an AlphaFold prediction model with conservation will be used." />
-                <label htmlFor="user-input-model-4" className="form-label">
+                <label htmlFor="user-input-model-4" className="form-label pl-1">
                     AlphaFold model with <a href="./help#conservation">conservation</a></label><br />
             </div>
         </div>

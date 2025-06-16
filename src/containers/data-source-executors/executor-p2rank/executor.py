@@ -135,5 +135,5 @@ def run_p2rank(id, params):
         logger.error(f'{id} An unexpected error occurred: {str(e)}')
         update_status(status_file_path, id, StatusType.FAILED, errorMessage = f"An unexpected error occurred: {e}")
 
-    logger.info(f'{id} ds_foldseek finished')
+    logger.info(f'{id} P2Rank finished')
 

@@ -97,5 +97,5 @@ def run_plank(id):
         logger.error(f'{id} An unexpected error occurred: {str(e)}')
         update_status(status_file_path, id, StatusType.FAILED, errorMessage = f"An unexpected error occurred: {e}")
 
-    logger.info(f'{id} ds_plank finished')
+    logger.info(f'{id} Plank finished')
 
