@@ -334,114 +334,111 @@ paths:
               schema:
                 type: object
                 properties:
-                  result:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                        example: pdb_2src
-                      chain:
-                        type: string
-                        example: A
-                      sequence:
-                        type: string
-                        example: TTFVALYDYESRTETDLSFKKGERLQIVNNTEGDWWL...
-                      pdbUrl:
-                        type: string
-                        format: uri
-                        example: http://localhost:9864/data/inputs/pdb_2src/structure.pdb
-                      bindingSites:
-                        type: array
-                        items:
+                  id:
+                    type: string
+                    example: pdb_2src
+                  chain:
+                    type: string
+                    example: A
+                  sequence:
+                    type: string
+                    example: TTFVALYDYESRTETDLSFKKGERLQIVNNTEGDWWL...
+                  pdbUrl:
+                    type: string
+                    format: uri
+                    example: https://prankweb2.ksi.projekty.ms.mff.cuni.cz/data/inputs/pdb_2src/structure.pdb
+                  bindingSites:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          example: pocket_1
+                        confidence:
+                          type: number
+                          format: float
+                          example: 0.916
+                        residues:
+                          type: array
+                          items:
+                            type: integer
+                          example: [189, 190, 191, 192, 193, 194, 195]
+                  similarProteins:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        pdbId:
+                          type: string
+                          example: 4k11
+                        chain:
+                          type: string
+                          example: A
+                        sequence:
+                          type: string
+                          example: TTFVALYDYESRTETDLSFKKGERLQIVNNTEGDWWL...
+                        pdbUrl:
+                          type: string
+                          format: uri
+                          example: https://prankweb2.ksi.projekty.ms.mff.cuni.cz/data/ds_foldseek/pdb_2src/4k11.pdb
+                        bindingSites:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                                example: H_PTR
+                              confidence:
+                                type: number
+                                format: float
+                                example: 1.0
+                              residues:
+                                type: array
+                                items:
+                                  type: object
+                                  properties:
+                                    sequenceIndex:
+                                      type: integer
+                                      example: 71
+                                    structureIndex:
+                                      type: integer
+                                      example: 155
+                        alignmentData:
                           type: object
                           properties:
-                            id:
-                              type: string
-                              example: pocket_1
-                            confidence:
-                              type: number
-                              format: float
-                              example: 0.916
-                            residues:
-                              type: array
-                              items:
-                                type: integer
-                              example: [189, 190, 191, 192, 193, 194, 195]
-                      similarProteins:
-                        type: array
-                        items:
-                          type: object
-                          properties:
-                            pdbId:
-                              type: string
-                              example: 4k11
-                            chain:
-                              type: string
-                              example: A
-                            sequence:
+                            querySeqAlignedPartStartIdx:
+                              type: integer
+                              example: 0
+                            querySeqAlignedPartEndIdx:
+                              type: integer
+                              example: 447
+                            querySeqAlignedPart:
                               type: string
                               example: TTFVALYDYESRTETDLSFKKGERLQIVNNTEGDWWL...
-                            pdbUrl:
+                            similarSequence:
                               type: string
-                              format: uri
-                              example: http://localhost:9864/data/ds_foldseek/pdb_2src/4k11.pdb
-                            bindingSites:
-                              type: array
-                              items:
-                                type: object
-                                properties:
-                                  id:
-                                    type: string
-                                    example: H_PTR
-                                  confidence:
-                                    type: number
-                                    format: float
-                                    example: 1.0
-                                  residues:
-                                    type: array
-                                    items:
-                                      type: object
-                                      properties:
-                                        sequenceIndex:
-                                          type: integer
-                                          example: 71
-                                        structureIndex:
-                                          type: integer
-                                          example: 155
-                            alignmentData:
-                              type: object
-                              properties:
-                                querySeqAlignedPartStartIdx:
-                                  type: integer
-                                  example: 0
-                                querySeqAlignedPartEndIdx:
-                                  type: integer
-                                  example: 447
-                                querySeqAlignedPart:
-                                  type: string
-                                  example: TTFVALYDYESRTETDLSFKKGERLQIVNNTEGDWWL...
-                                similarSequence:
-                                  type: string
-                                  example: TTFVALYDYESRTETDLSFKKGERLQIVNNTEGDWWL...
-                                similarSeqAlignedPartStartIdx:
-                                  type: integer
-                                  example: 0
-                                similarSeqAlignedPartEndIdx:
-                                  type: integer
-                                  example: 447
-                                similarSeqAlignedPart:
-                                  type: string
-                                  example: TTFVALYDYESRTETDLSFKKGERLQIVNNTEGDWWL...
-                      metadata:
-                        type: object
-                        properties:
-                          source:
-                            type: string
-                            example: foldseek
-                          timestamp:
-                            type: string
-                            format: date-time
-                            example: 2025-04-11T10:56:00.731529
+                              example: TTFVALYDYESRTETDLSFKKGERLQIVNNTEGDWWL...
+                            similarSeqAlignedPartStartIdx:
+                              type: integer
+                              example: 0
+                            similarSeqAlignedPartEndIdx:
+                              type: integer
+                              example: 447
+                            similarSeqAlignedPart:
+                              type: string
+                              example: TTFVALYDYESRTETDLSFKKGERLQIVNNTEGDWWL...
+                  metadata:
+                    type: object
+                    properties:
+                      source:
+                        type: string
+                        example: foldseek
+                      timestamp:
+                        type: string
+                        format: date-time
+                        example: 2025-04-11T10:56:00.731529
         '404':
           description: Not Found.
   /data/conservation/{inputId}/status.json:
