@@ -308,7 +308,7 @@ export const MolStarWrapper = forwardRef(({
 
 				<div className="mt-2 ml-auto"
 					title="When the mode is enabled, the opacity of residues of visualized binding sites increases with the number of supporting data sources.">
-					<Switch classes="" isDisabled={isHighlightModeSwitchingDisabled || !structuresLoaded} onToggle={handleSwitchToggle} />
+					<Switch isDisabled={isHighlightModeSwitchingDisabled || !structuresLoaded} onToggle={handleSwitchToggle} />
 				</div>
 			</div>
 
