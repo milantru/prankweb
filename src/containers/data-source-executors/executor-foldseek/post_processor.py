@@ -37,6 +37,18 @@ logger = create_logger('ds-foldseek')
 
 
 def extract_binding_sites_for_chain(pdb_id, pdb_file_text, input_chain) -> Tuple[List[BindingSite], str, Dict[str, int]]:
+    """
+    Extracts experimentally determined binding sites from a PDB file for a specific chain.
+    Binding sites are defined as residues within 5 Angstroms of any ligand atom.
+
+    Apart from binding sites, the amino acid sequence of the chain is also extracted as well as a mapping from sequence index to residue structure index.
+
+    Args:
+        pdb_id (str): ID of the protein.
+        pdb_file_text (str): Text content of the PDB file.
+        input_chain (str): Chain ID for which to extract binding sites.
+    """ 
+    
     file = StringIO(pdb_file_text)
     pdb = PDBParser().get_structure(pdb_id, file)
     file.close()
@@ -115,7 +127,21 @@ def save_results(result_folder: str, file_name: str, builder: ProteinDataBuilder
     logger.info(f'{id} Results saved')
 
 def process_similar_protein(curr_chain: str, id: str, fields: List[str]) -> SimilarProteinBuilder:
-    
+    """
+    Processes a single line from the chain result file, resulting with the `SimilarProteinBuilder` object with the following data: 
+    - Similar protein PDB ID
+    - Similar protein chain ID
+    - Similar protein URL (to RCSB DB)
+    - TM-score of the similar and input protein
+    - Alignment data
+    - Experimentally determined binding sites for the similar protein
+
+    Args:
+        curr_chain (str): Chain ID of the similar protein.
+        id (str): Generated ID for the input protein.
+        fields (List[str]): List of fields from the Foldseek result file.
+    """
+
     sim_protein_pdb_id, sim_protein_chain = fields[1][:4], fields[1].split("_")[1][0]
     if len(id)> 4 and id[-4:] == sim_protein_pdb_id and curr_chain == sim_protein_chain:
         logger.info(f'{id} Skipping similar protein {sim_protein_pdb_id} for chain {curr_chain} as it is the same as query')
@@ -160,6 +186,15 @@ def process_similar_protein(curr_chain: str, id: str, fields: List[str]) -> Simi
     return sim_builder
 
 def split_foldseek_result_file(result_folder, filepath):
+    """
+    Splits the Foldseek result file into multiple files for each chain in the input protein.  
+    Name of each chain result file is based on the input protein chain, e.g. `input_X_res` where `X` is the chain ID.
+    Each chain result file contains the alignment data for that specific chain, TM-score and PDB ID of similar protein.
+
+    Args:
+        result_folder (str): Path to the folder where the splitted files will be saved.
+        filepath (str): Path to the Foldseek result file.
+    """
     output_files = {}
     result_file_base = ""
 
@@ -187,6 +222,17 @@ def split_foldseek_result_file(result_folder, filepath):
     return result_file_base
 
 def process_chain_result(id, chain_result_file_path, result_folder, query_structure_file, query_structure_file_url, max_workers=16):
+    """
+    Parallel processing of a single chain result file created from the Foldseek output.
+
+    Args:
+        id (str): Generated ID for the input protein.
+        chain_result_file_path (str): Path to the chain result file.
+        result_folder (str): Path to the folder where results will be saved.
+        query_structure_file (str): Path to the input protein PDB file.
+        query_structure_file_url (str): URL to the input protein PDB file.
+        max_workers (int): Maximum number of worker processes to use for parallel processing.
+    """
     builder = None
     futures = []
 
@@ -220,6 +266,18 @@ def process_chain_result(id, chain_result_file_path, result_folder, query_struct
         save_results(result_folder, RESULT_FILE.format(chain), builder)
 
 def process_foldseek_output(result_folder, foldseek_result_file, id, query_structure_file, query_structure_file_url, status_file_path):
+    """
+    Processes the Foldseek output file, for each chain in the input protein.  
+    Results are stored in the shared format in the specified result folder.
+
+    Args:
+        result_folder (str): Path to the folder where results will be saved.
+        foldseek_result_file (str): Path to the Foldseek result file.
+        id (str): Generated ID for the input protein.
+        query_structure_file (str): Path to the input protein PDB file.
+        query_structure_file_url (str): URL to the input protein PDB file.
+        status_file_path (str): Path to the status file for tracking progress.
+    """
 
     result_file_base = split_foldseek_result_file(result_folder, foldseek_result_file)
 
