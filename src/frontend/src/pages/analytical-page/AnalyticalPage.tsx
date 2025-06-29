@@ -171,7 +171,7 @@ function AnalyticalPage() {
 	const rcsbSaguaroRef = useRef<RcsbSaguaroHandle>(null!);
 	const [allDataFetched, setAllDataFetched] = useState<boolean>(false);
 	const chains = useRef<string[]>([]);
-	// querySeqToStrMappings stores mappings for each chain of query protein (unmapped/unaligned/"fresh" from data soruces)
+	// querySeqToStrMappings stores mappings for each chain of query protein (unmapped/unaligned/"fresh" from data sources)
 	const querySeqToStrMappings = useRef<Record<string, Record<number, number>>>(null!); // querySeqToStrMappings[chain][rcsb position - 1 , i.e. seq idx] -> molstar struct idx
 	// bindingSiteSupportCounter[chain][residue index in structure (of pocket)] -> number of data sources supporting that residue is part of binding site
 	const [bindingSiteSupportCounter, setBindingSiteSupportCounter] = useState<Record<string, Record<number, number>>>({});
@@ -182,6 +182,8 @@ function AnalyticalPage() {
 	const unalignedSimProts = useRef<Record<string, UnalignedSimilarProtein[]>>({});
 	const conservations = useRef<Conservation[]>([]); // Conservations for currently selected query chain
 	const isPollingOffForGood = useRef<boolean>(false); // if true, polling is turned off and won't be turned on again 
+	// querySeqMapping[idxFrom before aligning] -> idxTo after aligning (to master query seq)
+	const querySeqMapping = useRef<Record<number, number>>({});
 
 	useEffect(() => {
 		if (isPollingOffForGood.current) {
@@ -860,6 +862,7 @@ function AnalyticalPage() {
 			}
 		);
 
+		querySeqMapping.current = mapping;
 		return {
 			querySequence: masterQuerySeq,
 			querySeqToStrMapping: querySeqToStrMapping,
@@ -1199,8 +1202,30 @@ function AnalyticalPage() {
 					}
 				};
 				const toFind = molstarResidue.authSeqNumber;
-				const structureIndices = Object.values(querySeqToStrMappings.current[selectedChain]);
-				const positionInRcsb = structureIndices.indexOf(toFind) + 1;
+				const queryStructIndices = Object.values(currChainResult.querySeqToStrMapping);
+				const querySeqIdxBeforeAligning = queryStructIndices.indexOf(toFind);
+				if (querySeqMapping.current[-1] !== undefined) {
+					return Error("-1 present in seq to struct mapping"); // This should not happen
+				}
+				/* indexOf returns -1 if it does not find idx, -1 for sure is not in mapping, 
+				 * so later check in if is valid and sufficient (we don't have to also check
+				 * querySeqIdxBeforeAligning, just querySeqIdxAfterAligning because of it). */
+				const querySeqIdxAfterAligning = querySeqMapping.current[querySeqIdxBeforeAligning];
+				if (querySeqIdxAfterAligning === undefined) {
+					/* Sequence index was not found in query seq to str mapping, maybe sim prot was highlighted,
+					 * we would like to try to find sequence index in some of the sim prot's seq to str mappings,
+					 * however we do not know which sim prot was highlighted... 
+					 * Because of that, we simply return (do nothing). */
+					return;
+				}
+
+				const offset = rcsbSaguaroRef.current?.getOffset();
+				if (offset === undefined) {
+					return;
+				}
+
+				const positionInRcsb = querySeqIdxAfterAligning + 1 - offset;
+
 				rcsbPlugin.setSelection({
 					elements: {
 						begin: positionInRcsb
