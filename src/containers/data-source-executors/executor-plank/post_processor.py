@@ -4,12 +4,24 @@ from dataclasses import asdict
 from data_format.builder import ProteinDataBuilder, BindingSite, Residue
 
 def process_plank_output(id, result_folder, predictions, seq_to_str_mapping, pdb_url):
+    """
+    Processes the output of Plank, creating a result file for each chain in the input protein.  
+    The result file is in shared data format.
+
+    Args:
+        id (str): Generated ID for the input protein.
+        result_folder (str): Folder where the results will be saved.
+        predictions (list): List of predictions containing chains, sequence, and predicted binding values.
+        seq_to_str_mapping (dict): Mapping from sequence indices to structure indices for each chain.
+        pdb_url (str): URL of the input PDB file for the protein structure.
+        
+    """
     for prediction in predictions:
         chains = prediction['chains']
         sequence = prediction['sequence']
         binding = prediction['binding']
 
-        for i, chain in enumerate(chains):
+        for i, chain in enumerate(chains): # For each chain, create a separate result file in a shared format
             protein_data_builder = ProteinDataBuilder(
                 id=id,
                 chain=chain,

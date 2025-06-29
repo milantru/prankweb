@@ -21,6 +21,16 @@ os.makedirs(RESULTS_FOLDER, exist_ok=True)
 logger.info(f'{id} Results folder prepared: {RESULTS_FOLDER}')
 
 def run_foldseek(id):
+    """
+    Runs Foldseek to find up to 1000 structurally similar proteins for a given protein structure.
+
+    The function downloads the input PDB file based on the provided ID from shared volume, then runs Foldseek against
+    a local database. It tracks progress using a status file and stores the results in a shared format
+    for each chain.
+
+    Args:
+        id (str): Generated ID for the input protein.
+    """
     logger.info(f'{id} ds_foldseek started')
 
     eval_folder = os.path.join(RESULTS_FOLDER, f"{id}")

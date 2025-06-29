@@ -53,6 +53,25 @@ def is_amino_acid(code):
     return code.capitalize() in protein_letters_3to1
 
 def read_residues(residues_result_file):
+    """
+    Reads the residues result file and groups data by chains.
+    Residues result file is expected to be in CSV format with the following columns:
+    ``` csv
+    chain, residue_label, residue_name, score, zscore, probability, pocket
+    A,        84,         THR,          0.0243,-0.3134,   0.0009,      0
+    A,        85,         THR,          0.0222,-0.3143,   0.0008,      2
+    A,        86,         PHE,          0.2677,-0.2047,   0.0139,      1
+    ```
+    Args:
+        residues_result_file (str): Path to the residues result file.
+    
+    Returns:
+        dict: A dictionary where keys are chain IDs (str), and values are dictionaries with:
+                - 'pockets' (dict): Keys are pocket indices (int), values are dictionaries with:
+                    - 'indices' (List[Residue])
+                    - 'probability' (float) - not being set here
+                - 'residues' (str): Sequence of residues in the chain.
+    """
     grouped_data = {}
     with open(residues_result_file, 'r') as file:
         file.readline()  # Skip header
@@ -92,6 +111,16 @@ def read_residues(residues_result_file):
     return grouped_data
 
 def update_pocket_probabilities(pocket_prediction_result_file, grouped_data):
+    """
+    Enriches the grouped data with pocket probabilities, ranks, and scores from the pocket prediction result file.
+    The pocket prediction result file is expected to be in CSV format with the following columns:
+    ``` csv
+    name     ,  rank,   score, probability
+    pocket1  ,     1,    5.34,       0.265
+    pocket2  ,     2,    4.87,       0.228
+    pocket3  ,     3,    2.02,       0.043
+    ```
+    """
     with open(pocket_prediction_result_file, 'r') as file:
         file.readline()  # Skip header =+  
         for line in file:
@@ -106,6 +135,16 @@ def update_pocket_probabilities(pocket_prediction_result_file, grouped_data):
                     grouped_data[chain]["pockets"][pocket]['score'] = score
 
 def process_p2rank_output(id, result_folder, query_file, pdb_url):
+    """
+    Processes the output of P2Rank, creating a result file for each chain in the protein.  
+    The result file is in shared data format.
+
+    Args:
+        id (str): Generated ID for the input protein.
+        result_folder (str): Folder where the results will be saved.
+        query_file (str): Path to the PDB file of the input protein. Used to determine the P2Rank output files.
+        pdb_url (str): URL of the input PDB file for the protein structure.
+    """
     residues_result_file = query_file + "_residues.csv"
     pocket_prediction_result_file = query_file + "_predictions.csv"
     

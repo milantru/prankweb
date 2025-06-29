@@ -20,6 +20,16 @@ os.makedirs(RESULTS_FOLDER, exist_ok=True)
 logger.info(f'{id} Results folder prepared: {RESULTS_FOLDER}')
 
 def prepare_hom_files(id, eval_folder):
+    """
+    Downloads conservation files (.hom) for each protein chain to improve P2Rank prediction of binding sites.
+
+    First it fetches a `chains.json` file from shared volume to determine the chain IDs, then downloads
+    a corresponding `.hom` file for each chain. Files need to be saved in the same folder where P2Rank will be executed.
+
+    Args:
+        id (str): Generated ID for the input protein.
+        eval_folder (str): Path to the folder where prediction results and hom files are stored.
+    """
     chains_json = os.path.join(INPUTS_URL, id, "chains.json")
 
     logger.info(f'{id} Downloading chains file from: {chains_json}')
@@ -56,6 +66,18 @@ def prepare_hom_files(id, eval_folder):
 
 
 def run_p2rank(id, params):
+    """
+    Runs P2Rank to predict binding sites in a protein structure.
+
+    Downloads the input PDB file using the provided ID from shared volume and runs P2Rank using the specified model.
+    If conservation is enabled, additional .hom files are downloaded from shared volume and used during prediction.
+
+    Progress is tracked using a status file and the results are processed and stored in a shared output format.
+
+    Args:
+        id (str): Generated ID for the input protein.
+        params (dict): Dictionary containing `use_conservation` (bool) and `input_model` (str).
+    """
     logger.info(f'{id} ds_p2rank started')
     
     use_conservation = params['use_conservation']

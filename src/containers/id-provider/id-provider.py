@@ -39,6 +39,27 @@ def _check(key):
 
 @app.route('/generate', methods=['POST'])
 def get_or_generate():
+    """
+    Handles POST requests to generate or retrieve an ID based on protein input.
+
+    This endpoint expects a JSON payload containing `input_method` and `input_protein`.
+    If the payload fields are valid and a corresponding ID already exists in the database, 
+    the ID is returned. If the ID does not exist, a new one is generated and stored.
+
+    ID Generation:
+        - For PDB and UniProt inputs: ID is formatted as "{input_method}_{input_protein}".
+        - For custom structure or sequence input: ID is formatted as "{input_method}_{<hex-increment>}" to ensure uniqueness.
+
+    Returns:
+        Success response (200): A JSON object containing:
+            - `id` (str): The retrieved or newly generated ID.
+            - `stored_value` (str): The key used for database lookup or storage.
+            - `existed` (bool): Indicates whether the ID already existed.
+
+        Error response (400): A JSON object containing:
+            - `error` (str): A description of the issue with the request.
+    """
+
 
     input_method = request.json.get('input_method')
     input_protein = request.json.get('input_protein')
@@ -78,6 +99,30 @@ def get_or_generate():
 
 @app.route('/get-id', methods=['GET'])
 def get_id():
+    """
+    Handles GET requests to retrieve a stored ID based on protein input.
+
+    This endpoint expects query parameters `input_method` and `input_protein`.
+    If both parameters are valid and the corresponding key exists in the database,
+    the associated ID is returned. If the key does not exist, the response indicates 
+    the ID was not found.
+
+    Key Generation:
+        - The key is constructed as "{input_method}:{input_protein}", where:
+            - `input_method` is the enum value of the input method (case-insensitive).
+            - `input_protein` is converted to lowercase.
+        - Only supported methods are: PDB, UniProt, and SEQUENCE.
+
+    Returns:
+        Success response (200): A JSON object containing:
+            - `id` (str | None): The ID associated with the input, or None if not found.
+            - `error` (str | None): None if successful, otherwise a message describing the error.
+
+        Error response (400): A JSON object containing:
+            - `id` (None): Always None for invalid input.
+            - `error` (str): A description of the missing or unsupported parameter.
+    """
+
     input_method = request.args.get('input_method')
     input_protein = request.args.get('input_protein')
     logger.info(f'get-id GET request received: {{input_method: {input_method}, input_protein: {input_protein}}}')

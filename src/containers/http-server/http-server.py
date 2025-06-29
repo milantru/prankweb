@@ -345,6 +345,33 @@ def _is_input_valid(input_method: str, input_data: dict, input_file: FileStorage
 
 @app.route('/upload-data', methods=['POST'])
 def upload_data() -> Response:
+    """
+    Handles POST requests to upload user data and initiate processing via a Celery task.
+
+    This endpoint receives form data and optionally a file upload, validates the input,
+    downloads temporary input file, requests a unique ID from an external ID provider
+    and sends a task named `metatask_{SEQ|STR}` to a queue for processing. 
+    A temporary input file is scheduled for deletion after 15 minutes.
+
+    Processing Steps:
+        1. Validate input data and download temporary input file.
+        2. If valid, request or generate an ID from the ID provider.
+        3. Convert input method (`inputMethod`) to internal format ("STR" or "SEQ").
+        4. Construct the payload for metatask.
+        5. Submit the metatask to the queue.
+        6. Schedule deletion of the temporary uploaded file (if any) after 15 minutes.
+
+    Returns:
+        Success response (200): A JSON string containing:
+            - The ID (str) returned by the ID provider.
+
+        Error response (400): A JSON object containing:
+            - `error` (str): Description of validation or input errors.
+
+        Error response (500): A JSON object containing:
+            - `error` (str): Failure to connect to or receive a response from the ID provider.
+    """
+
     logger.info(f'upload-data POST request received')
 
     input_method = request.form.get('inputMethod')

@@ -17,6 +17,23 @@ def is_standard_aa(code):
 logger = create_logger('converter')
 
 def run_structure_to_sequence(id):
+    """
+    Downloads a PDB file by ID from shared volume, extracts amino acid sequences for each chain
+    and maps sequence indices to structure residue indices.
+
+    Args:
+        id (str): Generated ID for input protein.
+
+    Returns:
+        ```
+        {
+            "chains": {sequence: [chain_ids]},
+            "seqToStrMapping": {chain_id: {seq_index: structure_index}}
+        }
+        ```
+        
+        or None if download fails or no sequences are found.
+    """
     logger.info(f'{id} converter_str_to_seq started')
 
     pdb_url = os.path.join(INPUTS_URL, f"{id}/structure.pdb")
@@ -80,6 +97,17 @@ def run_structure_to_sequence(id):
     }
 
 def run_sequence_to_structure(id):
+    """
+    Downloads a FASTA sequence by ID from shared volume, sends it to ESMAtlas service for structure prediction
+    and returns the predicted structure as string.
+
+    Args:
+        id (str): Generated ID for the input protein.
+
+    Returns:
+        str: Predicted structure as string
+        or None if download or prediction fails.
+    """
     logger.info(f'{id} converter_seq_to_str started')
 
     # get input
