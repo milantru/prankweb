@@ -274,6 +274,34 @@ def _run_conservation(id: str, id_existed: bool) -> AsyncResult | None:
 
 @celery.task(name='metatask_SEQ')
 def metatask_seq(input_data: dict) -> None:
+    """
+    Celery task for processing sequence-based input data (`SEQ` pipeline).
+
+    This task orchestrates computing results for a protein sequence by running a series
+    of follow-up tasks. Each step is executed only if the corresponding results do not already exist.
+
+    Processing Steps:
+        1. Download and prepare the input sequence file.
+        2. Run `ds_plank` task.
+        3. Run `conservation` task.
+        4. If the input is new or missing structure files:
+            a. Send task `converter_seq_to_str` to convert sequence to structure.
+            b. Wait for the result and store it.
+        5. Run `ds_foldseek` for structure alignment.
+        6. Run `ds_p2rank` twice:
+            - Without conservation scores.
+            - With conservation scores (after conservation task completes).
+
+    Args:
+        input_data (dict): A dictionary containing:
+            - `id` (str): Unique identifier for this input.
+            - `id_existed` (bool): Indicates whether the input was previously processed.
+            - `input_model` (str): The P2Rank model to use for predictions.
+            - `input_url` (str): URL pointing to the sequence file to be processed.
+
+    Returns:
+        None
+    """
     
     id           = input_data['id']
     id_existed   = bool(input_data['id_existed'])
@@ -330,6 +358,35 @@ def metatask_seq(input_data: dict) -> None:
 
 @celery.task(name='metatask_STR')
 def metatask_str(input_data: dict) -> None:
+    """
+    Celery task for processing structure-based input data (`STR` pipeline).
+
+    This task orchestrates computing results for a protein structure by running a sequence
+    of follow-up tasks. Each step is executed only if the corresponding results do not already exist.
+
+    Processing Steps:
+        1. Download and prepare the input structure file.
+        2. Run `ds_foldseek` for structure alignment.
+        3. Run `ds_p2rank` without conservation scores.
+        4. If the input is new or missing sequence files:
+            a. Send the `converter_str_to_seq` task to convert the structure to sequence.
+            b. Wait for the result and store it.
+        5. Run the `ds_plank` task.
+        6. Start the `conservation` task.
+        7. Wait for the conservation task to complete.
+        8. Run `ds_p2rank` with conservation scores.
+
+    Args:
+        input_data (dict): A dictionary containing:
+            - `id` (str): Unique identifier for this input.
+            - `id_existed` (bool): Indicates whether the input was previously processed.
+            - `input_model` (str): The P2Rank model to use for predictions.
+            - `input_url` (str): URL pointing to the structure file to be processed.
+
+    Returns:
+        None
+    """
+
     
     id           = input_data['id']
     id_existed   = bool(input_data['id_existed'])
