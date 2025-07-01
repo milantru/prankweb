@@ -320,8 +320,7 @@ const RcsbSaguaro = forwardRef(({
         for (let i = 0; i < querySequence.length; i++) {
             const position = i + 1 - offset.current;
             const positionData: RcsbPositionData = {
-                // offset is added to get "real" position, not the one after "start at 0" feature is on
-                position: position + offset.current,
+                position: position,
                 residue: querySequence[i]
             }
 
@@ -334,6 +333,8 @@ const RcsbSaguaro = forwardRef(({
 
         const trackColor = "#F9F9F9";
 
+        /* composite track is used here to pass trackData with custom label containing custom information,
+         * (custom label cannot be passed using just sequence track) */
         const querySequenceRow: RcsbFvRowExtendedConfigInterface = {
             trackId: "query-seq",
             trackHeight: 20,
@@ -356,7 +357,7 @@ const RcsbSaguaro = forwardRef(({
                     ]
                 },
                 {
-                    // block must come AFTER sequence, otherwise it might be problem for user co click it (we wouldn't get label)
+                    // block must come AFTER sequence, otherwise it might be problem for user to click it (we wouldn't get label)
                     displayType: "block",
                     displayColor: "#FFFFFF00",
                     /* ids of composite blocks must start with "special-composite", 
@@ -412,8 +413,7 @@ const RcsbSaguaro = forwardRef(({
         for (let i = 0; i < sequence.length; i++) {
             const position = i + 1 - offset.current;
             const positionData: RcsbPositionData = {
-                // offset is added to get "real" position, not the one after "start at 0" feature is on
-                position: position + offset.current,
+                position: position,
                 residue: sequence[i],
                 dataSourceName: dataSourceName,
                 pdbCode: pdbCode,
@@ -427,6 +427,8 @@ const RcsbSaguaro = forwardRef(({
             });
         }
 
+        /* composite track is used here to pass trackData with custom label containing custom information,
+         * (custom label cannot be passed using just sequence track) */
         const similarSequenceRow: RcsbFvRowExtendedConfigInterface = {
             trackId: id,
             trackHeight: 20,
@@ -651,6 +653,8 @@ const RcsbSaguaro = forwardRef(({
     }
 
     function getStructIdx(positionData: RcsbPositionData, position: number): number | undefined {
+        // offset is added to get "real" position, not the one after "start at 0" feature is on
+        position += offset.current;
         let structIdx: number = null!;
 
         if (positionData?.dataSourceName && positionData?.pdbCode && positionData?.chain) {
