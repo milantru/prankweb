@@ -1,3 +1,7 @@
+# Custom
+# Treat pdf as binary files
+*.pdf binary
+
 # Set default eol behavior
 * text eol=lf
 .gitignore text eol=lf
