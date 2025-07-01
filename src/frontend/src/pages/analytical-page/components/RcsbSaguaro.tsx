@@ -174,6 +174,15 @@ const RcsbSaguaro = forwardRef(({
         return offset.current;
     }
 
+    /**
+     * Creates board configuration for RCSB-saguaro viewer,
+     * tailored to integrate with the Mol* visualization to:
+     * - Highlight hovered residues or binding sites in the Mol* 3D viewer.
+     * - When clicked on the residue or binding site, it is focused by the Mol*.
+     *
+     * @param chainResult - The result object containing the query sequence used to compute the board's range.
+     * @returns A fully configured RcsbFvBoardConfigInterface object for rendering the sequence viewer and synchronizing with Mol*.
+     */
     function createBoardConfigData(chainResult: ChainResult) {
         const tooltipGenerator: RcsbFvTooltipInterface = {
             showTooltip: (d: RcsbFvTrackDataElementInterface): HTMLElement | undefined => {
