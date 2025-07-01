@@ -684,7 +684,7 @@ const RcsbSaguaro = forwardRef(({
                 }
 
                 let structIdx = getStructIdx(positionData, position);
-                if (structIdx) {
+                if (structIdx !== undefined) {
                     onHighlight([structIdx], positionData?.dataSourceName, positionData?.pdbCode, positionData?.chain);
                 }
             }
@@ -707,7 +707,7 @@ const RcsbSaguaro = forwardRef(({
         }
 
         let structIdx = getStructIdx(positionData, position);
-        if (structIdx) {
+        if (structIdx !== undefined) {
             onClick([structIdx], positionData?.dataSourceName, positionData?.pdbCode, positionData?.chain);
         }
     }
