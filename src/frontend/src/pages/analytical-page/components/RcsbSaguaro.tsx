@@ -7,6 +7,7 @@ import chroma from "chroma-js";
 
 export type RcsbSaguaroHandle = {
     getRcsbPlugin: () => RcsbFv | null;
+    getOffset: () => number;
 };
 
 type RcsbPositionData = { // This will be stored (serialized to string) in label of track data
@@ -54,7 +55,8 @@ const RcsbSaguaro = forwardRef(({
     const offset = useRef(0); // Used for "Start query sequence at 0" feature
 
     useImperativeHandle(ref, () => ({
-        getRcsbPlugin
+        getRcsbPlugin,
+        getOffset
     }));
 
     useEffect(() => {
@@ -135,8 +137,8 @@ const RcsbSaguaro = forwardRef(({
         if (startQuerySequenceAtZero) {
             const querySequenceStartIdx = getSequenceStartIndex(chainResult.querySequence);
             /* +1 is here to "negate" +1 which we use when visualissing items
-             * (we use +1 when visualising items because it seems rcsb saguaro 
-             * expects sequence to start from 1 and not from 0).*/
+             * (We use +1 when visualising items because it seems rcsb saguaro 
+             * expects sequence to start from 1 and not from 0; UPDATE: This may not be truth, not confirmed though.).*/
             offset.current = querySequenceStartIdx + 1;
         } else {
             offset.current = 0;
@@ -168,6 +170,19 @@ const RcsbSaguaro = forwardRef(({
         return rcsbFv;
     }
 
+    function getOffset(): number {
+        return offset.current;
+    }
+
+    /**
+     * Creates board configuration for RCSB-saguaro viewer,
+     * tailored to integrate with the Mol* visualization to:
+     * - Highlight hovered residues or binding sites in the Mol* 3D viewer.
+     * - When clicked on the residue or binding site, it is focused by the Mol*.
+     *
+     * @param chainResult - The result object containing the query sequence used to compute the board's range.
+     * @returns A fully configured RcsbFvBoardConfigInterface object for rendering the sequence viewer and synchronizing with Mol*.
+     */
     function createBoardConfigData(chainResult: ChainResult) {
         const tooltipGenerator: RcsbFvTooltipInterface = {
             showTooltip: (d: RcsbFvTrackDataElementInterface): HTMLElement | undefined => {
@@ -213,7 +228,7 @@ const RcsbSaguaro = forwardRef(({
         const boardConfigData: RcsbFvBoardConfigInterface = {
             range: {
                 min: 0 - offset.current,
-                max: chainResult.querySequence.length - 1 - offset.current
+                max: chainResult.querySequence.length - offset.current
             },
             includeAxis: true,
             highlightHoverPosition: false,
@@ -302,21 +317,24 @@ const RcsbSaguaro = forwardRef(({
 
     function createQuerySequenceRow(querySequence: string, pdbId: string | null = null) {
         const displayData: RcsbFvTrackDataElementInterface[] = [];
-        for (let i = 1 - offset.current; i < querySequence.length; i++) {
+        for (let i = 0; i < querySequence.length; i++) {
+            const position = i + 1 - offset.current;
             const positionData: RcsbPositionData = {
-                position: i,
-                residue: querySequence[i - 1 + offset.current]
+                position: position,
+                residue: querySequence[i]
             }
 
             displayData.push({
-                begin: i,
-                end: i,
+                begin: position,
+                end: position,
                 label: JSON.stringify(positionData)
             });
         }
 
         const trackColor = "#F9F9F9";
 
+        /* composite track is used here to pass trackData with custom label containing custom information,
+         * (custom label cannot be passed using just sequence track) */
         const querySequenceRow: RcsbFvRowExtendedConfigInterface = {
             trackId: "query-seq",
             trackHeight: 20,
@@ -339,7 +357,7 @@ const RcsbSaguaro = forwardRef(({
                     ]
                 },
                 {
-                    // block must come AFTER sequence, otherwise it might be problem for user co click it (we wouldn't get label)
+                    // block must come AFTER sequence, otherwise it might be problem for user to click it (we wouldn't get label)
                     displayType: "block",
                     displayColor: "#FFFFFF00",
                     /* ids of composite blocks must start with "special-composite", 
@@ -392,22 +410,25 @@ const RcsbSaguaro = forwardRef(({
         chain?: string,
     ) {
         const displayData: RcsbFvTrackDataElementInterface[] = [];
-        for (let i = 1 - offset.current; i < sequence.length; i++) {
+        for (let i = 0; i < sequence.length; i++) {
+            const position = i + 1 - offset.current;
             const positionData: RcsbPositionData = {
-                position: i,
-                residue: sequence[i - 1 + offset.current],
+                position: position,
+                residue: sequence[i],
                 dataSourceName: dataSourceName,
                 pdbCode: pdbCode,
                 chain: chain
             }
 
             displayData.push({
-                begin: i,
-                end: i,
+                begin: position,
+                end: position,
                 label: JSON.stringify(positionData)
             });
         }
 
+        /* composite track is used here to pass trackData with custom label containing custom information,
+         * (custom label cannot be passed using just sequence track) */
         const similarSequenceRow: RcsbFvRowExtendedConfigInterface = {
             trackId: id,
             trackHeight: 20,
@@ -613,13 +634,14 @@ const RcsbSaguaro = forwardRef(({
      *          or -1 if the position corresponds to a gap, or if the provided sequence contained no amino acids.
      */
     function getSeqIdxBeforeAligning(sequenceWithGaps: string, rcsbPosition: number) {
+        const seqIdx = rcsbPosition - 1;
         let seqIdxCounter = -1;
-        if (sequenceWithGaps[rcsbPosition - 1] === "-") {
+        if (sequenceWithGaps[seqIdx] === "-") {
             // We don't want to focus when clicked on gap
             return seqIdxCounter;
         }
 
-        for (let i = 0; i < rcsbPosition && i < sequenceWithGaps.length; i++) {
+        for (let i = 0; i <= seqIdx && i < sequenceWithGaps.length; i++) {
             const aminoAcidOrGap = sequenceWithGaps[i];
             if (aminoAcidOrGap === "-") {
                 continue;
@@ -631,17 +653,19 @@ const RcsbSaguaro = forwardRef(({
     }
 
     function getStructIdx(positionData: RcsbPositionData, position: number): number | undefined {
+        // offset is added to get "real" position, not the one after "start at 0" feature is on
+        position += offset.current;
         let structIdx: number = null!;
 
         if (positionData?.dataSourceName && positionData?.pdbCode && positionData?.chain) {
-            // Similar protein (or binding site on it) is clicked, lets find the protein and use its seq to str mapping
+            // Similar protein (or binding site on it) is clicked/hovered, lets find the protein and use its seq to str mapping
             const simProts = chainResult.dataSourceExecutorResults[positionData.dataSourceName].similarProteins;
             const simProt = simProts.find(x => x.pdbId === positionData.pdbCode && x.chain === positionData.chain);
 
             let seqIdxBeforeAligning = getSeqIdxBeforeAligning(simProt.sequence, position);
             structIdx = simProt.seqToStrMapping[seqIdxBeforeAligning];
         } else {
-            // Query protein (or binding site on it) is clicked
+            // Query protein (or binding site on it) is clicked/hovered
             let seqIdxBeforeAligning = getSeqIdxBeforeAligning(chainResult.querySequence, position);
             structIdx = chainResult.querySeqToStrMapping[seqIdxBeforeAligning];
         }
@@ -664,7 +688,7 @@ const RcsbSaguaro = forwardRef(({
                 }
 
                 let structIdx = getStructIdx(positionData, position);
-                if (structIdx) {
+                if (structIdx !== undefined) {
                     onHighlight([structIdx], positionData?.dataSourceName, positionData?.pdbCode, positionData?.chain);
                 }
             }
@@ -687,7 +711,7 @@ const RcsbSaguaro = forwardRef(({
         }
 
         let structIdx = getStructIdx(positionData, position);
-        if (structIdx) {
+        if (structIdx !== undefined) {
             onClick([structIdx], positionData?.dataSourceName, positionData?.pdbCode, positionData?.chain);
         }
     }

@@ -29,8 +29,6 @@ import { toastWarning } from "../../../shared/helperFunctions/toasts";
 export type MolStarWrapperHandle = {
 	toggleQueryProteinBindingSite: (dataSourceName: string, chain: string, bindingSiteId: string, show: boolean) => void;
 	toggleSimilarProteinBindingSite: (dataSourceName: string, pdbCode: string, chain: string, bindingSiteId: string, show: boolean) => void;
-	toggleSimilarProteinStructure: (dataSourceName: string, pdbCode: string, chain: string, show: boolean) => void;
-	hideAllSimilarProteinStructures: (except: StructureOption[]) => void;
 	highlight: (structureIndices: number[], dataSourceName?: string, pdbCode?: string, chain?: string) => void;
 	focus: (structureIndices: number[], dataSourceName?: string, pdbCode?: string, chain?: string) => void;
 	getMolstarPlugin: () => PluginUIContext;
@@ -119,8 +117,6 @@ export const MolStarWrapper = forwardRef(({
 	useImperativeHandle(ref, () => ({
 		toggleQueryProteinBindingSite,
 		toggleSimilarProteinBindingSite,
-		toggleSimilarProteinStructure,
-		hideAllSimilarProteinStructures,
 		highlight,
 		focus,
 		getMolstarPlugin
@@ -157,7 +153,7 @@ export const MolStarWrapper = forwardRef(({
 
 			window.molstar = plugin;
 
-			loadNewStructures(plugin, "pdb", selectedChain, selectedStructures);
+			loadNewStructures(plugin, selectedChain, selectedStructures);
 		}
 
 		init();
@@ -170,12 +166,12 @@ export const MolStarWrapper = forwardRef(({
 
 	useEffect(() => {
 		async function loadNewStructuresWrapper(plugin: PluginUIContext) {
-			await loadNewStructures(plugin, "pdb", selectedChain, selectedStructures);
+			await loadNewStructures(plugin, selectedChain, selectedStructures);
 			if (alignAndSuperposeFailed.current) {
 				alignAndSuperposeFailed.current = false;
 				/* Try again... It should not fail this time as alignAndSuperpose will not be called because
 				 * we pass no options (selected structures), only query struct should be visualised. */
-				await loadNewStructures(plugin, "pdb", selectedChain, []);
+				await loadNewStructures(plugin, selectedChain, []);
 				toastWarning("One or more selected proteins could not be aligned or superposed due to an error. \
 						As a result, only the query protein is displayed in the structural visualization. \
 						Please modify your selection and try again.");
@@ -908,11 +904,21 @@ export const MolStarWrapper = forwardRef(({
 		});
 	}
 
-	async function loadNewStructures(plugin: PluginUIContext, format: BuiltInTrajectoryFormat, chain: string, options: StructureOption[]) {
+	/**
+	 * Loads and displays multiple structures (superpositioned) in the Mol* viewer.
+	 * 
+	 * Only a single chain (specified by `chain`) of the query protein is shown. The structures
+	 * are loaded based on the `options` provided (only their chain specified in the option).
+	 * 
+	 * @param plugin - The Mol* PluginUIContext instance managing the viewer.
+	 * @param chain - The chain identifier (e.g., 'A') to isolate and display from the query structure.
+	 * @param options - A list of structure options defining what to load.
+	 */
+	async function loadNewStructures(plugin: PluginUIContext, chain: string, options: StructureOption[]) {
 		setStructuresLoaded(false);
 		onStructuresLoadingStart();
 		await plugin.clear();
-		await performDynamicSuperposition(plugin, format, chain, options);
+		await performDynamicSuperposition(plugin, "pdb", chain, options);
 		onStructuresLoadingEnd();
 		setStructuresLoaded(true);
 	}
@@ -941,58 +947,6 @@ export const MolStarWrapper = forwardRef(({
 		// We know ligand exists in the pocket so we show/hide it as well
 		const ligand = similarProteinLigands.current[dataSourceName][pdbCode][chain][bindingSiteId];
 		setVisibilityOfObject(ligand, show);
-	}
-
-	function toggleSimilarProteinStructure(dataSourceName: string, pdbCode: string, chain: string, show: boolean) {
-		const struct = similarProteinStructures.current[dataSourceName][pdbCode][chain];
-		if (!struct) {
-			console.warn(`Failed to toggle struct... Data: `, dataSourceName, pdbCode, chain, show);
-			return;
-		}
-
-		setVisibilityOfObject(struct, show);
-		/* When protein structure is displayed, all pockets and ligands are as well, so we fix it by
-		 * displaying only those that should be dispalyed and hiding those that should be hidden. */
-		for (const pocket of Object.values(similarProteinPockets.current[dataSourceName][pdbCode][chain])) {
-			setVisibilityOfObjects(pocket, pocket.isVisible);
-		}
-		for (const ligand of Object.values(similarProteinLigands.current[dataSourceName][pdbCode][chain])) {
-			setVisibilityOfObject(ligand, ligand.isVisible);
-		}
-
-		// Reset camera (this should make the structures more visible)
-		window.molstar?.canvas3d?.requestCameraReset();
-		window.molstar?.managers.camera.reset()
-	}
-
-	/** Hides all similar protein structures except those specified in the argument `except`. */
-	function hideAllSimilarProteinStructures(except: StructureOption[]) {
-		for (const [dataSourceName, dataSourceRecord] of Object.entries(similarProteinStructures.current)) {
-			for (const [pdbCode, proteinRecord] of Object.entries(dataSourceRecord)) {
-				for (const [chain, structure] of Object.entries(proteinRecord)) {
-					const isException = except.some(x => x.value.dataSourceName === dataSourceName
-						&& x.value.pdbId === pdbCode
-						&& x.value.chain === chain);
-					if (isException) {
-						continue;
-					}
-					// Hide similar protein structure
-					setVisibilityOfObject(structure, false);
-
-					// Hide also its pockets
-					const similarProteinPocketsRecord = similarProteinPockets.current[dataSourceName][pdbCode][chain];
-					for (const pocket of Object.values(similarProteinPocketsRecord)) {
-						setVisibilityOfObjects(pocket, false);
-					}
-
-					// Hide also its ligands
-					const similarProteinLigandsRecord = similarProteinLigands.current[dataSourceName][pdbCode][chain];
-					for (const ligand of Object.values(similarProteinLigandsRecord)) {
-						setVisibilityOfObject(ligand, false);
-					}
-				}
-			}
-		}
 	}
 
 	/**
