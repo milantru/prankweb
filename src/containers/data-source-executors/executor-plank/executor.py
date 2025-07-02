@@ -19,6 +19,17 @@ os.makedirs(RESULTS_FOLDER, exist_ok=True)
 logger.info(f'{id} Results folder prepared: {RESULTS_FOLDER}')
 
 def run_plank(id):
+    """
+    Runs the Plank - pLM and neural network model to predict for each residue in protein if it belongs to a binding site.
+
+    The function downloads input sequence data based on the provided ID from shared volume,
+    embeds the sequences using a pLM and performs binding site prediction using the NN.
+    It tracks progress using a status file and stores the results in a shared format
+    for each chain.
+    
+    Args:
+        id (str): Unique identifier for the input protein.
+    """
     logger.info(f'{id} ds_plank started')
 
     eval_folder = os.path.join(RESULTS_FOLDER, f"{id}")

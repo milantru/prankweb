@@ -24,6 +24,16 @@ logger = create_logger('conservation')
 
 
 def compute_conservation(id):
+    """
+    Computes conservation scores for each residue in the input protein.  
+    The `chains.json` file is downloaded from the shared volume, which contains the mapping of chains to sequences.  
+    The conservation scores are computed using HMMER tools and saved in the result folder.
+
+    Conservation is computed for each chain separately.
+
+    Args:
+        id (str): Generated ID for the input protein.
+    """
     logger.info(f'{id} conservation started')
     result_folder = RESULT_FOLDER.format(id=id)
     os.makedirs(result_folder, exist_ok=True)
@@ -237,12 +247,34 @@ def _should_read_line(line: str) -> bool:
 
 
 def _write_tsv(target_file: str, fasta_file_sequence: str, feature):
+    """
+    Creates a TSV file used by P2Rank to enhance the prediction of binding sites.
+    The file is in following format:
+    ``` tsv
+    index	value	residue
+    0   4.32192809	A
+    1   2.50277981	V
+    2   2.57228153	K
+    ```
+    """
     with open(target_file, mode="w", newline="") as stream:
         for (i, j), value in zip(enumerate(fasta_file_sequence), feature):
             stream.write("\t".join((str(i), value, j)) + "\n")
 
 
 def _write_json(target_file: str, fasta_file_sequence: str, feature):
+    """
+    Creates a JSON file used by fronted to visualize the conservation scores.
+    The file is in following format:
+    ``` json
+    [
+        {
+            "index": 0,
+            "value": 4.32192809
+        },
+        ...
+    ```
+    """
     with open(target_file, mode="w", newline="") as stream:
         result = []
         for (i, j), value in zip(enumerate(fasta_file_sequence), feature):
