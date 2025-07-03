@@ -184,9 +184,17 @@ function AnalyticalPage() {
 	const isPollingOffForGood = useRef<boolean>(false); // if true, polling is turned off and won't be turned on again 
 	// querySeqMapping[idxFrom before aligning] -> idxTo after aligning (to master query seq)
 	const querySeqMapping = useRef<Record<number, number>>({});
+	const isFirstRender = useRef<boolean>(true); // used to disable turning on polling when user visits analytical page for the first time
 
 	useEffect(() => {
-		if (isPollingOffForGood.current) {
+		if (isFirstRender.current) {
+			/* When user visits the analytical page for the first time, it turns on the polling automatically, 
+			 * we don't want it, thus this if exists to prevent it. Polling will be started if initial data fetch 
+			 * doesn not fetch all data. */
+			isFirstRender.current = false;
+			return;
+		}
+		if (isFirstRender.current || isPollingOffForGood.current) {
 			/* If initial data fetching/polling is finished for every data source, we don't want to turn it on again.
 			 * That is why we have this if here.
 			 * Moreover, we don't have to set pollingInterval to null here (in this if), because
@@ -197,15 +205,24 @@ function AnalyticalPage() {
 	}, [isPageVisible]);
 
 	useEffect(() => {
+		async function sleep(timeoutInSeconds: number) {
+			await new Promise(f => setTimeout(f, 1000 * timeoutInSeconds));
+		}
+
 		async function initChains() {
+			/* Timeout is set also before even trying to get the chains,
+			 * the reason is that if client is faster than server, it might try to get file with chains before server
+			 * created it. To avoid pointlessly displaying toast about this, we simply wait a bit before asking for the chains. */
+			const timeoutInSeconds = 0.5;
+			await sleep(timeoutInSeconds);
+
 			let chainsInitialized = false;
 			while (!chainsInitialized) {
 				const { chains: chainsTmp, errMsg: allChainsFetchingErrorMessage } = await tryGetChains();
 				if (allChainsFetchingErrorMessage.length > 0) {
-					const timeoutInSeconds = 0.5;
 					console.warn(allChainsFetchingErrorMessage
 						+ `\nMaybe file was not created yet? Retrying in ${timeoutInSeconds} second(s)...`);
-					await new Promise(f => setTimeout(f, 1000 * timeoutInSeconds)); // Sleep
+					await sleep(timeoutInSeconds);
 					continue;
 				}
 				chains.current = chainsTmp;
@@ -237,7 +254,8 @@ function AnalyticalPage() {
 
 	useEffect(() => {
 		async function stopPollingAndAlignSequences(defaultChain: string) {
-			// Turn off polling entirely for all data sources (to be precise, this turns off useInterval)
+			/* Turn off polling entirely for all data sources (to be precise, this turns off useInterval).
+			 * (isPollingOffForGood was set to true already when allDataFetched was set to true, so no need to set it again here.) */
 			setPollingInterval(null);
 
 			// Aligning will take place in the following function
@@ -262,6 +280,13 @@ function AnalyticalPage() {
 
 	useInterval(() => {
 		for (let dataSourceExecutorIdx = 0; dataSourceExecutorIdx < dataSourceExecutors.current.length; dataSourceExecutorIdx++) {
+			if (!chains.current[0]) {
+				/* This should never happen, but let's keep this if due to defensive programming.
+				 * Maybe polling started by accident sooner? If that's the case, chains should be set any second now,
+				 * so let's just continue. */
+				console.warn("Chains not set yet.");
+				continue;
+			}
 			if (isFetching.current[dataSourceExecutorIdx] || isFetchingFinished.current[dataSourceExecutorIdx]) {
 				continue;
 			}
@@ -503,6 +528,22 @@ function AnalyticalPage() {
 		return startPart + alignedPart + endPart;
 	}
 
+	/**
+	 * Creates a mapping from a gapless amino acid sequence to its gapped version.
+	 * 
+	 * This function aligns the `sequenceWithoutGaps` to `sequenceWithGaps` (which contains `-` for gaps)
+	 * and returns a mapping from each residue index in the gapless sequence to its corresponding
+	 * index in the gapped sequence.
+	 * 
+	 * Assumes that both sequences correspond to the same original sequence,
+	 * just with and without gaps. Every residue in the gapless sequence must exist in the gapped one
+	 * in the same order, with optional `-` characters interleaved.
+	 * 
+	 * @param sequenceWithoutGaps - The amino acid sequence without any gap characters.
+	 * @param sequenceWithGaps - The aligned sequence with possible gap (`-`) characters.
+	 * @returns A mapping object where each key is the index in the gapless sequence, and
+	 *          the corresponding value is the index in the gapped sequence.
+	 */
 	function createMapping(sequenceWithoutGaps: string, sequenceWithGaps: string) {
 		// key: idx in original seq without gaps, value: idx in query seq with gaps
 		const mapping: Record<number, number> = {};
@@ -524,6 +565,13 @@ function AnalyticalPage() {
 		return mapping;
 	}
 
+	/**
+	 * Updates the residue indices in a binding site based on a provided mapping.
+	 * 
+	 * @param bindingSite - The binding site object containing residues.
+	 * @param mapping - A mapping from one sequence indices to another sequence indices (mapping[fromIdx] -> toIdx).
+	 * @returns void
+	 */
 	function updateBindingSiteResiduesIndices(bindingSite: BindingSite, mapping: Record<number, number>) {
 		for (let i = 0; i < bindingSite.residues.length; i++) {
 			if (bindingSite.residues[i].sequenceIndex === undefined) {
@@ -535,6 +583,19 @@ function AnalyticalPage() {
 		}
 	}
 
+	/**
+	 * Calculates the average conservation score for residues within a given binding site.
+	 * 
+	 * It filters the provided conservation data to include only those entries that correspond
+	 * to the residue indices in the binding site. Then, it computes the average of the
+	 * conservation values.
+	 * 
+	 * If no matching conservation values are found, the function returns 0.
+	 * 
+	 * @param bindingSite - The binding site containing residues.
+	 * @param conservations - An array of conservation scores, each associated with a residue index.
+	 * @returns The average conservation score for the binding site (0 if no data available).
+	 */
 	function getAvgConservationForQueryBindingSite(bindingSite: BindingSite, conservations: Conservation[]) {
 		const bindingSiteConservations = conservations.filter(c =>
 			bindingSite.residues.some(r => r.sequenceIndex === c.index));
@@ -596,6 +657,39 @@ function AnalyticalPage() {
 		similarProtein.alignmentData.similarSequence = similarSeq;
 	}
 
+	/**
+	 * Aligns a query protein sequence with multiple similar protein sequences across various data sources.
+	 * 
+	 * This function performs a multi-phase alignment pipeline:
+	 * 
+	 * 1. **Preprocessing Phase**:
+	 *    - Aligns each similar protein with the query sequence using alignment metadata.
+	 *    - Updates aligned sequences and binding site residue indices.
+	 * 
+	 * 2. **Merge Phase**:
+	 *    - Constructs a "master" query sequence that integrates all aligned versions (with gaps).
+	 *    - Aligns similar proteins to the master query sequence.
+	 *    - Builds two residue index mappings:
+	 *      - From original query sequence to master sequence (used for binding site alignment).
+	 *      - From each similar protein to master sequence (used for binding site alignment/remapping).
+	 * 
+	 * 3. **Postprocessing Phase**:
+	 *    - Updates binding site residue indices based on alignment mappings.
+	 *    - Calculates residue support (how many data sources support each residue being part of a binding site).
+	 *    - Computes average conservation values for binding sites, if enabled.
+	 * 
+	 * @param unprocessedResultPerDataSourceExecutor - A mapping of data source names to their unaligned query protein results.
+	 * @param selectedSimilarProteins - A mapping of data source names to arrays of similar protein objects with alignment data.
+	 * @param conservations - Array of conservation data for residues in the query sequence.
+	 * @param chain - The protein chain identifier (used to store residue support).
+	 * @param querySeqToStrMapping - Mapping from query sequence indices to structure indices.
+	 * 
+	 * @returns A fully aligned `ChainResult` containing:
+	 *  - `querySequence`: the master query sequence (with gaps),
+	 *  - `querySeqToStrMapping`: structure mapping (unchanged),
+	 *  - `dataSourceExecutorResults`: processed results with aligned similar proteins,
+	 *  - `conservations`: updated conservation indices mapped to the master sequence.
+	 */
 	function alignSequencesAcrossAllDataSources(
 		unprocessedResultPerDataSourceExecutor: Record<string, UnalignedResult>,
 		selectedSimilarProteins: Record<string, UnalignedSimilarProtein[]>,
@@ -904,6 +998,13 @@ function AnalyticalPage() {
 		unalignedSimProts.current = unalignedSimProtsTmp;
 	}
 
+	/**
+	 * Aligns selected similar protein sequences to the query protein for a given chain.
+	 *
+	 * @param options - Array of user-selected similar proteins for alignment.
+	 * @param chain - The chain identifier of the query protein to align against.
+	 * @returns The alignment result for the specified chain.
+	 */
 	function alignSequences(options: StructureOption[], chain: string) {
 		setCurrChainResult(null);
 		// Get selected sim prots
@@ -1238,6 +1339,7 @@ function AnalyticalPage() {
 		isMolstarLinkedToRcsb.current = true;
 	}
 
+	/** Downloads data of selected query protein chain and selected similar proteins in JSON format. */
 	async function downloadData() {
 		function getTimestamp() {
 			const now = new Date();

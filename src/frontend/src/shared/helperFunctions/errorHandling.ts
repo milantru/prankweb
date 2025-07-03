@@ -26,6 +26,15 @@ const _getErrorMessages = (error: any) => {
 	return errorMessages;
 };
 
+/**
+ * Extracts and normalizes error messages from an Axios error object.
+ *
+ * Handles various formats of error responses (arrays, objects, raw strings), ensures all returned messages are strings,
+ * and appends "Unknown error occurred." for any non-string entries.
+ *
+ * @param error - The error object thrown during an Axios request.
+ * @returns An array of string error messages.
+ */
 export const getErrorMessages = (error: any) => {
 	const originalErrorMessages = _getErrorMessages(error);
 	const originalErrorMessagesCount = originalErrorMessages.length;

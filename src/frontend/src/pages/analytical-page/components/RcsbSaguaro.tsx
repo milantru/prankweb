@@ -200,7 +200,7 @@ const RcsbSaguaro = forwardRef(({
                 }
                 if (d.label) {
                     const positionData: RcsbPositionData = JSON.parse(d.label);
-                    if (positionData.position) {
+                    if (positionData.position !== undefined) {
                         tooltipHtml += `<strong>Position:</strong> ${positionData.position}`;
                     }
                     if (positionData.residue) {
@@ -209,13 +209,13 @@ const RcsbSaguaro = forwardRef(({
                     if (squashBindingSites && positionData.bindingSiteId) {
                         tooltipHtml += ` | <strong>Name:</strong> ${toBindingSiteLabel(positionData.bindingSiteId)}`;
                     }
-                    if (positionData.confidence) {
+                    if (positionData.confidence !== undefined) {
                         tooltipHtml += ` | <strong>Probability:</strong> ${positionData.confidence.toFixed(2)}`;
                     }
                     if (positionData.dataSourceName) {
                         tooltipHtml += ` | <strong>Source:</strong> ${dataSourceDisplayNames[positionData.dataSourceName]}`;
                     }
-                    if (positionData.conservationValue) {
+                    if (positionData.conservationValue !== undefined) {
                         tooltipHtml += ` | <strong>Value:</strong> ${positionData.conservationValue.toFixed(2)}`;
                     }
                 }
