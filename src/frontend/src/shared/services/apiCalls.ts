@@ -10,6 +10,10 @@ import { Conservation, UnprocessedResult } from "../../pages/analytical-page/Ana
  * Each unique input receives a corresponding unique ID. If the same input is uploaded multiple times, 
  * it will receive the same ID. However, in case of the "custom structure input method," each upload 
  * is treated as a new input, and a new ID is provided regardless of the input content.
+ *
+ * @param inputMethod - The input method (of the form) used to provide the input (e.g., structure file, PDB code, etc.).
+ * @param inputBlockData - The actual input data (from the form) corresponding to the chosen method.
+ * @returns An object containing a unique input ID and a user-friendly error message (empty if no error occurred).
  */
 export async function uploadDataAPI(
 	inputMethod: InputMethods,
@@ -58,6 +62,15 @@ type DataStatusResponse = {
 	lastUpdated: Date;
 };
 
+/**
+ * Fetches the processing status of a data source executor result by ID.
+ *
+ * @param dataSourceName - Name of the data source (e.g., "p2rank").
+ * @param id - Unique identifier of the input.
+ * @param useConservation - Whether to use conservation-enhanced data (applies to "p2rank").
+ * @returns Status of the result, along with an info message (about current processing) 
+ * 			and error message (empty if no error occurred).
+ */
 export async function getDataSourceExecutorResultStatusAPI(
 	dataSourceName: string,
 	id: string,
@@ -90,6 +103,15 @@ export async function getDataSourceExecutorResultStatusAPI(
 	}
 }
 
+/**
+ * Fetches the executor result for a specific data source, ID, and chain.
+ *
+ * @param dataSourceName - Name of the data source (e.g., "p2rank").
+ * @param id - Unique identifier of the input.
+ * @param chain - Chain identifier (e.g., "A").
+ * @param useConservation - Whether to use conservation-enhanced data (applies to "p2rank").
+ * @returns The raw result and a user-friendly error message (empty if no error occurred).
+ */
 export async function getDataSourceExecutorResultAPI(
 	dataSourceName: string,
 	id: string,
@@ -118,6 +140,13 @@ export async function getDataSourceExecutorResultAPI(
 	}
 }
 
+/**
+ * Retrieves conservation data for a given ID and chain.
+ *
+ * @param id - Unique identifier of the input.
+ * @param chain - Chain identifier (e.g., "A").
+ * @returns An array of conservation entries and a user-friendly error message (empty if no error occurred).
+ */
 export async function getConservationsAPI(
 	id: string,
 	chain: string,
@@ -143,6 +172,12 @@ export async function getConservationsAPI(
 	}
 }
 
+/**
+ * Retrieves all available chains for a given input ID.
+ *
+ * @param id - Unique identifier of the input.
+ * @returns A list of chain identifiers and a user-friendly error message (empty if no error occurred).
+ */
 export async function getAllChainsAPI(id: string): Promise<{ chains: string[], userFriendlyErrorMessage: string }> {
 	const url = `${apiBaseUrl}/data/inputs/${id}/chains.json`;
 	const errorMessage = "Failed to fetch all chains.";
@@ -160,6 +195,13 @@ export async function getAllChainsAPI(id: string): Promise<{ chains: string[], u
 	}
 }
 
+/**
+ * Retrieves sequence-to-structure index mappings for the query protein.
+ *
+ * @param id - Unique identifier of the input.
+ * @returns A mapping from sequence indices to structure indices per chain, 
+ * 			and a user-friendly error message (empty if no error occurred).
+ */
 export async function getQuerySeqToStrMappingsAPI(
 	id: string
 ): Promise<{ seqToStrMappings: Record<string, Record<number, number>>, userFriendlyErrorMessage: string }> {
@@ -180,6 +222,12 @@ export async function getQuerySeqToStrMappingsAPI(
 	}
 }
 
+/**
+ * Retrieves amino acid chain identifiers for a given PDB code.
+ *
+ * @param pdbCode - Four-character PDB identifier.
+ * @returns A list of polypeptide chain identifiers and a user-friendly error message (empty if no error occurred).
+ */
 export async function getChainsForPdbCodeAPI(pdbCode: string): Promise<{ chains: string[], userFriendlyErrorMessage: string }> {
 	const url = `https://www.ebi.ac.uk/pdbe/api/pdb/entry/molecules/${pdbCode}`;
 	const errorMessage = `Failed to fetch chains for ${pdbCode}`;

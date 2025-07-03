@@ -528,6 +528,22 @@ function AnalyticalPage() {
 		return startPart + alignedPart + endPart;
 	}
 
+	/**
+	 * Creates a mapping from a gapless amino acid sequence to its gapped version.
+	 * 
+	 * This function aligns the `sequenceWithoutGaps` to `sequenceWithGaps` (which contains `-` for gaps)
+	 * and returns a mapping from each residue index in the gapless sequence to its corresponding
+	 * index in the gapped sequence.
+	 * 
+	 * Assumes that both sequences correspond to the same original sequence,
+	 * just with and without gaps. Every residue in the gapless sequence must exist in the gapped one
+	 * in the same order, with optional `-` characters interleaved.
+	 * 
+	 * @param sequenceWithoutGaps - The amino acid sequence without any gap characters.
+	 * @param sequenceWithGaps - The aligned sequence with possible gap (`-`) characters.
+	 * @returns A mapping object where each key is the index in the gapless sequence, and
+	 *          the corresponding value is the index in the gapped sequence.
+	 */
 	function createMapping(sequenceWithoutGaps: string, sequenceWithGaps: string) {
 		// key: idx in original seq without gaps, value: idx in query seq with gaps
 		const mapping: Record<number, number> = {};
@@ -549,6 +565,13 @@ function AnalyticalPage() {
 		return mapping;
 	}
 
+	/**
+	 * Updates the residue indices in a binding site based on a provided mapping.
+	 * 
+	 * @param bindingSite - The binding site object containing residues.
+	 * @param mapping - A mapping from one sequence indices to another sequence indices (mapping[fromIdx] -> toIdx).
+	 * @returns void
+	 */
 	function updateBindingSiteResiduesIndices(bindingSite: BindingSite, mapping: Record<number, number>) {
 		for (let i = 0; i < bindingSite.residues.length; i++) {
 			if (bindingSite.residues[i].sequenceIndex === undefined) {
@@ -560,6 +583,19 @@ function AnalyticalPage() {
 		}
 	}
 
+	/**
+	 * Calculates the average conservation score for residues within a given binding site.
+	 * 
+	 * It filters the provided conservation data to include only those entries that correspond
+	 * to the residue indices in the binding site. Then, it computes the average of the
+	 * conservation values.
+	 * 
+	 * If no matching conservation values are found, the function returns 0.
+	 * 
+	 * @param bindingSite - The binding site containing residues.
+	 * @param conservations - An array of conservation scores, each associated with a residue index.
+	 * @returns The average conservation score for the binding site (0 if no data available).
+	 */
 	function getAvgConservationForQueryBindingSite(bindingSite: BindingSite, conservations: Conservation[]) {
 		const bindingSiteConservations = conservations.filter(c =>
 			bindingSite.residues.some(r => r.sequenceIndex === c.index));
@@ -621,6 +657,39 @@ function AnalyticalPage() {
 		similarProtein.alignmentData.similarSequence = similarSeq;
 	}
 
+	/**
+	 * Aligns a query protein sequence with multiple similar protein sequences across various data sources.
+	 * 
+	 * This function performs a multi-phase alignment pipeline:
+	 * 
+	 * 1. **Preprocessing Phase**:
+	 *    - Aligns each similar protein with the query sequence using alignment metadata.
+	 *    - Updates aligned sequences and binding site residue indices.
+	 * 
+	 * 2. **Merge Phase**:
+	 *    - Constructs a "master" query sequence that integrates all aligned versions (with gaps).
+	 *    - Aligns similar proteins to the master query sequence.
+	 *    - Builds two residue index mappings:
+	 *      - From original query sequence to master sequence (used for binding site alignment).
+	 *      - From each similar protein to master sequence (used for binding site alignment/remapping).
+	 * 
+	 * 3. **Postprocessing Phase**:
+	 *    - Updates binding site residue indices based on alignment mappings.
+	 *    - Calculates residue support (how many data sources support each residue being part of a binding site).
+	 *    - Computes average conservation values for binding sites, if enabled.
+	 * 
+	 * @param unprocessedResultPerDataSourceExecutor - A mapping of data source names to their unaligned query protein results.
+	 * @param selectedSimilarProteins - A mapping of data source names to arrays of similar protein objects with alignment data.
+	 * @param conservations - Array of conservation data for residues in the query sequence.
+	 * @param chain - The protein chain identifier (used to store residue support).
+	 * @param querySeqToStrMapping - Mapping from query sequence indices to structure indices.
+	 * 
+	 * @returns A fully aligned `ChainResult` containing:
+	 *  - `querySequence`: the master query sequence (with gaps),
+	 *  - `querySeqToStrMapping`: structure mapping (unchanged),
+	 *  - `dataSourceExecutorResults`: processed results with aligned similar proteins,
+	 *  - `conservations`: updated conservation indices mapped to the master sequence.
+	 */
 	function alignSequencesAcrossAllDataSources(
 		unprocessedResultPerDataSourceExecutor: Record<string, UnalignedResult>,
 		selectedSimilarProteins: Record<string, UnalignedSimilarProtein[]>,
@@ -929,6 +998,13 @@ function AnalyticalPage() {
 		unalignedSimProts.current = unalignedSimProtsTmp;
 	}
 
+	/**
+	 * Aligns selected similar protein sequences to the query protein for a given chain.
+	 *
+	 * @param options - Array of user-selected similar proteins for alignment.
+	 * @param chain - The chain identifier of the query protein to align against.
+	 * @returns The alignment result for the specified chain.
+	 */
 	function alignSequences(options: StructureOption[], chain: string) {
 		setCurrChainResult(null);
 		// Get selected sim prots
@@ -1263,6 +1339,7 @@ function AnalyticalPage() {
 		isMolstarLinkedToRcsb.current = true;
 	}
 
+	/** Downloads data of selected query protein chain and selected similar proteins in JSON format. */
 	async function downloadData() {
 		function getTimestamp() {
 			const now = new Date();
