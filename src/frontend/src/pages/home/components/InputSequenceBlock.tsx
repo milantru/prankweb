@@ -58,7 +58,8 @@ function InputSequenceBlock({ data, setData, setErrorMessage, maxSequenceLength 
                     title="PlankWeb will use ESMFold predicted structure."
                     onInput={updateHighlight}
                     onFocus={() => setIsSequenceInputFocused(true)}
-                    onBlur={() => setIsSequenceInputFocused(false)}>
+                    onBlur={() => setIsSequenceInputFocused(false)}
+                    onKeyDown={handleKeyDown}>
                 </div>
             </div>
             <div className="form-check">
@@ -164,6 +165,23 @@ function InputSequenceBlock({ data, setData, setErrorMessage, maxSequenceLength 
                 ? sanitizedText.length
                 : cursorPos;
             setCursorPosition(newCursorPos);
+        }
+    }
+
+    function handleKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
+        if (event.key === "Enter") {
+            event.preventDefault(); // Prevent default newline in contentEditable
+            trySubmit();
+        }
+    }
+
+    function trySubmit() {
+        /* Because contentEditable div is used here for highlighting "too-long-part" of the sequence,
+         * the usual behavior of user submitting by pressing Enter does not work here. That is why
+         * the submit button from parent component (form) is selected here and clicked programmatically. */
+        const submitButton = document.getElementById("submit-button") as HTMLButtonElement | null;
+        if (submitButton && !submitButton.disabled) {
+            submitButton.click();
         }
     }
 }

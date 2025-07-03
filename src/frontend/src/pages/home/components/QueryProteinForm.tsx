@@ -95,6 +95,7 @@ function QueryProteinForm() {
                 )}
             </div>
             <div>
+                {/* Don't change id of the submit button, the input sequence block selects it by its id to enable submit by enter. */}
                 <button id="submit-button"
                     type="submit"
                     className="btn btn-primary float-right"
