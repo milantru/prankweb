@@ -21,6 +21,8 @@ type Props = {
 };
 
 function InputUserFileBlock({ data, setData, setErrorMessage }: Props) {
+    /* The following state variable is used to enable feature which allows user, after typing "space" into chains input field,
+     * to write comma (',') instead of space (' '). Writing "space" to the field again, turns off this "space mode". */
     const [useSpaceAsComma, setUseSpaceAsComma] = useState<boolean>(false);
 
     return (
@@ -39,7 +41,7 @@ function InputUserFileBlock({ data, setData, setErrorMessage }: Props) {
                     id="user-file-chains"
                     name="userFileChains"
                     placeholder="A,B"
-                    title="Optional. Comma separated list of chains to analyze."
+                    title="Optional. Comma separated list of chains to analyze. (Type 'SPACE' to enable typing commas using space.)"
                     value={data.chains}
                     onChange={e => setData({ ...data, chains: sanitizeChainsWrapper(e.target.value) })} />
             </div>

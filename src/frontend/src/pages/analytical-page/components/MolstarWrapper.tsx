@@ -65,7 +65,7 @@ type Props = {
 	selectedStructures: StructureOption[];
 	// bindingSiteSupportCounter[residue index in structure (of pocket)] -> number of data sources supporting that the residue index is part of binding site
 	bindingSiteSupportCounter: Record<number, number>;
-	dataSourceCount: number;
+	dataSourceCount: number; // ATTENTION! Count of data sources with result (i.e., ones which did not fail and provided result).
 	// queryProteinBindingSitesData[dataSourceName][chain][bindingSiteId] -> true/false to show bindings site (and ligands if available) 
 	queryProteinBindingSitesData: Record<string, Record<string, Record<string, boolean>>>;
 	// similarProteinBindingSitesData[dataSourceName][pdbCode][chain][bindingSiteId] -> true/false to show bindings site (and ligands if available) 
@@ -342,7 +342,7 @@ export const MolStarWrapper = forwardRef(({
 	function getPocketTransparency(supportersCount: number | null = null) {
 		const defaultValue = 1; // No transparency
 
-		if (!supportersCount) {
+		if (!supportersCount || dataSourceCount === 0) {
 			return defaultValue;
 		}
 
@@ -575,6 +575,22 @@ export const MolStarWrapper = forwardRef(({
 		return inOptions;
 	}
 
+	/**
+	 * Performs dynamic structural superposition of a query protein with selected similar proteins.
+	 *
+	 * This function:
+	 * - Loads the 3D structure of the query protein and selected similar proteins from URLs.
+	 * - Parses and prepares expressions for protein binding sites and ligands (both for the query and similar proteins).
+	 * - Aligns and superposes structures based on matching chains.
+	 * - Builds and renders 3D representations for protein chains, binding pockets, and ligands.
+	 *
+	 * @param plugin - Mol* PluginContext used for structure loading, rendering, and transformation.
+	 * @param format - The file format used to load structures (e.g. "pdb").
+	 * @param chain - The chain ID of the query protein to use for superposition.
+	 * @param options - The list of user-selected similar protein structure options to include in the alignment.
+	 * 
+	 * @returns A Promise resolving after all structures are loaded and aligned.
+	 */
 	function performDynamicSuperposition(plugin: PluginContext, format: BuiltInTrajectoryFormat, chain: string, options: StructureOption[]) {
 		return plugin.dataTransaction(async () => {
 			// Load query protein structure
